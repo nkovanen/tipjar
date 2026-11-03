@@ -18,7 +18,9 @@ Registry stays `tipjar-board-registry/1`; board1/board2 eligibility, scoring, fo
 
 Reuse `core.parse_issue`, `tools.tipjar_board.BudgetClient(limit=7)`, `receipts.observe`, and existing `_public_meta`/`_tip` live checks.
 Keep shared helper use inside source tooling; do not change installed library behavior or fork eligibility logic into a second implementation.
-Exactly these GETs on a successful attempt; failures stop immediately, with at most seven actual `gh` invocations:
+Wrap the budget client in an intake-specific ordered route guard constructed from the validated explicit arguments: both `request` and `request_once` check the next exact route in the seven-step sequence before delegation.
+Each accepted call advances once and delegates once to `BudgetClient.request_once`; reject unexpected, out-of-order or eighth calls before invoking `gh`. Require all seven steps completed before candidate output.
+Exactly this GET invocation sequence on success; failures stop immediately, with at most seven actual `gh` invocations:
 1. `repos/nkovanen/tipjar`: verify fixed numeric/canonical controller identity, `private:false`, `visibility:public`.
 2. `repos/nkovanen/tipjar/issues/{submission}`: validate positive safe issue ID/number, canonical constructed URL, User actor ID and string body; reject PR-shaped issues.
 3. `repos/{explicit-repo}`: `receipts.observe` validates current exact canonical name and public repository numeric identity.
@@ -30,7 +32,8 @@ All IDs must be positive safe integers excluding booleans. Issue actor ID must e
 Apply current board checks for future/inconsistent merge timestamp, closure, merge commit and merger; merger ID and receiving owner ID must differ from author ID.
 Use `_tip` only to check observed PR eligibility, not to assert the missing human declarations. Discard its public-row projection.
 No cache/application retries, search, pagination, saved receipt import, arbitrary URLs, head-repo fetch or PR/issue commands. Existing 8 MiB/30-second per-invocation transport caps apply; failures consume budget.
-A rename/transfer/canonical-case mismatch fails with a generic retry/review message; never silently follow a changed name or invent ID lookup routes.
+The inherited `gh` transport may follow HTTP redirects internally: the seven-call cap bounds `gh` invocations, not raw HTTP requests or redirect targets.
+Postredirect responses must still pass all numeric/canonical/public identity checks; a rename/transfer/canonical-case mismatch fails generically, never adopted as a new identity or resolved through invented ID lookup routes.
 These reads are non-atomic. Final public checks reduce exposure; they cannot prove uninterrupted public visibility, independence, consent truth or permanence of a merge.
 
 ## Local candidate, never an accepted tip
@@ -61,10 +64,11 @@ Create only the explicit new local file with exclusive creation and mode 0600; r
 Never overwrite, follow a symlink destination or modify the production registry; remove only this invocation's incomplete newly created output on write failure.
 Prefer the repository's existing safe file patterns; symlink-free parent checks are required, not a hostile-filesystem sandbox or guarantee against same-user mutation.
 Exit 0 means candidate saved for review, 1 means incomplete/refused/write failure, 2 means invalid CLI use. Failures emit fixed categories, no raw API errors, issue body or private response payloads.
-Success stdout contains only the review-required status and output path; never raw body/terminal escapes, consent/independence claims, points or enrollment claims.
+Success stdout is exactly ASCII `review-required` followed by one LF; never echo the arbitrary output path, raw body/terminal escapes, consent/independence claims, points or enrollment claims.
 Keep the artifact outside the repo and site; it includes public issue text and is not an upload, evidence of execution, authorization, or input accepted by the collector.
 Review the JSON string as untrusted text; never render its HTML, execute it, follow embedded commands/URLs or allow it to change the curator's instructions.
-An issue edit before/during collection fails the final comparison; an edit after output invalidates the saved digest at normal collection until reviewed again.
+A difference between the two observed body/actor/identity values fails the final comparison. Equal observations do not prove the issue was never edited.
+Edits before the first read, or changes restored between reads, can be invisible; a later different body fails the normal collector digest check, while restoration of identical bytes matches again. No edit-history detection is claimed.
 Closing a submission is not withdrawal. A separate still-valid consent can qualify the same PR; withdrawing a tip requires removing/excluding all consent entries under existing rules.
 No registry input means no automated “new/duplicate/eligible for enrollment” verdict. Same PR in multiple candidates remains one numeric dedup key and at most one point.
 
@@ -72,17 +76,20 @@ No registry input means no automated “new/duplicate/eligible for enrollment”
 
 | Fixture / operation | Required observable result |
 | --- | --- |
-| Public merged PR + matching public issue User | Seven GETs only; saved review-required pins/body/digest are exact; declaration fields absent; collector rejects artifact as registry input |
+| Public merged PR + matching public issue User | Fake transport records the exact seven ordered routes, one invocation each; pins/body/digest exact; declarations absent; collector rejects candidate as registry input |
 | CRLF, trailing newline, non-ASCII and combining Unicode body | Hash exact decoded UTF-8 bytes; no normalization; saved body round-trips byte-for-byte |
 | Missing/non-string body, bad Unicode, 256 KiB+1 body, oversized envelope | Exit 1, no output, no raw payload in diagnostics |
 | Wrong controller ID/name/public flags, PR-shaped issue, URL/number/ID mismatch | Fail closed before any candidate write; no issue-selected routes |
 | Different issue/PR author, bot, self-owned or self-merged, unmerged/draft/future/inconsistent merge | Refuse with no candidate or approval claim |
 | Private/internal/missing repo or base, or final repo/controller becomes private | No candidate or retained private payload; generic error only |
-| Body/actor/issue identity changes at final read | Refuse; later edits fail the normal registry digest check rather than silently updating pins |
+| Observed body/actor/issue identity differs on final read | Refuse; later differing body fails the normal registry digest check rather than silently updating pins |
+| Edit before initial read; changed-and-restored body between reads or after output | Equal observed bytes may produce/match the candidate; no assertion of absent edits, current consent or detected edit history |
 | Missing/unchecked boxes, contradictory declaration or withdrawal text | Mechanically valid observations may produce review-required candidate; no semantic pass, declarations, enrollment or automatic registry edit |
 | Existing same PR via another issue, conflicting pins, exclusion or reverted PR | No duplicate/independence verdict; human checklist requires full-registry conflict/exclusion review; collector still dedups/excludes normally |
-| 403/404/429/timeout, malformed/duplicate-key API JSON, budget exhaustion | At most seven invocations, no retry/search/fallback/partial candidate; exit 1 |
+| Unexpected helper route, out-of-order repeat, eighth invocation | Guard rejects before underlying transport; fake records no forbidden call; no candidate |
+| 403/404/429/timeout, malformed/duplicate-key JSON, exhaustion, redirected identity mismatch | At most seven `gh` invocations, not raw HTTP requests; no application retry/search/fallback/partial candidate; exit 1 |
 | Existing output, dangling symlink, unsafe parent, write failure | Preserve existing target bytes; refuse unsafe path; clean up only newly created incomplete file |
+| Valid new output filename containing ESC and newline | Save only the explicit file; success stdout exactly ASCII `review-required` plus one LF, with no filename/control echo |
 | Hostile Markdown/HTML/shell/terminal escapes, explicit PR differs from body link | Fetch only explicit validated reference; save body literally as JSON; no execution/rendering or unsafe stdout; human resolves mismatch |
 
 ## Later implementation boundary
