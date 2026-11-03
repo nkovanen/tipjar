@@ -168,7 +168,31 @@ function repoDetail(repositoryId, opener) {
           body.append(list);
         }
       const source = boardModel.sourceURL(observation);
-      if (source) body.append(link('Pinned invitation source ↗', source));
+      if (source)
+        body.append(
+          link(
+            observation.source.kind === 'readme'
+              ? 'Pinned README source ↗'
+              : 'Pinned invitation source ↗',
+            source,
+          ),
+        );
+      if (observation.source?.kind === 'readme')
+        body.append(
+          node(
+            'p',
+            observation.disposition === 'welcome'
+              ? 'The canonical reader observed a README welcome for this repository. It grants no task, execution or publication authority.'
+              : 'This README has no declared welcome. Its source pins are shown for inspection only.',
+          ),
+        );
+      else if (observation.source?.kind === 'absent')
+        body.append(
+          node(
+            'p',
+            'No invitation file was observed at the pinned commit and tree. Absence grants no approval.',
+          ),
+        );
       if (observation.disposition === 'welcome') {
         command(body, `tipjar discover ${repo.repository} --signals`);
         body.append(

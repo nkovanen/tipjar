@@ -43,7 +43,10 @@ const fixture = (name) =>
     browser = await chromium.launch({ headless: true });
   let checks = 0;
   async function page(width = 1280, data = fixture('valid')) {
-    const p = await browser.newPage({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });
+    const p = await browser.newPage({
+      viewport: { width, height: 1000 },
+      reducedMotion: 'reduce',
+    });
     await p.clock.install({ time: new Date('2026-11-03T13:00:00Z') });
     const errors = [];
     p.on('pageerror', (e) => errors.push(e.message));
@@ -74,7 +77,10 @@ const fixture = (name) =>
           .then((x) => x.includes('®')),
         false,
       );
-      await p.screenshot({ path: path.join(output, `landing-${width}.png`), fullPage: true });
+      await p.screenshot({
+        path: path.join(output, `landing-${width}.png`),
+        fullPage: true,
+      });
       await p.getByRole('link', { name: 'Community board', exact: true }).click();
       await p.locator('#people-content tbody tr').waitFor();
       assert.equal(await p.locator('#people-content tbody tr').count(), 1);
@@ -85,8 +91,14 @@ const fixture = (name) =>
         true,
         'board overflow ' + width,
       );
-      await p.screenshot({ path: path.join(output, `board-${width}.png`), fullPage: true });
-      const opener = p.getByRole('button', { name: 'fictional-giver', exact: true });
+      await p.screenshot({
+        path: path.join(output, `board-${width}.png`),
+        fullPage: true,
+      });
+      const opener = p.getByRole('button', {
+        name: 'fictional-giver',
+        exact: true,
+      });
       await opener.click();
       await p.locator('#board-detail[open]').waitFor();
       assert.equal(
@@ -108,7 +120,12 @@ const fixture = (name) =>
       await p.keyboard.press('Enter');
       assert.equal(await p.locator('#board-detail').evaluate((e) => e.open), true);
       await p.getByRole('button', { name: 'Close board details' }).click();
-      await p.getByRole('button', { name: 'fictional-demo/welcoming-jar', exact: true }).click();
+      await p
+        .getByRole('button', {
+          name: 'fictional-demo/welcoming-jar',
+          exact: true,
+        })
+        .click();
       assert.match(
         await p.locator('#board-detail-content').innerText(),
         /tipjar discover fictional-demo\/welcoming-jar --signals/,
@@ -141,7 +158,10 @@ const fixture = (name) =>
       if (name === 'empty')
         assert.match(await p.locator('#people-content').innerText(), /No eligible, opted-in tips/);
       else assert.match(await p.locator('#board-status').innerText(), /partial pour/);
-      await p.screenshot({ path: path.join(output, `${name}-390.png`), fullPage: true });
+      await p.screenshot({
+        path: path.join(output, `${name}-390.png`),
+        fullPage: true,
+      });
       assert.deepEqual(p.errors, []);
       await p.close();
       checks++;
@@ -166,7 +186,12 @@ const fixture = (name) =>
     const c = await page(390, closed);
     await c.goto(origin + '/tipjar/leaderboard.html');
     await c.locator('#projects-content tbody').waitFor();
-    await c.getByRole('button', { name: 'fictional-demo/welcoming-jar', exact: true }).click();
+    await c
+      .getByRole('button', {
+        name: 'fictional-demo/welcoming-jar',
+        exact: true,
+      })
+      .click();
     assert.equal(await c.locator('#board-detail-content .command').count(), 0);
     assert.match(await c.locator('#board-detail-content').innerText(), /No new-work suggestion/);
     await c.close();
@@ -179,6 +204,105 @@ const fixture = (name) =>
       );
       assert.equal(await p.locator('#people-content tbody').count(), 0);
       assert.equal(await p.locator('#welcome-content article').count(), 0);
+      await p.close();
+      checks++;
+    }
+    for (const width of [1440, 390]) {
+      for (const name of [
+        'manifest-welcome',
+        'manifest-closed',
+        'readme-welcome',
+        'readme-undeclared',
+        'absent',
+        'unknown',
+        'empty',
+        'partial',
+        'expired',
+      ]) {
+        const data = fixture('v2/' + name),
+          p = await page(width, data);
+        await p.goto(origin + '/tipjar/leaderboard.html');
+        await p.waitForFunction(
+          () => !document.getElementById('board-status').innerText.includes('Filling'),
+        );
+        const fresh = name !== 'expired';
+        assert.equal(
+          await p.locator('#welcome-content article').count(),
+          fresh ? data.directory.observations.filter((o) => o.disposition === 'welcome').length : 0,
+        );
+        assert.equal(
+          await p.locator('#people-content tbody tr').count(),
+          fresh && data.tips.length ? 1 : 0,
+        );
+        assert.equal(
+          await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          true,
+          'board2 overflow ' + name + '/' + width,
+        );
+        if (name === 'expired')
+          assert.match(await p.locator('#board-status').innerText(), /Refresh overdue/);
+        else if (name === 'partial' || name === 'unknown')
+          assert.match(await p.locator('#board-status').innerText(), /partial pour/);
+        if (fresh && data.tips.length) {
+          await p.locator('#projects-content button').first().click();
+          const observation = data.directory.observations[0],
+            expectedFile =
+              observation.source?.kind === 'readme'
+                ? 'README.md'
+                : observation.source?.kind === 'manifest'
+                  ? '.tipjar.json'
+                  : null;
+          const fileLinks = p.locator('#board-detail-content a[href*="/blob/"]');
+          assert.equal(await fileLinks.count(), expectedFile ? 1 : 0);
+          if (expectedFile)
+            assert.equal(
+              await fileLinks.getAttribute('href'),
+              `https://github.com/${observation.repository}/blob/${observation.source.commit}/${expectedFile}`,
+            );
+          assert.equal(
+            await p.locator('#board-detail-content .command').count(),
+            observation.disposition === 'welcome' ? 1 : 0,
+          );
+          if (observation.source?.kind === 'readme')
+            assert.match(await p.locator('#board-detail-content').innerText(), /README/);
+          await p.keyboard.press('Escape');
+          await p.waitForFunction(() => !document.getElementById('board-detail').open);
+        }
+        await p.screenshot({
+          path: path.join(output, `board2-${name}-${width}.png`),
+          fullPage: true,
+        });
+        if (name === 'readme-welcome') {
+          await p.locator('#projects-content button').first().click();
+          await p.screenshot({
+            path: path.join(output, `board2-readme-detail-${width}.png`),
+            fullPage: true,
+          });
+          await p.clock.setSystemTime(new Date(data.expires_at));
+          await p.clock.runFor(1100);
+          assert.equal(await p.locator('#board-detail').evaluate((e) => e.open), false);
+          assert.equal(await p.locator('#welcome-content article').count(), 0);
+          assert.equal(await p.locator('#people-content tbody').count(), 0);
+        }
+        assert.deepEqual(p.errors, []);
+        await p.close();
+        checks++;
+      }
+      const data = fixture('v2/manifest-welcome');
+      data.directory.observations[0].jar.manifest.wanted = [
+        '<img src=x onerror="globalThis.injected=true">',
+      ];
+      const p = await page(width, data);
+      await p.goto(origin + '/tipjar/leaderboard.html');
+      await p.locator('#welcome-content article').waitFor();
+      assert.match(await p.locator('#welcome-content').innerText(), /<img src=x/);
+      assert.equal(await p.locator('#welcome-content img').count(), 0);
+      assert.equal(await p.evaluate(() => globalThis.injected), undefined);
+      await p.screenshot({
+        path: path.join(output, `board2-hostile-${width}.png`),
+        fullPage: true,
+      });
+      assert.deepEqual(p.errors, []);
       await p.close();
       checks++;
     }
