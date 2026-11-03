@@ -10,6 +10,6 @@ include tests/fixtures/dependencies/requirements.txt
 recursive-include web *.html *.css *.js *.svg *.md
 recursive-include tests/web *.cjs *.html *.js
 include tools/tipjar_board.py tools/tipjar_board_deploy.py
-include tools/schemas/tipjar-board.schema.json tools/schemas/tipjar-board-registry.schema.json
+include tools/schemas/tipjar-board-v2.schema.json tools/schemas/tipjar-board.schema.json tools/schemas/tipjar-board-registry.schema.json
 include docs/examples/tipjar-board-registry.json
 include docs/examples/tipjar-board-pages.yml.disabled docs/examples/submit-tip.yml.disabled

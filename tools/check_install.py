@@ -496,6 +496,7 @@ def main():
                     ".github/workflows/ci.yml",
                     "tools/tipjar_board.py", "tools/tipjar_board_deploy.py",
                     "tools/schemas/tipjar-board.schema.json",
+                    "tools/schemas/tipjar-board-v2.schema.json",
                     "tools/schemas/tipjar-board-registry.schema.json",
                     "docs/examples/tipjar-board-registry.json",
                     "docs/examples/tipjar-board-pages.yml.disabled",

@@ -42,6 +42,49 @@ class DeployTests(unittest.TestCase):
                                            if served is None else served,
                                            current_source=SHA, now=NOW, **kwargs)
 
+    def test_board2_candidate_replaces_fresh_or_expired_served_board1(self):
+        fixtures = Path(__file__).parent / 'fixtures/tipjar-board'
+        candidate = json.loads((fixtures / 'v2/readme-welcome.json').read_text())
+        served = json.loads((fixtures / 'valid.json').read_text())
+        for generated, expires in [('2026-11-03T11:00:00Z', '2026-11-05T11:00:00Z'),
+                                   ('2026-10-31T12:00:00Z', '2026-11-02T12:00:00Z')]:
+            old = copy.deepcopy(served)
+            old['generated_at'], old['expires_at'] = generated, expires
+            for tip in old['tips']:
+                tip['merged_at'] = '2026-10-30T10:00:00Z'
+                tip['verified_at'] = generated
+                tip['checks'] = dict.fromkeys(tip['checks'], generated)
+            for repo in old['repositories']:
+                repo['verified_at'] = generated
+            for obs in old['directory']['observations']:
+                obs['verified_at'] = generated
+                obs['checks'] = [generated] * len(obs['checks'])
+                obs['jar']['fetched_at'] = generated
+            with self.subTest(expires=expires):
+                accepted = self.tool.check_publication(candidate, old, current_source=SHA, now=NOW)
+                self.assertEqual(accepted, candidate)
+                self.assertEqual(old['format'], 'tipjar-board/1')
+
+    def test_board2_transition_refuses_malformed_unknown_stale_source_or_generation(self):
+        fixtures = Path(__file__).parent / 'fixtures/tipjar-board'
+        candidate = json.loads((fixtures / 'v2/readme-welcome.json').read_text())
+        for changed in [dict(candidate, format='tipjar-board/99'),
+                        dict(candidate, source_commit='b' * 40),
+                        dict(candidate, extra=True)]:
+            with self.subTest(candidate=changed), self.assertRaises(ValueError):
+                self.tool.check_publication(changed, snapshot('2026-11-03T11:00:00Z', '2026-11-05T11:00:00Z'),
+                                            current_source=SHA, now=NOW)
+        malformed = copy.deepcopy(candidate)
+        malformed['directory']['observations'][0]['source']['tree_sha'] = 'e' * 40
+        with self.assertRaises(ValueError):
+            self.tool.check_publication(malformed, None, current_source=SHA, now=NOW, bootstrap=True)
+        with self.assertRaises(ValueError):
+            self.tool.check_publication(candidate, None, current_source=SHA,
+                                        now=datetime(2026, 11, 5, 12, tzinfo=timezone.utc), bootstrap=True)
+        for old in [dict(snapshot(), format='tipjar-board/99'), b'not JSON', snapshot()]:
+            with self.subTest(served=old), self.assertRaises(ValueError):
+                self.tool.check_publication(candidate, old, current_source=SHA, now=NOW, bootstrap=True)
+
     def test_newer_fresh_generation_is_accepted(self):
         self.check()
 

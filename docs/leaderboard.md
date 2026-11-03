@@ -7,10 +7,13 @@ One distinct eligible merge earns one point; points measure neither value nor
 verified AI use. No adoption is implied by an empty registry or directory search.
 
 The collector and deploy checker are source-only tools, independent of the
-installed CLI. Their formats (`tipjar-board-registry/1`, `tipjar-board/1`) do not
+installed CLI. Their formats (`tipjar-board-registry/1`, collected `tipjar-board/2`) do not
 change CLI, task, evidence, or receipt schemas. The exact closed contracts are
 [registry schema](../tools/schemas/tipjar-board-registry.schema.json) and
-[snapshot schema](../tools/schemas/tipjar-board.schema.json). Unknown formats,
+[board2 snapshot schema](../tools/schemas/tipjar-board-v2.schema.json). The
+[archived board1 schema](../tools/schemas/tipjar-board.schema.json) and fixtures
+remain frozen: both versions can be read, with no relabeling or migration.
+Unknown formats,
 extra fields, duplicate JSON keys, conflicting identities, unsafe integers,
 invalid timestamps, or future checks reject the envelope. Offline receipts and
 impact reports never supply scoring authority.
@@ -45,8 +48,11 @@ registry change. Issue text never changes the registry by itself. Pin these fact
    issue title, or a copied browser selection.
 
 Use authenticated read-only GitHub GETs to review those facts. Store the reviewed
-pins in [the production registry](examples/tipjar-board-registry.json), currently
-empty. `tips` contains the exact identity/submission fields in the schema;
+pins in [the production registry](examples/tipjar-board-registry.json). `tips`
+is empty; the only curated candidate is the owner's explicitly requested public
+repository `1444643470` / `nkovanen/tipjar`. This entry asserts neither welcome nor
+participation: every refresh rereads its public metadata and pinned invitation.
+`tips` contains the exact identity/submission fields in the schema;
 `repositories` is an optional curated candidate list, not asserted welcomes;
 `exclusions` records fixed reason codes. No score overrides exist. Keep review
 notes and generated evidence outside the repository. A registry edit needs normal
@@ -89,8 +95,19 @@ or automatic subtraction claims to prove continued presence in the codebase.
 A closed, missing or unknown welcome jar removes invitations, not a separately
 fresh eligible historical merge. No jar grants source/task approval, local
 execution permission, or publication authority. The directory uses canonical
-reader observations, not its own badge parser. Board version 1 supports only the
-manifest source `.tipjar.json`; future invitation syntaxes need separate review.
+reader observations, not its own badge parser. Collection explicitly requests
+`tipjar-invitation/2` and `find-jars-report/2`, emitting `tipjar-board/2`.
+A valid `.tipjar.json` takes precedence, including a closed declaration. Without
+a manifest, the canonical reader can recognize the exact repository-scoped README
+welcome prefix. The board does not parse Markdown or fetch badge SVGs.
+
+Complete board2 observations preserve commit, tree, blob and digest pins for a
+manifest or README. A plain README remains undeclared with its real source link;
+an absent invitation preserves commit/tree with no invented file link. Neither
+plain nor absent observations offer a work action. Unknown/incomplete observations
+have no jar/source or welcome action. Archived board1 remains manifest-only.
+README welcome affects invitations only: scoring still requires the same eligible
+merged PR and separately reviewed opt-in consent.
 
 Withdrawals apply on successful refresh; failures can delay removal until
 displayed expiry. Historical copies may remain in issues, registry history,
@@ -112,8 +129,12 @@ The registry is at most 1 MiB, 500 tips, 100 authors, 100 curated repos. Public 
 is at most 4 MiB, 500 tips and 200 repository rows; directory projection is at most
 200 observations and 1 MiB. Whole repository groups are admitted by ascending
 numeric ID, skipping a group that cannot fit and continuing; omitted counts are
-separate from unknowns. This bounded selection biases rankings. Search is one
-indexed batch and never an exhaustive directory. Even an empty pilot performs
+separate from unknowns. This bounded selection biases rankings. Search is two
+page-1 indexed batches of at most five hits each (manifest and README welcome),
+with shared deduplication, never an exhaustive directory. Each candidate is freshly
+reread; search hits alone do not establish a welcome. Both searches retain their
+failure/truncation flags, and raw private hits scrub matching public groups even
+if a later metadata read says public. Even an empty pilot performs
 a fresh bounded search; it does not publish a stale template as a fresh snapshot.
 
 Collection uses one uncached budget client, at most 5,000 actual `gh` invocations,
