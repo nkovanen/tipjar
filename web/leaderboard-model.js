@@ -585,8 +585,77 @@
     o.source && ["manifest", "readme"].includes(o.source.kind)
       ? `https://github.com/${o.repository}/blob/${o.source.commit}/${o.source.path}`
       : null;
+  const periods = ["month", "30days", "all"];
+  const validTarget = (target) =>
+    obj(target) &&
+    Object.keys(target).length === 2 &&
+    ["repository", "author"].includes(target.kind) &&
+    id(target.id);
+  function parseBoardRoute(search) {
+    const inert = { period: "month", target: null, invalid: true };
+    if (typeof search !== "string" || search.length > 2048) return inert;
+    const params = new URLSearchParams(search);
+    if ([...params].length > 16) return inert;
+    for (const key of ["repository_id", "author_id", "period"])
+      if (params.getAll(key).length > 1) return inert;
+    if (params.has("repository_id") && params.has("author_id")) return inert;
+    const period = params.get("period") ?? "month";
+    if (!periods.includes(period)) return inert;
+    const key = params.has("repository_id")
+      ? "repository_id"
+      : params.has("author_id")
+        ? "author_id"
+        : null;
+    if (!key) return { period, target: null, invalid: false };
+    const raw = params.get(key),
+      value = Number(raw);
+    if (!/^[1-9][0-9]{0,15}$/.test(raw) || !id(value)) return inert;
+    return {
+      period,
+      target: {
+        kind: key === "repository_id" ? "repository" : "author",
+        id: value,
+      },
+      invalid: false,
+    };
+  }
+  function boardViewURL(locationHref, route) {
+    keys(route, ["period", "target", "invalid"]);
+    need(
+      periods.includes(route.period) &&
+        route.invalid === false &&
+        (route.target === null || validTarget(route.target)),
+    );
+    const url = new URL("leaderboard.html", locationHref);
+    need(["http:", "https:"].includes(url.protocol));
+    if (route.target)
+      url.searchParams.set(
+        route.target.kind === "repository" ? "repository_id" : "author_id",
+        String(route.target.id),
+      );
+    url.searchParams.set("period", route.period);
+    return url.href;
+  }
+  function resolveBoardTarget(board, target, now = new Date()) {
+    if (!validTarget(target) || !fresh(board, now)) return null;
+    const row =
+      target.kind === "repository"
+        ? board.repositories.find((r) => r.repository_id === target.id)
+        : board.tips.find((t) => t.author_id === target.id);
+    return row
+      ? {
+          kind: target.kind,
+          id: target.id,
+          label:
+            target.kind === "repository" ? row.repository : row.author_login,
+        }
+      : null;
+  }
   const api = {
     MAX_BYTES,
+    parseBoardRoute,
+    boardViewURL,
+    resolveBoardTarget,
     parseBoard,
     rankBoard,
     fresh,
