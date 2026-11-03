@@ -17,6 +17,10 @@ jobs:
           python3 - <<'PY'
           import json, os, urllib.request, urllib.error
           from urllib.parse import urlencode
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          opener = urllib.request.build_opener(NoRedirect())
           queries = [
               ('manifest_global', 'filename:.tipjar.json path:/'),
               ('readme_global', '"tipjar:welcome:v1" filename:README.md path:/'),
@@ -35,7 +39,7 @@ jobs:
               request = urllib.request.Request(path, headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'], 'Accept':'application/vnd.github+json', 'User-Agent':'tipjar-read-only-search-diagnostic'})
               try:
                   try:
-                      response = urllib.request.urlopen(request, timeout=20)
+                      response = opener.open(request, timeout=20)
                   except urllib.error.HTTPError as error:
                       response = error
                   with response:
