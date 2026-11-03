@@ -246,3 +246,21 @@ class BoundedManifestReportTests(unittest.TestCase):
         result=tipjar.read_jar('acme/project',Fake(responses(data)))
         self.assertEqual(result['state'],'welcome')
         self.assertTrue(tipjar._complete_report(result))
+
+class TreeSizeReviewTests(unittest.TestCase):
+    def test_selected_tree_size_must_equal_verified_bytes_for_both_new_sources(self):
+        for manifest in (False,True):
+            with self.subTest(manifest=manifest):
+                client=ReadmeTests().client(manifest=manifest)
+                entry=client.data[f'repos/acme/project/git/trees/{TREE}?recursive=1']['tree'][0]
+                entry['size']=0
+                result=tipjar.read_jar('acme/project',client)
+                self.assertEqual((result['state'],result['complete']),('unknown',False))
+                self.assertIsNone(result['sha256'])
+                self.assertEqual(result['blob_sha'],entry['sha'])
+
+    def test_published_legacy_size_handling_is_unchanged(self):
+        client=ReadmeTests().client(manifest=True)
+        client.data[f'repos/acme/project/git/trees/{TREE}?recursive=1']['tree'][0]['size']=0
+        result=tipjar.read_jar('acme/project',client,invitation_protocol=tipjar.LEGACY)
+        self.assertEqual((result['state'],result['complete']),('closed',True))

@@ -189,7 +189,8 @@ def read_jar(repository, client=None, *, commit=None, metadata=None, invitation_
             data = base64.b64decode(encoded.replace('\n', '').encode('ascii'), validate=True)
         except (ValueError, UnicodeError, binascii.Error):
             raise core.ProtocolError('invalid_tipjar', 'Invalid invitation base64') from None
-        if (len(data) > bound or type(value.get('size')) is not int or value['size'] != len(data) or
+        if (len(data) > bound or 'size' in selected and selected['size'] != len(data) or
+                type(value.get('size')) is not int or value['size'] != len(data) or
                 value.get('sha') != selected['sha'] or cache.blob_sha(data) != selected['sha']):
             raise core.ProtocolError('invalid_tipjar', 'Invitation bytes do not match pinned size/blob')
         result['sha256'] = hashlib.sha256(data).hexdigest()
