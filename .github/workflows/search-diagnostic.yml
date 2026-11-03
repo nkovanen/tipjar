@@ -17,9 +17,9 @@ jobs:
           python3 - <<'PY'
           import json, os, re, subprocess, tempfile, time
           from urllib.parse import urlencode
-          queries = [('readme_first', '"tipjar:welcome:v1" filename:README.md path:/'), ('manifest_second', 'filename:.tipjar.json path:/')]
+          queries = [('manifest_first', 'filename:.tipjar.json path:/'), ('readme_second', '"tipjar:welcome:v1" filename:README.md path:/')]
           for index, (label, query) in enumerate(queries):
-              if index: time.sleep(15)
+              if index: time.sleep(0)
               endpoint='search/code?'+urlencode({'q':query,'per_page':5,'page':1})
               env=dict(os.environ,GH_PROMPT_DISABLED='1',GH_NO_UPDATE_NOTIFIER='1')
               env.pop('GH_DEBUG',None)
