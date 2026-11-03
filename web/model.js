@@ -99,7 +99,29 @@
     requireValue(typeof repository === 'string' && repoPattern.test(repository), 'Enter a GitHub owner/repo.');
     return '<!-- tipjar:welcome:v1 -->\n[![Agent-work tips welcome](https://nkovanen.github.io/tipjar/brand/agent-work-welcome.svg)](https://nkovanen.github.io/tipjar/?repo=' + encodeURIComponent(repository.toLowerCase()) + ')\n\n';
   }
-  const api = {makeBadge,MAX_BYTES,parseSnapshot,sourceURL,filterReports,makeManifest};
+  function parseRepositoryHandoff(search) {
+    const inert = {repository:null,period:'month',invalid:true};
+    if (typeof search !== 'string' || search.length > 2048) return inert;
+    const params = new URLSearchParams(search);
+    if ([...params].length > 16 || params.has('repository_id') || params.has('author_id')) return inert;
+    for (const key of ['repo','period']) if (params.getAll(key).length > 1) return inert;
+    const period = params.get('period') ?? 'month';
+    if (!['month','30days','all'].includes(period)) return inert;
+    if (!params.has('repo')) return {repository:null,period,invalid:false};
+    const repository = params.get('repo');
+    if (!repoPattern.test(repository) || /[\u0000-\u0020\u007f]/u.test(repository)) return inert;
+    return {repository:repository.toLowerCase(),period,invalid:false};
+  }
+  function repositoryHandoffURL(locationHref, entry) {
+    requireValue(object(entry) && Object.keys(entry).length === 3 && ['repository','period','invalid'].every(k=>Object.hasOwn(entry,k)) && typeof entry.repository === 'string' && typeof entry.period === 'string' && entry.invalid === false,'Invalid repository handoff.');
+    const parsed = parseRepositoryHandoff(new URLSearchParams({repo:entry.repository,period:entry.period}).toString());
+    requireValue(!parsed.invalid && parsed.repository === entry.repository && parsed.period === entry.period,'Invalid repository handoff.');
+    const url = new URL('leaderboard.html',locationHref);
+    requireValue(['http:','https:'].includes(url.protocol),'Invalid board location.');
+    url.search = new URLSearchParams({repo:entry.repository,period:entry.period}).toString();
+    return url.href;
+  }
+  const api = {parseRepositoryHandoff,repositoryHandoffURL,makeBadge,MAX_BYTES,parseSnapshot,sourceURL,filterReports,makeManifest};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TipjarModel = api;
 })(globalThis);

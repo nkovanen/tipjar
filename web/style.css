@@ -904,3 +904,9 @@ dialog h2{font-size:27px}
   .localsetup .header{height:auto;min-height:95px;flex-wrap:wrap;padding-top:20px;padding-bottom:20px}
   .localsetup .header nav{flex-basis:100%;justify-content:space-between;gap:12px}
 }
+
+/* Name hints are confirmed against the current snapshot before a numeric view opens. */
+.repository-handoff{padding:24px;margin-bottom:24px;border:1px solid var(--line);border-radius:6px;background:#e9eddf;overflow-wrap:anywhere}
+.repository-handoff h2{font-size:29px}
+.repository-handoff p{font-size:13px}
+.handoff-actions{display:flex;gap:20px;flex-wrap:wrap;font-size:12px}
