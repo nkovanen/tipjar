@@ -289,3 +289,15 @@ test("calendar year zero and whitespace-only canonical reader metadata fail", ()
   ])
     assert.throws(() => parse(change(fn)));
 });
+test("integer tokens reject decimal and exponent spellings before JSON.parse", () => {
+  const raw = JSON.stringify(fixture());
+  for (const token of ["101.0", "1.01e2", "101e0", "101E+0"])
+    assert.throws(() =>
+      parse(raw.replace('"repository_id":101', '"repository_id":' + token)),
+    );
+  const b = fixture();
+  b.directory.observations[0].jar.manifest.wanted = [
+    "101.0 and 1.01e2 are literal text",
+  ];
+  assert.ok(parse(b));
+});

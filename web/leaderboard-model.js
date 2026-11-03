@@ -119,6 +119,8 @@
             /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/,
           );
         need(match);
+        // Board1 has no floating fields; preserve Python's strict integer token boundary.
+        need(!/^-?[0-9]/.test(match[0]) || !/[.eE]/.test(match[0]));
         i += match[0].length;
       }
     }
