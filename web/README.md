@@ -118,6 +118,36 @@ is expected until reviewed opt-ins exist; local demo/import data never fills it.
 Clipboard copy uses the browser's secure-context API; if unavailable, it selects
 the command for manual copying. Browsers may prompt before downloading JSON.
 
+## Share a repository or contributor view
+
+Open an entity from a board row or welcoming jar, then choose **Copy view link**.
+Links stay on the board and pin one numeric identity plus a period, for example
+`leaderboard.html?repository_id=101&period=month` or
+`leaderboard.html?author_id=301&period=all`. These IDs are fictional examples;
+they do not assert real participation. Current names and GitHub URLs come only
+from the fetched, validated public snapshot. Unknown or removed IDs show a
+generic unavailable message while the global board remains usable.
+
+Repository views show accepted tips for the selected period separately from the
+current invitation. A welcome-only repository can have no accepted tips in that
+period. Contributor views link to their represented projects; historical receiving
+projects are not automatically current welcomes. Month and rolling 30-day views
+follow the visitor's current UTC time. A link does not freeze a date, rank or
+historical snapshot. The same period controls are available inside each view.
+
+Opening/switching views adds browser history; Back/Forward replays it without
+another fetch. Period changes replace the current history entry. Close/Escape
+clears the current entry's target and preserves the period; a direct arrival
+stays on the board. Modified clicks and new tabs retain normal link behavior.
+If clipboard access fails, a read-only link is selected for manual copying.
+Expiry closes and clears entity details, scores, copy and current welcome actions.
+
+Invalid, duplicate or conflicting selectors are inert and never become HTML,
+commands, identities or requests. Imported local files cannot supply these views.
+The root badge's existing `?repo=owner/name` onboarding and no-fetch CSP remain
+unchanged; automatic badge-name-to-board matching is deferred. Use the root's
+Community board / Find a jar links to browse public observations.
+
 ## Browser checks
 
 Verify desktop and 390px layouts, search/filter/empty states, detail dialog via
@@ -162,3 +192,9 @@ occurs on page load. Optional JSON preferences take precedence. Local imports
 accept explicit find-jars-report/1 (manifest only) and /2 (versioned invitation
 provenance); both remain untrusted observations. The public board retains its
 separate, frozen manifest-only board1 contract.
+
+The browser runner also checks direct share URLs, native entity links, clipboard
+success/fallback and delayed failure, Back/Forward, selected-period summaries,
+modal/heading/opener focus, stale/hostile selectors, welcome-only repositories
+and expiry while a shared view is open or a tab resumes. Share screenshots can
+be directed to `/tmp/tipjar-share-browser` with `TIPJAR_BROWSER_EVIDENCE`.
