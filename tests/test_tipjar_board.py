@@ -75,6 +75,22 @@ class ContractTests(unittest.TestCase):
         board.validate_board(fixture(), now=expired)
         with self.assertRaises(core.ProtocolError): board.require_fresh(fixture(), now=expired)
 
+    def test_jar_utc_timestamp_spellings_preserve_snapshot_and_fail_closed(self):
+        for fetched_at in ('2026-11-03T12:00:00Z', '2026-11-03T12:00:00+00:00'):
+            value = fixture()
+            value['directory']['observations'][0]['jar']['fetched_at'] = fetched_at
+            original = encoded(value)
+            with self.subTest(fetched_at=fetched_at):
+                self.assertEqual(board.validate_board(value, now=NOW), value)
+                self.assertEqual(board.validate_board(original, now=NOW), value)
+                self.assertEqual(encoded(value), original)
+        for fetched_at in ('2026-11-03T12:00:00', '2026-11-03T12:00:00+01:00',
+                           '2026-11-03T12:00:01Z', 'invalidZ'):
+            value = fixture()
+            value['directory']['observations'][0]['jar']['fetched_at'] = fetched_at
+            with self.subTest(fetched_at=fetched_at), self.assertRaises(core.ProtocolError):
+                board.validate_board(value, now=NOW)
+
     def test_aggregation_dedup_ties_and_utc_periods(self):
         tip = fixture()['tips'][0]
         tips = [tip, copy.deepcopy(tip)]

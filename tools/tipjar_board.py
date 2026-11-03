@@ -157,7 +157,9 @@ def validate_board(data, *, now=None) -> dict:
         if state in ('unknown', 'excluded'):
             require(jar is None and source is None)
         else:
-            require(jar is not None and tipjar._complete_report(jar))
+            require(jar is not None)
+            # Python 3.10 needs an ISO offset; preserve the original board data.
+            require(tipjar._complete_report(dict(jar, fetched_at=jar['fetched_at'].replace('Z', '+00:00'))))
             require(jar['repository'] == obs['repository'] and jar['state'] == state)
             require(timestamp(_canonical_time(jar['fetched_at'])) <= generated)
             if state == 'undeclared':
