@@ -119,7 +119,8 @@ def installed_check(source):
     for name in RESOURCE_PATHS:
         assert resources.joinpath(name).read_bytes() == (source / "agent_contribute" / name).read_bytes(), name
     # Development tools such as the task-selection benchmark never ship in the wheel.
-    assert not [str(file) for file in dist.files if str(file).startswith("web/") or str(file).startswith("tests/web/")]
+    assert not [str(file) for file in dist.files
+                if str(file).startswith(("web/", "tests/", "docs/", "examples/"))]
     assert not [str(file) for file in dist.files if str(file).startswith("tools/") or "benchmark" in str(file)]
     assert [str(file) for file in dist.files if file.name == "SKILL.md"] == [
         "agent_contribute/adapters/agent-contribute/SKILL.md"]
@@ -406,12 +407,19 @@ def main():
                     "actions/verify/action.yml", "actions/verify/report.py", "docs/examples/agent-contrib-verify.yml",
                     "docs/examples/release-pypi.yml", "docs/output-reference.md",
                     "tests/fixtures/dependencies/requirements.txt",
-                    ".github/workflows/ci.yml"}
+                    ".github/workflows/ci.yml",
+                    "tools/tipjar_board.py", "tools/tipjar_board_deploy.py",
+                    "tools/schemas/tipjar-board.schema.json",
+                    "tools/schemas/tipjar-board-registry.schema.json",
+                    "docs/examples/tipjar-board-registry.json",
+                    "docs/examples/tipjar-board-pages.yml.disabled",
+                    "docs/examples/submit-tip.yml.disabled"}
         expected.update(str(file.relative_to(source)) for file in (source / "docs").rglob("*.md"))
         expected.update(str(file.relative_to(source)) for file in (source / "tests").rglob("*")
                         if file.is_file() and file.suffix in (".py", ".json") and "__pycache__" not in file.parts)
-        expected.update("web/" + name for name in ("index.html", "style.css", "app.js", "model.js", "jar.svg", "README.md"))
-        expected.update("tests/web/" + name for name in ("model.test.cjs", "browser.html", "browser.test.js"))
+        expected.update("web/" + name for name in ("index.html", "directory.html", "leaderboard.html", "leaderboard.js", "leaderboard-model.js", "style.css", "app.js", "model.js", "jar.svg", "README.md"))
+        expected.update("web/brand/" + name for name in ("icon.svg", "wordmark.svg", "agent-work-welcome.svg", "invitation-card.svg", "preview.html", "README.md"))
+        expected.update("tests/web/" + name for name in ("model.test.cjs", "leaderboard.test.cjs", "leaderboard.browser.cjs", "browser.html", "browser.test.js"))
         expected.update("agent_contribute/" + name for name in RESOURCE_PATHS)
         assert expected <= names, f"Missing sdist files: {sorted(expected - names)}"
         print("Rebuilding wheel from the sdist...", flush=True)
