@@ -27,9 +27,9 @@ class ExternalCliTests(unittest.TestCase):
             self.assertEqual(code,1,result)
             self.assertEqual(result['report'],'external-tip-report/1')
 
-    def test_draft_payload_required_and_old_helpers_refuse(self):
+    def test_draft_payload_required(self):
         from agent_contribute import external_tip
         with tempfile.TemporaryDirectory() as d:
             path=Path(d)/'task.json';path.write_text(json.dumps(external_tip.prepare('acme/photos#12','human/photos','tip-12',ExternalGitHub())))
-            for args in (['verify',str(path),'--stage','draft'],['drift',str(path)],['authorization-request',str(path)],['pr-body',str(path),'--output',str(Path(d)/'body')]):
-                code,result=self.call(args);self.assertEqual(code,2 if args[0] in ('verify','authorization-request') else 1,result)
+            for args in (['verify',str(path),'--stage','draft'],):
+                code,result=self.call(args);self.assertEqual(code,2,result)

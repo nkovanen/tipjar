@@ -42,13 +42,13 @@ class ExternalHelperJourneyTests(unittest.TestCase):
                 call(['lint', str(raw)], 1, 'lint')
                 task.write_text(json.dumps(route.task))
                 call(['lint', str(task)], 0, 'lint')
-                for command, expected in (('drift', 1), ('authorization-request', 2), ('pr-body', 1)):
-                    argv = [command, str(task)]
-                    if command == 'pr-body':
-                        argv += ['--output', str(directory / 'body.md')]
-                    result = call(argv, expected, 'error')
-                    self.assertIn('error', result)
-                self.assertFalse((directory / 'body.md').exists())
+                result = call(['drift', str(task)], 0, 'drift')
+                self.assertFalse(result['drifted'])
+                result = call(['authorization-request', str(task), '--repo-dir', str(route.root)], 0, 'authorization-request')
+                self.assertFalse(result['issued'])
+                self.assertFalse(result['ready_for_issuance'])
+                call(['pr-body', str(task), '--output', str(directory / 'body.md')], 0, 'pr-body')
+                self.assertTrue((directory / 'body.md').exists())
                 common = ['verify', str(task), '--repo-dir', str(route.root), '--host-context-stdin']
                 result = call(common + ['--stage', 'implementation'], 0, 'verify')
                 self.assertTrue(result['implementation_ready'])

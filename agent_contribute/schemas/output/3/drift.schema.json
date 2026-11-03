@@ -824,12 +824,101 @@
             "boolean",
             "null"
           ]
+        },
+        "reviewed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "sha256"
+          ],
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": [
+                "welcome",
+                "undeclared"
+              ]
+            },
+            "sha256": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+            }
+          }
         }
       },
       "required": [
         "baseline",
         "current",
         "changed"
+      ],
+      "additionalProperties": false
+    },
+    "external": {
+      "type": "object",
+      "properties": {
+        "fork_policy": {
+          "type": "object",
+          "properties": {
+            "expected_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "current_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "changed": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "note": {
+              "type": "string",
+              "maxLength": 100000
+            }
+          },
+          "required": [
+            "expected_sha256",
+            "current_sha256",
+            "changed",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "manual_reread_required": {
+          "const": true
+        },
+        "notice": {
+          "type": "string",
+          "maxLength": 100000
+        }
+      },
+      "required": [
+        "fork_policy",
+        "manual_reread_required",
+        "notice"
       ],
       "additionalProperties": false
     }

@@ -12,11 +12,14 @@ def _sha(text):
 
 
 def drift(task, client=None, policy_sha256=None):
-    if isinstance(task, dict) and task.get('schema_version') == '0.3':
-        raise core.ProtocolError('unsupported_route', 'This helper does not support external tips')
     if core.validate_contract(task):
         raise core.ProtocolError('invalid_contract', 'Contract does not match its bundled schema')
     client = client or core.GitHub()
+    external = task['schema_version'] == '0.3'
+    if external:
+        if policy_sha256 is not None and policy_sha256 != task['source_review']['inventory_sha256']:
+            raise core.ProtocolError('usage', 'Task 0.3 policy baseline must match source_review.inventory_sha256')
+        policy_sha256 = task['source_review']['inventory_sha256']
     source = task['source']
     report = {'contract_sha256': core.canonical_hash(task), 'complete': False, 'drifted': None, 'errors': [],
               'notice': 'Report only. The contract is never rewritten; after drift, re-review and re-prepare it.'}
@@ -48,7 +51,7 @@ def drift(task, client=None, policy_sha256=None):
     report['source'] = {'stored_repository': source['repository'], 'current_repository': live['repository'],
                         'stored_issue_url': source['issue_url'], 'current_issue_url': live['issue_url']}
     report['source']['changed'] = source['repository'] != live['repository'] or source['issue_url'] != live['issue_url']
-    if task['schema_version'] == '0.2':
+    if task['schema_version'] in ('0.2', '0.3'):
         from .authorization import issue_identity, repository_identity
         report['source']['stored_identity'] = {key: source[key] for key in ('repository_id', 'owner_id', 'issue_id')}
         try:
@@ -88,14 +91,20 @@ def drift(task, client=None, policy_sha256=None):
     before = baseline.get('tipjar') if baseline is not None else None
     after = current.get('tipjar')
     jar_changed = None if not before or not before['complete'] or not after or not after['complete'] else not tipjar.same_declaration(before, after)
+    reviewed_jar = None
+    if external:
+        reviewed_jar = {'state': task['source_review']['jar_state'], 'sha256': task['source_review']['jar_sha256']}
+        jar_changed = None if not after or not after['complete'] else any(after[key] != value for key, value in reviewed_jar.items())
     report['tipjar'] = {'baseline': before, 'current': after, 'changed': jar_changed}
+    if external:
+        report['tipjar']['reviewed'] = reviewed_jar
     if jar_changed is None:
         errors.append('Tipjar declaration baseline/current read unresolved')
     report['instructions'] = instructions
     policy = {'stored_approval': task['approval']['status'], 'current_approval': current['approval']['status'],
               'current_policy_state': current['provenance']['policy_state']}
     policy['changed'] = policy['stored_approval'] != policy['current_approval']
-    if task['schema_version'] == '0.2':
+    if task['schema_version'] in ('0.2', '0.3'):
         from .authorization import policy_hash
         policy.update(stored_policy_sha256=source['policy_sha256'], current_policy_sha256=policy_hash(current['provenance']))
         policy['changed'] = policy['changed'] or policy['stored_policy_sha256'] != policy['current_policy_sha256']
@@ -111,6 +120,26 @@ def drift(task, client=None, policy_sha256=None):
     report['drifted'] = bool(jar_changed or report['source']['changed'] or report['issue']['changed'] or instructions['changed'] or policy['changed'] or
                              report['overlap']['added'] or report['default_branch']['stored_branch'] !=
                              report['default_branch']['current_branch'] or policy_changed)
+    if external:
+        from . import authorization, external_tip
+        fork_report = {'expected_sha256': None, 'current_sha256': None, 'changed': None,
+                       'note': 'Task 0.3 stores no fork inventory baseline; compare this hash with the retained host assertion.'}
+        try:
+            name = task['execution']['head_repository']
+            meta = authorization.repository_identity(name, client)
+            if (meta['id'], meta['owner']['id']) != (task['execution']['head_repository_id'], task['execution']['head_owner_id']):
+                errors.append('Fork repository or owner identity changed')
+            snap = core.repository_snapshot(name, client, meta)
+            errors += snap['errors']
+            inv = policy_report.report(name, snap['commit'], snap['instructions'], client,
+                                       default_branch=meta['default_branch'], tipjar_report=snap['tipjar'])
+            errors += external_tip.inventory_errors(inv)
+            fork_report['current_sha256'] = inv['inventory_sha256']
+        except core.ProtocolError as exc:
+            errors.append('Could not inspect current fork policy: ' + str(exc))
+        report['external'] = dict(fork_policy=fork_report, manual_reread_required=True,
+                                  notice='Report only; no authority. Re-read all applicable external references with host tools; '
+                                         'inventory equality does not prove prose compliance or fresh host observations.')
     report['errors'] = errors
     report['complete'] = not errors
     return report

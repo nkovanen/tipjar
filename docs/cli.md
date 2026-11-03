@@ -1351,3 +1351,61 @@ exact-result publication assertions. Welcome and undeclared sources both require
 complete source/fork policy accounting; no invitation or approval is invented.
 See [the complete external-tip workflow](external-tips.md) for commands, records, pause points and limits. Evidence
 remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.
+
+
+## Task 0.3 helper handoff (candidate)
+
+```sh
+tipjar authorization-request task.json --repo-dir CHECKOUT
+tipjar authorization-request task.json --repo-dir CHECKOUT --policy-assessment assessment.json --policy-ledger policy.md
+tipjar authorization-request task.json --stage draft --repo-dir CHECKOUT --evidence evidence.json --publication-payload payload.json --policy-assessment assessment.json --policy-ledger policy.md
+tipjar drift task.json
+tipjar pr-body task.json --repo-dir CHECKOUT --evidence evidence.json --output body.md
+```
+
+For task 0.3, `authorization-request` emits
+`kind: agent-contrib/external-authorization-request`, request version 0.1: a
+review view with `issued: false` and `ready_for_issuance: false` **always**. It
+contains no fillable consent record. Neither this envelope nor `bindings` can
+serve as an external-context assertion. A zero exit means live view reads
+completed, including when authorization or evidence remains blocked. Exit 1
+means incomplete reads or invalid input; unsupported options give exit 2 before
+GitHub/budget reads. Task 0.2 retains its original request shape, readiness
+semantics and default behavior; the new options are refused for it.
+
+The default view is implementation. The draft view requires checkout, evidence
+0.2 and exact draft-payload 0.1. Optional policy assessment JSON is shape-checked
+and canonically hashed; the original ledger is read as bounded regular bytes
+(up to 8 MiB) and hashed without normalization. Neither becomes “policy clear.”
+Absent assessment/ledger hashes remain null and unresolved. Inputs named with
+`--repo-dir` must be outside that checkout. Source/fork inventory digests, task,
+actor, refs and invitation basis are shown; a draft view adds evidence, review,
+payload, head/tree and current base-tip bindings. A no-jar acknowledgement is a
+required human decision, never an emitted approval. All inventory and blocker
+text remains untrusted. The host must render its own full snapshot, issue actual
+assertions, refresh applicable-target observations and retain real decision
+events. No native human authorization issuer is implemented.
+
+Task 0.3 `drift` defaults to the task's stored source inventory digest. An explicit
+`--policy-sha256` must match that binding. Source identity, issue, instructions,
+label policy, jar state/exact byte hash and current inventory comparisons remain
+report-only. A moved source tip alone is informational. `tipjar.reviewed` holds
+the jar binding from the task; `baseline` is a reconstructed observation, which
+need not reproduce reviewed bytes. `external.fork_policy` reports the current
+fork digest with null expected/changed values because the task contains no fork
+baseline; compare with the retained host assertion. Applicable external links
+must still be reread by host tools. An unchanged report grants no authority and
+does not establish policy compliance or fresh host observations.
+
+Task 0.3 `pr-body` consumes evidence **0.2**, renders self-attested claims and
+pending host-context gates, points to source templates and describes bounded
+external overlap/history checks accurately. It does not read a host context or
+assert publication readiness. `--closes` is refused with exit 2 before API reads;
+use the default `Refs` body. It preserves exclusive creation and the returned
+`sha256` hashes the exact UTF-8 body bytes. Review/merge required template text
+before fixing the exact draft-payload strings. Rendering publishes nothing.
+
+These variants belong to active output schema **3**; frozen output/1 and output/2
+resources are unchanged. Export with `tipjar schema authorization-request`,
+`tipjar schema drift` and `tipjar schema pr-body`. See [the giver journey](tipping.md)
+for human stops and [external tips](external-tips.md) for binding requirements.

@@ -136,6 +136,16 @@ def prevalidate(args):
     elif args.command == 'authorization-request':
         args.task = core.read_json(args.contract)  # read once; dispatch builds from this object
         authrequest.check_contract(args.task)
+        args.evidence_data = core.read_json(args.evidence) if args.evidence else None
+        args.payload_data = core.read_json(args.publication_payload) if args.publication_payload else None
+        args.assessment_data = core.read_json(args.policy_assessment) if args.policy_assessment else None
+        args.ledger_data = core.read_regular(args.policy_ledger, core.MAX_BYTES) if args.policy_ledger else None
+        authrequest.check_options(args.task, args.stage, args.evidence_data, args.repo_dir,
+                                  args.payload_data, args.assessment_data, args.ledger_data)
+        if args.repo_dir:
+            for path in (args.evidence, args.publication_payload, args.policy_assessment, args.policy_ledger):
+                if path:
+                    workspace.require_outside_checkout(args.repo_dir, path)
     elif args.command in ('verify', 'drift', 'pr-body'):
         # Each file is read once; dispatch uses these objects, so a file changed later cannot change the route.
         args.evidence_data = None
@@ -144,10 +154,13 @@ def prevalidate(args):
         if args.command == 'drift' and args.policy_sha256 is not None and not re.fullmatch('[0-9a-f]{64}', args.policy_sha256):
             raise core.ProtocolError('usage', '--policy-sha256 must be a lowercase 64-character SHA-256 hex digest')
         task = args.task = core.read_json(args.contract)
-        if isinstance(task, dict) and task.get('schema_version') == '0.3' and args.command in ('drift', 'pr-body'):
-            raise core.ProtocolError('unsupported_route', 'This lifecycle helper does not support external tips')
+        if isinstance(task, dict) and task.get('schema_version') == '0.3' and args.command == 'pr-body' and args.closes:
+            raise core.ProtocolError('usage', 'External PR bodies support Refs only; --closes is unsupported')
         if args.command in ('drift', 'pr-body') and core.validate_contract(task):
             raise core.ProtocolError('invalid_contract', 'Contract does not match its bundled schema')
+        if args.command == 'drift' and isinstance(task, dict) and task.get('schema_version') == '0.3' and args.policy_sha256 is not None:
+            if args.policy_sha256 != task['source_review']['inventory_sha256']:
+                raise core.ProtocolError('usage', 'Task 0.3 policy baseline must match source_review.inventory_sha256')
         if args.command == 'verify':
             version = task.get('schema_version') if isinstance(task, dict) else None
             args.payload_data = None
@@ -248,9 +261,15 @@ def main(argv=None):
                      help='Add report-only commit-signature observations for the evidence range; never verifies '
                           'locally or changes the exit status')
     sub = commands.add_parser('authorization-request',
-                              help='Schema 0.2: print an unsigned mandate request pre-filled from the contract; grants nothing')
+                              help='Print an unsigned host request (0.2) or external review view (0.3); grants nothing')
     sub.add_argument('contract', help='Task contract JSON file')
-    sub = commands.add_parser('lint', help='Offline check of a contract against its schema and the reviewed-contract '
+    sub.add_argument('--stage', choices=('implementation', 'draft'), help='Task 0.3 unsigned view (default implementation)')
+    sub.add_argument('--repo-dir', help='Task 0.3 checkout to inspect; never executes code')
+    sub.add_argument('--evidence', help='Task 0.3 draft view: evidence 0.2 JSON')
+    sub.add_argument('--publication-payload', help='Task 0.3 draft view: exact draft-payload 0.1 JSON')
+    sub.add_argument('--policy-assessment', help='Task 0.3: assessment JSON to hash, never declared clear')
+    sub.add_argument('--policy-ledger', help='Task 0.3: original ledger bytes to hash (bounded regular file)')
+    sub = commands.add_parser('lint' , help='Offline check of a contract against its schema and the reviewed-contract '
                                            'rules; no GitHub or Git reads')
     sub.add_argument('contract', help='Task contract JSON file')
     sub = commands.add_parser('scope-check', help='Offline check of local changes against the contract scope; never evidence')
@@ -359,8 +378,10 @@ def main(argv=None):
                       'warning': 'Rendered text only; it grants no publication authority and the CLI never writes to GitHub'}
             code = 0
         elif args.command == 'authorization-request':
-            result = authrequest.build(args.task)
-            code = 0 if result.get('ready_for_issuance') is True else 1
+            result = authrequest.build(args.task, stage=args.stage, evidence=args.evidence_data,
+                                       repo_dir=args.repo_dir, payload=args.payload_data,
+                                       policy_assessment=args.assessment_data, policy_ledger=args.ledger_data)
+            code = 0 if result.get('complete' if args.task['schema_version'] == '0.3' else 'ready_for_issuance') is True else 1
         elif args.command == 'jar':
             result = tipjar.read_jar(args.repository)
             code = 0 if result['complete'] else 1

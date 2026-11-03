@@ -3,275 +3,14 @@
   "$id": "urn:agent-contrib:output:3:authorization-request",
   "title": "authorization-request result",
   "description": "Unsigned mandate request pre-filled from a schema 0.2 contract; it is not a mandate and grants nothing.",
-  "type": "object",
-  "properties": {
-    "kind": {
-      "type": "string",
-      "const": "agent-contrib/authorization-request"
+  "anyOf": [
+    {
+      "$ref": "#/$defs/authorization_request_0_2"
     },
-    "request_version": {
-      "type": "string",
-      "const": "0.1"
-    },
-    "issued": {
-      "type": "boolean",
-      "const": false
-    },
-    "notice": {
-      "type": "string",
-      "maxLength": 2147483647
-    },
-    "target_host_context_schema_version": {
-      "type": "string",
-      "const": "0.1"
-    },
-    "ready_for_issuance": {
-      "type": "boolean",
-      "description": "No preflight errors and no unresolved fields; sets the exit status"
-    },
-    "preflight_errors": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "maxLength": 2147483647
-      },
-      "description": "Blockers a mandate would not clear",
-      "maxItems": 2147483647
-    },
-    "preflight_errors_trust": {
-      "type": "string",
-      "maxLength": 2147483647
-    },
-    "unresolved_fields": {
-      "description": "Derived fields that fresh trusted reads could not resolve; never the human-only fields",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "enum": [
-          "credential_actor_id",
-          "authority"
-        ]
-      },
-      "maxItems": 2
-    },
-    "contract_sha256": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$",
-      "maxLength": 64,
-      "minLength": 64
-    },
-    "exact_head_pr_history": {
-      "type": "string",
-      "maxLength": 2147483647
-    },
-    "mandate_fields": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "null"
-        },
-        "nonce": {
-          "type": "null"
-        },
-        "issued_at": {
-          "type": "null"
-        },
-        "expires_at": {
-          "type": "null"
-        },
-        "contract_sha256": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$",
-          "maxLength": 64,
-          "minLength": 64
-        },
-        "source_repository_id": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "source_owner_id": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "issue_id": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "issue_number": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "credential_actor_id": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 1
-        },
-        "authority": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "owner",
-            "maintainer",
-            null
-          ]
-        },
-        "actions": {
-          "type": "null"
-        },
-        "policy_review": {
-          "type": "object",
-          "properties": {
-            "status": {
-              "type": "null"
-            },
-            "instructions_sha256": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{64}$",
-              "maxLength": 64,
-              "minLength": 64
-            },
-            "policy_sha256": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{64}$",
-              "maxLength": 64,
-              "minLength": 64
-            },
-            "notes": {
-              "type": "null"
-            }
-          },
-          "required": [
-            "status",
-            "instructions_sha256",
-            "policy_sha256",
-            "notes"
-          ],
-          "additionalProperties": false
-        },
-        "event": {
-          "type": "object",
-          "properties": {
-            "kind": {
-              "type": "null"
-            },
-            "reference": {
-              "type": "null"
-            },
-            "text_sha256": {
-              "type": "null"
-            },
-            "binding_sha256": {
-              "type": "null"
-            }
-          },
-          "required": [
-            "kind",
-            "reference",
-            "text_sha256",
-            "binding_sha256"
-          ],
-          "additionalProperties": false
-        },
-        "target_repository": {
-          "type": "string",
-          "maxLength": 2147483647
-        },
-        "target_repository_id": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "head_repository": {
-          "type": "string",
-          "maxLength": 2147483647
-        },
-        "head_repository_id": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "head_ref": {
-          "type": "string",
-          "maxLength": 2147483647
-        },
-        "base_ref": {
-          "type": "string",
-          "maxLength": 2147483647
-        }
-      },
-      "required": [
-        "id",
-        "nonce",
-        "issued_at",
-        "expires_at",
-        "contract_sha256",
-        "source_repository_id",
-        "source_owner_id",
-        "issue_id",
-        "issue_number",
-        "credential_actor_id",
-        "authority",
-        "actions",
-        "policy_review",
-        "event",
-        "target_repository",
-        "target_repository_id",
-        "head_repository",
-        "head_repository_id",
-        "head_ref",
-        "base_ref"
-      ],
-      "additionalProperties": false,
-      "description": "Binding fields; null fields are filled only by the human/host"
-    },
-    "human_only_fields": {
-      "description": "mandate_fields paths left null for the human/host to fill, even in a ready request",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "maxLength": 2147483647
-      },
-      "maxItems": 1000
-    },
-    "requested_actions": {
-      "description": "The contract's requested actions; the human/host chooses mandate_fields.actions",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "enum": [
-          "implement",
-          "create_draft"
-        ]
-      },
-      "maxItems": 2
-    },
-    "provenance": {
-      "$ref": "#/$defs/authorization_provenance"
-    },
-    "api_budget": {
-      "$ref": "#/$defs/api_budget"
+    {
+      "$ref": "#/$defs/external_authorization_request"
     }
-  },
-  "required": [
-    "kind",
-    "request_version",
-    "issued",
-    "notice",
-    "target_host_context_schema_version",
-    "ready_for_issuance",
-    "preflight_errors",
-    "preflight_errors_trust",
-    "unresolved_fields",
-    "contract_sha256",
-    "exact_head_pr_history",
-    "mandate_fields",
-    "human_only_fields",
-    "requested_actions",
-    "provenance"
   ],
-  "additionalProperties": false,
   "$defs": {
     "api_budget": {
       "type": "object",
@@ -381,6 +120,1316 @@
       ],
       "additionalProperties": false,
       "description": "Core REST rate-limit snapshot; the counters are null when error is set"
+    },
+    "authorization_request_0_2": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "agent-contrib/authorization-request"
+        },
+        "request_version": {
+          "type": "string",
+          "const": "0.1"
+        },
+        "issued": {
+          "type": "boolean",
+          "const": false
+        },
+        "notice": {
+          "type": "string",
+          "maxLength": 2147483647
+        },
+        "target_host_context_schema_version": {
+          "type": "string",
+          "const": "0.1"
+        },
+        "ready_for_issuance": {
+          "type": "boolean",
+          "description": "No preflight errors and no unresolved fields; sets the exit status"
+        },
+        "preflight_errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2147483647
+          },
+          "description": "Blockers a mandate would not clear",
+          "maxItems": 2147483647
+        },
+        "preflight_errors_trust": {
+          "type": "string",
+          "maxLength": 2147483647
+        },
+        "unresolved_fields": {
+          "description": "Derived fields that fresh trusted reads could not resolve; never the human-only fields",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "credential_actor_id",
+              "authority"
+            ]
+          },
+          "maxItems": 2
+        },
+        "contract_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "maxLength": 64,
+          "minLength": 64
+        },
+        "exact_head_pr_history": {
+          "type": "string",
+          "maxLength": 2147483647
+        },
+        "mandate_fields": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "null"
+            },
+            "nonce": {
+              "type": "null"
+            },
+            "issued_at": {
+              "type": "null"
+            },
+            "expires_at": {
+              "type": "null"
+            },
+            "contract_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "maxLength": 64,
+              "minLength": 64
+            },
+            "source_repository_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "source_owner_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "issue_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "issue_number": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "credential_actor_id": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "authority": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "owner",
+                "maintainer",
+                null
+              ]
+            },
+            "actions": {
+              "type": "null"
+            },
+            "policy_review": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "null"
+                },
+                "instructions_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$",
+                  "maxLength": 64,
+                  "minLength": 64
+                },
+                "policy_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$",
+                  "maxLength": 64,
+                  "minLength": 64
+                },
+                "notes": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "status",
+                "instructions_sha256",
+                "policy_sha256",
+                "notes"
+              ],
+              "additionalProperties": false
+            },
+            "event": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "null"
+                },
+                "reference": {
+                  "type": "null"
+                },
+                "text_sha256": {
+                  "type": "null"
+                },
+                "binding_sha256": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "kind",
+                "reference",
+                "text_sha256",
+                "binding_sha256"
+              ],
+              "additionalProperties": false
+            },
+            "target_repository": {
+              "type": "string",
+              "maxLength": 2147483647
+            },
+            "target_repository_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "head_repository": {
+              "type": "string",
+              "maxLength": 2147483647
+            },
+            "head_repository_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "head_ref": {
+              "type": "string",
+              "maxLength": 2147483647
+            },
+            "base_ref": {
+              "type": "string",
+              "maxLength": 2147483647
+            }
+          },
+          "required": [
+            "id",
+            "nonce",
+            "issued_at",
+            "expires_at",
+            "contract_sha256",
+            "source_repository_id",
+            "source_owner_id",
+            "issue_id",
+            "issue_number",
+            "credential_actor_id",
+            "authority",
+            "actions",
+            "policy_review",
+            "event",
+            "target_repository",
+            "target_repository_id",
+            "head_repository",
+            "head_repository_id",
+            "head_ref",
+            "base_ref"
+          ],
+          "additionalProperties": false,
+          "description": "Binding fields; null fields are filled only by the human/host"
+        },
+        "human_only_fields": {
+          "description": "mandate_fields paths left null for the human/host to fill, even in a ready request",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2147483647
+          },
+          "maxItems": 1000
+        },
+        "requested_actions": {
+          "description": "The contract's requested actions; the human/host chooses mandate_fields.actions",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "implement",
+              "create_draft"
+            ]
+          },
+          "maxItems": 2
+        },
+        "provenance": {
+          "$ref": "#/$defs/authorization_provenance"
+        },
+        "api_budget": {
+          "$ref": "#/$defs/api_budget"
+        }
+      },
+      "required": [
+        "kind",
+        "request_version",
+        "issued",
+        "notice",
+        "target_host_context_schema_version",
+        "ready_for_issuance",
+        "preflight_errors",
+        "preflight_errors_trust",
+        "unresolved_fields",
+        "contract_sha256",
+        "exact_head_pr_history",
+        "mandate_fields",
+        "human_only_fields",
+        "requested_actions",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "external_authorization_request": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "agent-contrib/external-authorization-request"
+        },
+        "request_version": {
+          "const": "0.1"
+        },
+        "issued": {
+          "const": false
+        },
+        "ready_for_issuance": {
+          "const": false
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "implementation",
+            "draft"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "notice": {
+          "type": "string",
+          "maxLength": 100000
+        },
+        "contract_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+          "maxLength": 64
+        },
+        "bindings": {
+          "type": "object",
+          "properties": {
+            "source_repository_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "source_owner_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "issue_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "issue_number": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "head_repository_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "head_owner_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "credential_actor_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "source_repository": {
+              "type": "string",
+              "maxLength": 100000
+            },
+            "head_repository": {
+              "type": "string",
+              "maxLength": 100000
+            },
+            "head_ref": {
+              "type": "string",
+              "maxLength": 100000
+            },
+            "base_ref": {
+              "type": "string",
+              "maxLength": 100000
+            },
+            "contract_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "maxLength": 64
+            },
+            "policy_inventory_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "maxLength": 64
+            },
+            "fork_policy_inventory_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "policy_assessment_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "policy_ledger_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "evidence_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "review_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "payload_sha256": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "base_commit": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+              "maxLength": 40
+            },
+            "base_tip": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "git_head": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "git_tree": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "invitation_basis": {
+              "type": "string",
+              "enum": [
+                "welcome",
+                "explicit-undeclared"
+              ]
+            },
+            "undeclared_acknowledged_required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "source_repository_id",
+            "source_owner_id",
+            "issue_id",
+            "issue_number",
+            "head_repository_id",
+            "head_owner_id",
+            "credential_actor_id",
+            "source_repository",
+            "head_repository",
+            "head_ref",
+            "base_ref",
+            "contract_sha256",
+            "policy_inventory_sha256",
+            "fork_policy_inventory_sha256",
+            "policy_assessment_sha256",
+            "policy_ledger_sha256",
+            "evidence_sha256",
+            "review_sha256",
+            "payload_sha256",
+            "base_commit",
+            "base_tip",
+            "git_head",
+            "git_tree",
+            "invitation_basis",
+            "undeclared_acknowledged_required"
+          ],
+          "additionalProperties": false
+        },
+        "requested_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "implement",
+              "push_head",
+              "create_draft"
+            ]
+          },
+          "maxItems": 2147483647
+        },
+        "human_only_fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 100000
+          },
+          "maxItems": 2147483647
+        },
+        "unresolved_fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 100000
+          },
+          "maxItems": 2147483647
+        },
+        "policy_inventories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "repository_id",
+              "repository",
+              "inventory"
+            ],
+            "properties": {
+              "repository_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "repository": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100000
+              },
+              "inventory": {
+                "$ref": "#/$defs/repository_policy"
+              }
+            }
+          },
+          "maxItems": 2
+        },
+        "stage_blockers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "implementation",
+            "draft",
+            "published"
+          ],
+          "properties": {
+            "implementation": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100000
+              },
+              "maxItems": 10000
+            },
+            "draft": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100000
+              },
+              "maxItems": 10000
+            },
+            "published": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100000
+              },
+              "maxItems": 10000
+            }
+          }
+        },
+        "evidence_errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2147483647
+          },
+          "maxItems": 2147483647
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2147483647
+          },
+          "maxItems": 2147483647
+        },
+        "diagnostics_trust": {
+          "type": "string",
+          "maxLength": 100000
+        },
+        "manual_reread_required": {
+          "const": true
+        },
+        "api_budget": {
+          "$ref": "#/$defs/api_budget"
+        }
+      },
+      "required": [
+        "kind",
+        "request_version",
+        "issued",
+        "ready_for_issuance",
+        "stage",
+        "complete",
+        "notice",
+        "contract_sha256",
+        "bindings",
+        "requested_actions",
+        "human_only_fields",
+        "unresolved_fields",
+        "policy_inventories",
+        "stage_blockers",
+        "evidence_errors",
+        "errors",
+        "diagnostics_trust",
+        "manual_reread_required"
+      ],
+      "additionalProperties": false
+    },
+    "repository_policy": {
+      "type": "object",
+      "properties": {
+        "report": {
+          "type": "string",
+          "enum": [
+            "policy-report/1"
+          ]
+        },
+        "review_obligation": {
+          "type": "string",
+          "maxLength": 2147483647
+        },
+        "sources_scanned": {
+          "type": "array",
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "properties": {
+              "origin": {
+                "type": "string",
+                "enum": [
+                  "repository",
+                  "owner-github"
+                ]
+              },
+              "repository": {
+                "type": "string",
+                "maxLength": 2147483647
+              },
+              "path": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "path_truncated": {
+                "type": "boolean"
+              },
+              "commit": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{40}$",
+                "minLength": 40,
+                "maxLength": 40
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "ai_policy",
+                  "agent_instructions",
+                  "contributing",
+                  "pr_template",
+                  "community",
+                  "readme",
+                  "instruction"
+                ]
+              },
+              "notes": {
+                "type": "array",
+                "maxItems": 2147483647,
+                "items": {
+                  "type": "string",
+                  "maxLength": 2147483647
+                }
+              },
+              "path_sanitized": {
+                "type": "boolean"
+              },
+              "identity_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "minLength": 64,
+                "maxLength": 64,
+                "description": "SHA-256 of the original repository/path or URL; display text may be shortened or sanitized"
+              }
+            },
+            "required": [
+              "origin",
+              "repository",
+              "path",
+              "path_truncated",
+              "commit",
+              "sha256",
+              "kind",
+              "notes",
+              "path_sanitized",
+              "identity_sha256"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "unassessed": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "properties": {
+              "what": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 2147483647
+              },
+              "from": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 2147483647
+              },
+              "line": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "link_text": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 300
+              },
+              "what_truncated": {
+                "type": "boolean"
+              },
+              "what_sanitized": {
+                "type": "boolean"
+              },
+              "identity_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "minLength": 64,
+                "maxLength": 64,
+                "description": "SHA-256 of the original repository/path or URL; display text may be shortened or sanitized"
+              },
+              "blob_sha": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9a-f]{40}$",
+                "minLength": 40,
+                "maxLength": 40,
+                "description": "The pinned Git blob id of an unread file; null for references"
+              }
+            },
+            "required": [
+              "what",
+              "reason",
+              "from",
+              "line",
+              "link_text",
+              "what_truncated",
+              "what_sanitized",
+              "identity_sha256",
+              "blob_sha"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "omitted_sources": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "properties": {
+              "repository": {
+                "type": "string",
+                "maxLength": 2147483647
+              },
+              "path": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "path_truncated": {
+                "type": "boolean"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "ai_policy",
+                  "agent_instructions",
+                  "contributing",
+                  "pr_template",
+                  "community",
+                  "readme",
+                  "instruction"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "file limit",
+                  "scan byte limit",
+                  "request limit"
+                ]
+              },
+              "path_sanitized": {
+                "type": "boolean"
+              },
+              "identity_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "minLength": 64,
+                "maxLength": 64,
+                "description": "SHA-256 of the original repository/path or URL; display text may be shortened or sanitized"
+              },
+              "blob_sha": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9a-f]{40}$",
+                "minLength": 40,
+                "maxLength": 40,
+                "description": "The pinned Git blob id of an unread file; null for references"
+              }
+            },
+            "required": [
+              "repository",
+              "path",
+              "path_truncated",
+              "kind",
+              "reason",
+              "path_sanitized",
+              "identity_sha256",
+              "blob_sha"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "limits_reached": {
+          "type": "array",
+          "maxItems": 2147483647,
+          "items": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "string",
+                "maxLength": 2147483647
+              },
+              "not_reported": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "hides_sources": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "limit",
+              "not_reported",
+              "hides_sources"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "limits_hide_sources": {
+          "type": "boolean",
+          "description": "A limit hid a policy candidate or reference, or omitted_sources is non-empty"
+        },
+        "never_inspected": {
+          "type": "array",
+          "maxItems": 2147483647,
+          "items": {
+            "type": "string",
+            "maxLength": 2147483647
+          }
+        },
+        "hints": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "possible_agent_restriction",
+                  "possible_ai_restriction",
+                  "possible_pr_restriction",
+                  "ai_mention"
+                ]
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "heading": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "untrusted_excerpt": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "source": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^H-[0-9a-f]{64}(?![\\s\\S])",
+                "maxLength": 66,
+                "description": "Stable ID: H- and the SHA-256 of (source identity_sha256, line, kind); unchanged by report order"
+              },
+              "excerpt_truncated": {
+                "type": "boolean",
+                "description": "The excerpt omits text before or after it"
+              }
+            },
+            "required": [
+              "kind",
+              "line",
+              "heading",
+              "untrusted_excerpt",
+              "source",
+              "id",
+              "excerpt_truncated"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "reads": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "requests",
+            "limit"
+          ],
+          "additionalProperties": false
+        },
+        "inventory_format": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Version of the inventory_sha256 input; 1 was the unversioned hash of earlier 0.3.0 candidates"
+        },
+        "inventory_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "hinted_lines": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "kinds": {
+                "type": "array",
+                "maxItems": 4,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "possible_agent_restriction",
+                    "possible_ai_restriction",
+                    "possible_pr_restriction",
+                    "ai_mention"
+                  ]
+                }
+              },
+              "heading": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "untrusted_excerpt": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "excerpt_truncated": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "source",
+              "line",
+              "kinds",
+              "heading",
+              "untrusted_excerpt",
+              "excerpt_truncated"
+            ],
+            "additionalProperties": false
+          },
+          "description": "One reading entry per hinted source line, in attention order; kinds lists every hint kind on the line"
+        },
+        "project_vocabulary": {
+          "type": "object",
+          "properties": {
+            "terms": {
+              "type": "array",
+              "maxItems": 2147483647,
+              "items": {
+                "type": "string",
+                "maxLength": 2147483647
+              }
+            },
+            "mentions_collapsed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "lines": {
+              "type": "array",
+              "maxItems": 50,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "source",
+                  "line"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "lines_not_listed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "terms",
+            "mentions_collapsed",
+            "lines",
+            "lines_not_listed"
+          ],
+          "additionalProperties": false,
+          "description": "Lines whose only hints are mentions made of the project name (for example agent in acme/agent-kit); never restrictions"
+        },
+        "owner_lookup": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 2147483647
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "read",
+                "not_found_or_inaccessible",
+                "unavailable",
+                "not_read_request_limit",
+                "not_applicable"
+              ]
+            }
+          },
+          "required": [
+            "repository",
+            "status"
+          ],
+          "additionalProperties": false,
+          "description": "Outcome of the owner .github lookup; unavailable (not a 404) is a hiding limit. Null when not attempted."
+        },
+        "tipjar": {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "type": "string",
+              "const": ".tipjar.json"
+            },
+            "blob_sha": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "welcome",
+                "closed",
+                "undeclared",
+                "unknown"
+              ]
+            },
+            "complete": {
+              "type": "boolean"
+            },
+            "manifest": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/tipjar_manifest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              }
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "report",
+        "review_obligation",
+        "sources_scanned",
+        "unassessed",
+        "omitted_sources",
+        "limits_reached",
+        "limits_hide_sources",
+        "never_inspected",
+        "hints",
+        "reads",
+        "inventory_format",
+        "inventory_sha256",
+        "hinted_lines",
+        "project_vocabulary",
+        "owner_lookup",
+        "tipjar"
+      ],
+      "additionalProperties": false,
+      "description": "Default-on, report-only policy inventory and hints; never a verdict"
+    },
+    "tipjar_manifest": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "0.1"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "welcome",
+            "closed"
+          ]
+        },
+        "wanted": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          }
+        },
+        "boundaries": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "status"
+      ],
+      "additionalProperties": false
     }
   }
 }

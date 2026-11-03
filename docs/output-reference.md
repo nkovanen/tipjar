@@ -21,52 +21,7 @@ One of `audit_report`, `audit_unread`.
 
 `agent-contrib schema authorization-request` · Unsigned mandate request pre-filled from a schema 0.2 contract; it is not a mandate and grants nothing.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `kind` | "agent-contrib/authorization-request" |  |
-| `request_version` | "0.1" |  |
-| `issued` | false |  |
-| `notice` | string |  |
-| `target_host_context_schema_version` | "0.1" |  |
-| `ready_for_issuance` | boolean | No preflight errors and no unresolved fields; sets the exit status |
-| `preflight_errors` | string[] | Blockers a mandate would not clear |
-| `preflight_errors_trust` | string |  |
-| `unresolved_fields` | "credential_actor_id" \| "authority"[] | Derived fields that fresh trusted reads could not resolve; never the human-only fields |
-| `contract_sha256` | string |  |
-| `exact_head_pr_history` | string |  |
-| `mandate_fields` | object | Binding fields; null fields are filled only by the human/host |
-| `mandate_fields.id` | null |  |
-| `mandate_fields.nonce` | null |  |
-| `mandate_fields.issued_at` | null |  |
-| `mandate_fields.expires_at` | null |  |
-| `mandate_fields.contract_sha256` | string |  |
-| `mandate_fields.source_repository_id` | integer |  |
-| `mandate_fields.source_owner_id` | integer |  |
-| `mandate_fields.issue_id` | integer |  |
-| `mandate_fields.issue_number` | integer |  |
-| `mandate_fields.credential_actor_id` | integer or null |  |
-| `mandate_fields.authority` | "owner" \| "maintainer" \| null |  |
-| `mandate_fields.actions` | null |  |
-| `mandate_fields.policy_review` | object |  |
-| `mandate_fields.policy_review.status` | null |  |
-| `mandate_fields.policy_review.instructions_sha256` | string |  |
-| `mandate_fields.policy_review.policy_sha256` | string |  |
-| `mandate_fields.policy_review.notes` | null |  |
-| `mandate_fields.event` | object |  |
-| `mandate_fields.event.kind` | null |  |
-| `mandate_fields.event.reference` | null |  |
-| `mandate_fields.event.text_sha256` | null |  |
-| `mandate_fields.event.binding_sha256` | null |  |
-| `mandate_fields.target_repository` | string |  |
-| `mandate_fields.target_repository_id` | integer |  |
-| `mandate_fields.head_repository` | string |  |
-| `mandate_fields.head_repository_id` | integer |  |
-| `mandate_fields.head_ref` | string |  |
-| `mandate_fields.base_ref` | string |  |
-| `human_only_fields` | string[] | mandate_fields paths left null for the human/host to fill, even in a ready request |
-| `requested_actions` | "implement" \| "create_draft"[] | The contract's requested actions; the human/host chooses mandate_fields.actions |
-| `provenance` | `authorization_provenance` |  |
-| `api_budget` | `api_budget` (optional) |  |
+One of `authorization_request_0_2`, `external_authorization_request`.
 
 ### `discover`
 
@@ -198,6 +153,17 @@ One of `discover_result`, `discover_unresolved`, `discover_multi`.
 | `tipjar.current.notice` | string |  |
 | `tipjar.current.api_budget` | `api_budget` (optional) |  |
 | `tipjar.changed` | boolean or null |  |
+| `tipjar.reviewed` | object (optional) |  |
+| `tipjar.reviewed.state` | "welcome" \| "undeclared" |  |
+| `tipjar.reviewed.sha256` | string or null |  |
+| `external` | object (optional) |  |
+| `external.fork_policy` | object |  |
+| `external.fork_policy.expected_sha256` | string or null |  |
+| `external.fork_policy.current_sha256` | string or null |  |
+| `external.fork_policy.changed` | boolean or null |  |
+| `external.fork_policy.note` | string |  |
+| `external.manual_reread_required` | true |  |
+| `external.notice` | string |  |
 
 ### `error`
 
@@ -474,6 +440,55 @@ The repository could not be resolved or its snapshot read
 | `fetched_at` | string |  |
 | `endpoints` | string[] | GitHub endpoints read |
 
+#### `authorization_request_0_2`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `kind` | "agent-contrib/authorization-request" |  |
+| `request_version` | "0.1" |  |
+| `issued` | false |  |
+| `notice` | string |  |
+| `target_host_context_schema_version` | "0.1" |  |
+| `ready_for_issuance` | boolean | No preflight errors and no unresolved fields; sets the exit status |
+| `preflight_errors` | string[] | Blockers a mandate would not clear |
+| `preflight_errors_trust` | string |  |
+| `unresolved_fields` | "credential_actor_id" \| "authority"[] | Derived fields that fresh trusted reads could not resolve; never the human-only fields |
+| `contract_sha256` | string |  |
+| `exact_head_pr_history` | string |  |
+| `mandate_fields` | object | Binding fields; null fields are filled only by the human/host |
+| `mandate_fields.id` | null |  |
+| `mandate_fields.nonce` | null |  |
+| `mandate_fields.issued_at` | null |  |
+| `mandate_fields.expires_at` | null |  |
+| `mandate_fields.contract_sha256` | string |  |
+| `mandate_fields.source_repository_id` | integer |  |
+| `mandate_fields.source_owner_id` | integer |  |
+| `mandate_fields.issue_id` | integer |  |
+| `mandate_fields.issue_number` | integer |  |
+| `mandate_fields.credential_actor_id` | integer or null |  |
+| `mandate_fields.authority` | "owner" \| "maintainer" \| null |  |
+| `mandate_fields.actions` | null |  |
+| `mandate_fields.policy_review` | object |  |
+| `mandate_fields.policy_review.status` | null |  |
+| `mandate_fields.policy_review.instructions_sha256` | string |  |
+| `mandate_fields.policy_review.policy_sha256` | string |  |
+| `mandate_fields.policy_review.notes` | null |  |
+| `mandate_fields.event` | object |  |
+| `mandate_fields.event.kind` | null |  |
+| `mandate_fields.event.reference` | null |  |
+| `mandate_fields.event.text_sha256` | null |  |
+| `mandate_fields.event.binding_sha256` | null |  |
+| `mandate_fields.target_repository` | string |  |
+| `mandate_fields.target_repository_id` | integer |  |
+| `mandate_fields.head_repository` | string |  |
+| `mandate_fields.head_repository_id` | integer |  |
+| `mandate_fields.head_ref` | string |  |
+| `mandate_fields.base_ref` | string |  |
+| `human_only_fields` | string[] | mandate_fields paths left null for the human/host to fill, even in a ready request |
+| `requested_actions` | "implement" \| "create_draft"[] | The contract's requested actions; the human/host chooses mandate_fields.actions |
+| `provenance` | `authorization_provenance` |  |
+| `api_budget` | `api_budget` (optional) |  |
+
 #### `ci_gate`
 
 Present only when the contract declares ci_requirements; its blockers appear only in stage_blockers.completion
@@ -688,6 +703,61 @@ An open PR that references or overlaps the issue
 | `reason` | string | "Explicit reference to this issue" or a heuristic overlap naming the shared words/IDs |
 | `repository` | string (optional) | Repository of the PR, when it is not the issue source |
 | `observed_in` | "disposition_read" (optional) | Only in schema 0.2 verify: the match was first seen in a host-context 0.2 disposition read, not the open-PR list scan |
+
+#### `external_authorization_request`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `kind` | "agent-contrib/external-authorization-request" |  |
+| `request_version` | "0.1" |  |
+| `issued` | false |  |
+| `ready_for_issuance` | false |  |
+| `stage` | "implementation" \| "draft" |  |
+| `complete` | boolean |  |
+| `notice` | string |  |
+| `contract_sha256` | string |  |
+| `bindings` | object |  |
+| `bindings.source_repository_id` | integer |  |
+| `bindings.source_owner_id` | integer |  |
+| `bindings.issue_id` | integer |  |
+| `bindings.issue_number` | integer |  |
+| `bindings.head_repository_id` | integer |  |
+| `bindings.head_owner_id` | integer |  |
+| `bindings.credential_actor_id` | integer |  |
+| `bindings.source_repository` | string |  |
+| `bindings.head_repository` | string |  |
+| `bindings.head_ref` | string |  |
+| `bindings.base_ref` | string |  |
+| `bindings.contract_sha256` | string |  |
+| `bindings.policy_inventory_sha256` | string |  |
+| `bindings.fork_policy_inventory_sha256` | string or null |  |
+| `bindings.policy_assessment_sha256` | string or null |  |
+| `bindings.policy_ledger_sha256` | string or null |  |
+| `bindings.evidence_sha256` | string or null |  |
+| `bindings.review_sha256` | string or null |  |
+| `bindings.payload_sha256` | string or null |  |
+| `bindings.base_commit` | string |  |
+| `bindings.base_tip` | string or null |  |
+| `bindings.git_head` | string or null |  |
+| `bindings.git_tree` | string or null |  |
+| `bindings.invitation_basis` | "welcome" \| "explicit-undeclared" |  |
+| `bindings.undeclared_acknowledged_required` | boolean |  |
+| `requested_actions` | "implement" \| "push_head" \| "create_draft"[] |  |
+| `human_only_fields` | string[] |  |
+| `unresolved_fields` | string[] |  |
+| `policy_inventories` | object[] |  |
+| `policy_inventories[].repository_id` | integer |  |
+| `policy_inventories[].repository` | string |  |
+| `policy_inventories[].inventory` | `repository_policy` |  |
+| `stage_blockers` | object |  |
+| `stage_blockers.implementation` | string[] |  |
+| `stage_blockers.draft` | string[] |  |
+| `stage_blockers.published` | string[] |  |
+| `evidence_errors` | string[] |  |
+| `errors` | string[] |  |
+| `diagnostics_trust` | string |  |
+| `manual_reread_required` | true |  |
+| `api_budget` | `api_budget` (optional) |  |
 
 #### `external_tip_report`
 

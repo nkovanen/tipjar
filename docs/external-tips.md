@@ -100,6 +100,12 @@ The host enforces single use and retains original creation head/payload. These
 bounded, non-atomic observations cannot prove absence of earlier updates or
 unlinked semantic duplicates. Organization/shared/non-immediate forks, adoption
 of prior work, alternate bases, overlap waivers, updates/reopen, and required-CI
-models are unsupported. `authorization-request`, `pr-body` and `drift` reject 0.3;
-`feedback` remains a generic report and supplies no external lifecycle authority.
+models are unsupported. `authorization-request` provides an unsigned implementation or exact draft review
+view; it is never an external-context record or authorization. `drift` reports
+source/inventory/jar differences and the current fork inventory hash (tasks store
+no fork baseline). External policy targets still require manual host rereads.
+`pr-body` writes a reviewable starting body with self-attested evidence limits and
+pending host-context gates; it never publishes. `feedback` remains a generic
+report and supplies no external lifecycle authority. See the
+[tipping walkthrough](tipping.md) for these helper commands and human stops.
 Use canonical JSON `external-tip-report/1` and output/3 schemas for automation.

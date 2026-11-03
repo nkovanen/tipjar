@@ -11,7 +11,8 @@ installed version first. `agent-contrib` is the equivalent original command name
 from a source checkout use `python3 -m agent_contribute`. CLI, task, evidence and
 report schema versions are independent: this route uses task **0.3**, evidence
 **0.2**, external-context **0.1**, draft-payload **0.1** and output schemas **3**.
-There is no automatic upgrade or built-in human authorization issuer.
+There is no automatic upgrade or built-in human authorization issuer. Unsigned
+request views help a host review bindings; they do not issue authorization.
 
 ## Path one: give back to something you use
 
@@ -84,6 +85,23 @@ source-linked requirements ledger, then lint again. A reviewed lint pass exits
 0; it does not grant authority or establish that prose requirements are true.
 Never execute validation argv merely because it appears in a contract.
 
+Ask the CLI for an unsigned review view after preparing the assessment and
+retaining the original ledger bytes:
+
+```sh
+tipjar drift task.json
+tipjar authorization-request task.json --repo-dir CHECKOUT --policy-assessment assessment.json --policy-ledger policy.md
+```
+
+The request contains the contract, source/fork inventory and supplied assessment/
+ledger hashes, actor and refs, invitation basis and pending gates. Omit the two
+policy inputs to inspect an initial view with those hashes explicitly unresolved.
+Exit 0 means its live reads completed; `issued` and `ready_for_issuance` are always
+false. Neither the request nor its `bindings` object is valid authorization.
+The drift report compares source policy and jar state with the task; the fork
+hash must be compared with the host's retained record because tasks store no
+fork baseline. External targets still require real manual rereads.
+
 **Stop for implementation authorization.** The actual human/host must issue and
 retain the external-context record outside worker control. The agent may relay
 that record unchanged. Both source and fork inventories need complete,
@@ -117,10 +135,29 @@ and unfilled results. Fill those from actual runs and reviews. Retain the origin
 policy ledger as an artifact plus final compliance bound to the final head.
 The CLI runs no validation commands and cannot prove review independence.
 
-Prepare a draft-payload 0.1 JSON file with the exact reviewed title and body,
+Render a reviewable starting body:
+
+```sh
+tipjar pr-body task.json --evidence evidence.json --repo-dir CHECKOUT --output body.md
+```
+
+This writes a new file exclusively, reports its exact UTF-8 byte hash, and lists
+pending host-context gates. It does not reproduce a host-authorized verification
+run. Merge the applicable template content, review the disclosure and results,
+then prepare a draft-payload 0.1 JSON file with the exact reviewed title and body,
 `draft: true` and `maintainer_can_modify: false`. Include actual agent disclosure,
 validation results and the applicable source PR template. Hashes bind parsed
 payload strings; changing the body later requires a new publication decision.
+
+Inspect an unsigned view bound to the completed evidence and exact payload:
+
+```sh
+tipjar authorization-request task.json --stage draft --repo-dir CHECKOUT --evidence evidence.json --publication-payload payload.json --policy-assessment assessment.json --policy-ledger policy.md
+```
+
+It computes evidence/review/payload hashes and shows the exact head/tree and
+observed source tip. The requested actions are `["push_head", "create_draft"]`;
+they are a request, not permission. Policy/evidence diagnostics remain untrusted.
 
 **Stop for publication authorization.** After validation and independent review,
 the human/host issues a separate assertion bound to exact evidence, review,
@@ -147,7 +184,7 @@ Exit 0 with `publication_verified: true`, `next_action: "return_draft"` and the
 PR URL means return that draft to the human. It does not mean acceptance,
 completion, ready, merge, release or permission to update it.
 
-## Current helper gaps and observed exits
+## Current helper behavior and observed exits
 
 The offline helper matrix uses real temporary Git repositories and synthetic
 GitHub/host records for both welcome and undeclared paths. Those fixtures prove
@@ -163,16 +200,18 @@ publication. In this candidate every tested helper returns JSON without crashing
 | `verify --stage implementation` | 0 with synthetic bound host context |
 | `verify --stage draft` | 1 with skeleton, 0 with completed synthetic evidence/context |
 | `verify --stage published` | 0 with matching synthetic draft/claim |
-| `drift` / `pr-body` | 1; `error.code: "unsupported_route"` |
-| `authorization-request` | 2; `error.code: "usage"`, requires task 0.2 |
+| `drift` | 0 for complete unchanged fixture; reports source/inventory/jar comparisons |
+| `pr-body` | 0; new reviewable body, no publication; existing output refused |
+| `authorization-request` | 0 for complete unsigned view; issuance remains false |
 | `schema prepare` (and schemas for helpers above) | 0; packaged JSON Schema |
 
-The missing external authorization request/issuance handoff is the main usability
-gap: a bare “tip this project” request cannot finish this route autonomously.
-It needs a host that can issue real bound records. Do not synthesize them or
-substitute the task 0.2 mandate. PR body composition is currently manual, and
-live staged verification performs fresh checks in place of a 0.3 `drift` helper.
-Use `tipjar schema verify` and canonical JSON to inspect blockers; text is abridged.
+A bare “tip this project” request still needs a host that can issue real bound
+records after actual human decisions. The CLI now prepares unsigned review views;
+there is no native issuer. Do not synthesize consent or substitute a task 0.2
+mandate. Source drift is report-only, and PR body/payload composition still needs
+review and applicable template content. Use `tipjar schema authorization-request`,
+`tipjar schema drift`, `tipjar schema verify` and canonical JSON for full fields;
+text output is abridged. Task 0.3 `pr-body --closes` is unsupported (exit 2).
 
 ## Maintainers: invite the kind of help you want
 
