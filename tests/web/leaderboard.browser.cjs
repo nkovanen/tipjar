@@ -62,6 +62,269 @@ const fixture = (name) =>
   }
   try {
     for (const width of [1440, 390]) {
+      const p = await page(width, fixture('v2/readme-welcome'));
+      const requests = [];
+      p.on('request', (r) => requests.push(r.url()));
+      await p.addInitScript(() => {
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: {
+            writeText: async (text) => {
+              window.copiedView = text;
+            },
+          },
+        });
+        window.historyWrites = [];
+        for (const method of ['pushState', 'replaceState']) {
+          const original = history[method].bind(history);
+          history[method] = (...args) => {
+            window.historyWrites.push(method);
+            return original(...args);
+          };
+        }
+      });
+      await p.goto(
+        origin + '/tipjar/leaderboard.html?repository_id=101&period=all&unknown=literal#projects',
+      );
+      await p.locator('#board-detail[open]').waitFor({ timeout: 1500 });
+      assert.equal(
+        await p.locator('#board-detail-title').innerText(),
+        'fictional-demo/welcoming-jar',
+      );
+      assert.equal(
+        await p.locator('#board-detail-title').evaluate((e) => document.activeElement === e),
+        true,
+      );
+      await p.screenshot({
+        path: path.join(output, `share-repository-${width}.png`),
+        fullPage: true,
+      });
+      await p.getByRole('button', { name: 'Copy view link', exact: true }).click();
+      assert.equal(
+        await p.evaluate(() => window.copiedView),
+        origin + '/tipjar/leaderboard.html?repository_id=101&period=all',
+      );
+      assert.equal(await p.locator('#board-detail #board-share-status[role=status]').count(), 1);
+      assert.match(await p.locator('#board-share-status').innerText(), /copied/);
+      await p.evaluate(() => {
+        navigator.clipboard.writeText = async () => {
+          throw new Error('unavailable');
+        };
+      });
+      await p.getByRole('button', { name: 'Copy view link', exact: true }).click();
+      const fallback = p.locator('#board-share-link');
+      assert.equal(
+        await fallback.inputValue(),
+        origin + '/tipjar/leaderboard.html?repository_id=101&period=all',
+      );
+      assert.equal(
+        await fallback.evaluate(
+          (e) =>
+            document.activeElement === e &&
+            e.selectionStart === 0 &&
+            e.selectionEnd === e.value.length,
+        ),
+        true,
+      );
+      await p.screenshot({
+        path: path.join(output, `share-copy-fallback-${width}.png`),
+        fullPage: true,
+      });
+      const beforeClose = await p.evaluate(() => history.length);
+      await p.keyboard.press('Escape');
+      await p.waitForFunction(() => !document.getElementById('board-detail').open);
+      assert.equal(new URL(p.url()).search, '?period=all');
+      assert.equal(await p.evaluate(() => history.length), beforeClose);
+      assert.equal(
+        await p.locator('#people-title').evaluate((e) => document.activeElement === e),
+        true,
+      );
+      const author = p.locator('#people-content a.row-button').first();
+      assert.equal(
+        await author.getAttribute('href'),
+        origin + '/tipjar/leaderboard.html?author_id=301&period=all',
+      );
+      assert.equal(
+        await author.evaluate((e) => {
+          const event = new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true });
+          e.dispatchEvent(event);
+          return event.defaultPrevented;
+        }),
+        false,
+      );
+      await author.click();
+      await p.locator('#board-detail[open]').waitFor();
+      assert.equal(new URL(p.url()).search, '?author_id=301&period=all');
+      await p.screenshot({
+        path: path.join(output, `share-contributor-${width}.png`),
+        fullPage: true,
+      });
+      assert.equal(await p.locator('#board-detail-content .represented-projects a').count(), 1);
+      await p.evaluate(() => {
+        window.historyWrites = [];
+      });
+      await p.goBack();
+      await p.waitForFunction(() => !document.getElementById('board-detail').open);
+      await p.goForward();
+      await p.locator('#board-detail[open]').waitFor();
+      assert.deepEqual(await p.evaluate(() => window.historyWrites), []);
+      await p.locator('#board-detail-content .represented-projects a').click();
+      assert.equal(new URL(p.url()).searchParams.get('repository_id'), '101');
+      await p.goBack();
+      await p.waitForFunction(
+        () => document.getElementById('board-detail-title')?.textContent === 'fictional-giver',
+      );
+      await p.locator('#board-detail [data-period="month"]').click();
+      assert.equal(new URL(p.url()).search, '?author_id=301&period=month');
+      assert.equal(await p.locator('[data-period="month"][aria-pressed="true"]').count(), 2);
+      assert.equal(
+        await p
+          .locator('#board-detail [data-period="month"]')
+          .evaluate((e) => document.activeElement === e),
+        true,
+      );
+      await p.getByRole('button', { name: 'Close board details' }).click();
+      assert.equal(
+        await p.locator('#people-title').evaluate((e) => document.activeElement === e),
+        true,
+        'disconnected opener returns to heading',
+      );
+      const project = p.locator('#projects-content a.row-button').first();
+      await project.click();
+      await p.getByRole('button', { name: 'Close board details' }).click();
+      assert.equal(
+        await project.evaluate((e) => document.activeElement === e),
+        true,
+        'connected opener focus restored',
+      );
+      await p.locator('#people-content a.row-button').first().click();
+      await p.evaluate(() => {
+        navigator.clipboard.writeText = () =>
+          new Promise((resolve, reject) => {
+            window.finishOldCopy = reject;
+          });
+      });
+      await p.getByRole('button', { name: 'Copy view link', exact: true }).click();
+      await p.keyboard.press('Escape');
+      await p.locator('#projects-content a.row-button').first().click();
+      await p.evaluate(() => window.finishOldCopy(new Error('late failure')));
+      assert.equal(await p.locator('#board-share-link').isVisible(), false);
+      assert.equal(await p.locator('#board-share-status').innerText(), '');
+      await p.getByRole('button', { name: 'Close board details' }).click();
+      assert.equal(requests.filter((u) => u.endsWith('/board.json')).length, 1);
+      assert.equal(
+        requests.some((u) => u.includes('api.github.com')),
+        false,
+      );
+      assert.deepEqual(p.errors, []);
+      await p.close();
+      checks += 16;
+      const old = fixture('v2/readme-welcome');
+      old.tips[0].merged_at = '2026-10-01T00:00:00Z';
+      const q = await page(width, old);
+      await q.goto(origin + '/tipjar/leaderboard.html?author_id=301&period=month');
+      await q.locator('#board-detail[open]').waitFor();
+      assert.match(await q.locator('#board-detail-content').innerText(), /0 points/);
+      await q.locator('#board-detail [data-period="all"]').click();
+      assert.match(await q.locator('#board-detail-content').innerText(), /1 points?/);
+      await q.locator('#board-detail-content .represented-projects a').click();
+      await q.locator('#board-detail [data-period="month"]').click();
+      assert.match(
+        await q.locator('#board-detail-content').innerText(),
+        /No accepted tips in this period/,
+      );
+      assert.equal(await q.locator('#board-detail-content .command').count(), 1);
+      await q.screenshot({
+        path: path.join(output, `share-no-period-tips-${width}.png`),
+        fullPage: true,
+      });
+      await q.close();
+      checks++;
+      const welcomeOnly = fixture('v2/readme-welcome');
+      welcomeOnly.tips = [];
+      const w = await page(width, welcomeOnly);
+      await w.goto(origin + '/tipjar/leaderboard.html?repository_id=101');
+      await w.locator('#board-detail[open]').waitFor();
+      assert.match(
+        await w.locator('#board-detail-content').innerText(),
+        /No accepted tips in this period/,
+      );
+      assert.equal(await w.locator('#board-detail-content .command').count(), 1);
+      await w.screenshot({
+        path: path.join(output, `share-welcome-only-${width}.png`),
+        fullPage: true,
+      });
+      await w.close();
+      checks++;
+      for (const query of [
+        'repository_id=999',
+        'author_id=999',
+        'repository_id=101&author_id=301',
+        'author_id=301&author_id=301',
+        'author_id=%3Cimg%20src=x%20onerror=alert(1)%3E',
+        'repository_id=101&period=bad',
+      ]) {
+        const u = await page(width);
+        await u.goto(origin + '/tipjar/leaderboard.html?' + query);
+        await u.locator('#people-content tbody').waitFor();
+        assert.equal(await u.locator('#board-detail').evaluate((e) => e.open), false);
+        assert.match(await u.locator('#share-status').innerText(), /unavailable/);
+        assert.equal(
+          await u
+            .locator('#share-status')
+            .innerText()
+            .then((s) => s.includes('999') || s.includes('<img')),
+          false,
+        );
+        assert.match(await u.locator('#board-status').innerText(), /Fresh observations/);
+        assert.equal(await u.locator('#share-status img').count(), 0);
+        if (query === 'author_id=999')
+          await u.screenshot({
+            path: path.join(output, `share-stale-${width}.png`),
+            fullPage: true,
+          });
+        await u.close();
+        checks++;
+      }
+      const e = await page(width, fixture('v2/expired'));
+      await e.goto(origin + '/tipjar/leaderboard.html?author_id=301');
+      await e.waitForFunction(() =>
+        document.getElementById('board-status').innerText.includes('Refresh overdue'),
+      );
+      assert.equal(await e.locator('#board-detail').evaluate((e) => e.open), false);
+      assert.equal(await e.locator('#copy-board-view').isVisible(), false);
+      await e.screenshot({ path: path.join(output, `share-expired-${width}.png`), fullPage: true });
+      await e.close();
+      checks++;
+      const x = await page(width);
+      await x.goto(origin + '/tipjar/leaderboard.html?author_id=301');
+      await x.locator('#board-detail[open]').waitFor();
+      await x.evaluate(() =>
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: {
+            writeText: () =>
+              new Promise((resolve, reject) => {
+                window.finishExpiredCopy = reject;
+              }),
+          },
+        }),
+      );
+      await x.getByRole('button', { name: 'Copy view link', exact: true }).click();
+      const retained = x.url();
+      await x.clock.setSystemTime(new Date('2026-11-05T12:00:00Z'));
+      await x.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      assert.equal(await x.locator('#board-detail').evaluate((e) => e.open), false);
+      await x.evaluate(() => window.finishExpiredCopy(new Error('expired clipboard failure')));
+      assert.equal(x.url(), retained);
+      assert.equal(await x.locator('#people-content tbody').count(), 0);
+      assert.equal(await x.locator('#welcome-content article').count(), 0);
+      assert.equal(await x.locator('#board-detail-content').innerText(), '');
+      assert.deepEqual(x.errors, []);
+      await x.close();
+      checks++;
+    }
+    for (const width of [1440, 390]) {
       const p = await page(width);
       await p.goto(origin + '/tipjar/index.html');
       assert.equal(await p.title(), 'Tipjar — a little work goes a long way');
@@ -95,7 +358,7 @@ const fixture = (name) =>
         path: path.join(output, `board-${width}.png`),
         fullPage: true,
       });
-      const opener = p.getByRole('button', {
+      const opener = p.getByRole('link', {
         name: 'fictional-giver',
         exact: true,
       });
@@ -121,7 +384,7 @@ const fixture = (name) =>
       assert.equal(await p.locator('#board-detail').evaluate((e) => e.open), true);
       await p.getByRole('button', { name: 'Close board details' }).click();
       await p
-        .getByRole('button', {
+        .getByRole('link', {
           name: 'fictional-demo/welcoming-jar',
           exact: true,
         })
@@ -187,7 +450,7 @@ const fixture = (name) =>
     await c.goto(origin + '/tipjar/leaderboard.html');
     await c.locator('#projects-content tbody').waitFor();
     await c
-      .getByRole('button', {
+      .getByRole('link', {
         name: 'fictional-demo/welcoming-jar',
         exact: true,
       })
@@ -244,7 +507,7 @@ const fixture = (name) =>
         else if (name === 'partial' || name === 'unknown')
           assert.match(await p.locator('#board-status').innerText(), /partial pour/);
         if (fresh && data.tips.length) {
-          await p.locator('#projects-content button').first().click();
+          await p.locator('#projects-content a.row-button').first().click();
           const observation = data.directory.observations[0],
             expectedFile =
               observation.source?.kind === 'readme'
@@ -273,7 +536,7 @@ const fixture = (name) =>
           fullPage: true,
         });
         if (name === 'readme-welcome') {
-          await p.locator('#projects-content button').first().click();
+          await p.locator('#projects-content a.row-button').first().click();
           await p.screenshot({
             path: path.join(output, `board2-readme-detail-${width}.png`),
             fullPage: true,

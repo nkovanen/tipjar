@@ -45,13 +45,14 @@
         ><a href="#welcoming">Welcoming jars ↓</a>
       </nav>
       <div class="board-toolbar">
-        <div class="period" role="group" aria-label="Ranking period">
+        <div id="board-period" class="period" role="group" aria-label="Ranking period">
           <button type="button" data-period="month" aria-pressed="true">This UTC month</button
           ><button type="button" data-period="30days" aria-pressed="false">Last 30 days</button
           ><button type="button" data-period="all" aria-pressed="false">All time</button>
         </div>
         <p id="freshness" class="board-freshness">Checking the latest snapshot…</p>
       </div>
+      <p id="share-status" class="micro" role="status" hidden></p>
       <div id="board-status" class="board-status" role="status">
         <strong>Filling the board…</strong>
         <p>Loading the public snapshot.</p>
@@ -71,7 +72,7 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">THOUGHTFUL PEOPLE. USEFUL LITTLE GIFTS.</p>
-            <h2 id="people-title">People giving back.</h2>
+            <h2 id="people-title" tabindex="-1">People giving back.</h2>
           </div>
           <p id="people-summary"></p>
         </div>
