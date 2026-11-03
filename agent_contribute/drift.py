@@ -13,12 +13,18 @@ def _sha(text):
 
 def drift(task, client=None, policy_sha256=None):
     if core.validate_contract(task):
-        raise core.ProtocolError('invalid_contract', 'Contract does not match its bundled schema')
+        raise core.ProtocolError('invalid_contract', '; '.join(core.validate_contract(task)))
     client = client or core.GitHub()
+    external = task['schema_version'] == '0.3'
+    if external:
+        if policy_sha256 is not None and policy_sha256 != task['source_review']['inventory_sha256']:
+            raise core.ProtocolError('usage', 'Task 0.3 policy baseline must match source_review.inventory_sha256')
+        policy_sha256 = task['source_review']['inventory_sha256']
+    protocol = 'tipjar-invitation/2' if external else 'tipjar-invitation/1'
     source = task['source']
     report = {'contract_sha256': core.canonical_hash(task), 'complete': False, 'drifted': None, 'errors': [],
               'notice': 'Report only. The contract is never rewritten; after drift, re-review and re-prepare it.'}
-    current = core.inspect_issue(f'{source["repository"]}#{source["issue"]}', client)
+    current = core.inspect_issue(f'{source["repository"]}#{source["issue"]}', client, invitation_protocol=protocol)
     if 'source' not in current:
         report['errors'] = list(current.get('errors') or ['Current source could not be read'])
         return report
@@ -46,7 +52,7 @@ def drift(task, client=None, policy_sha256=None):
     report['source'] = {'stored_repository': source['repository'], 'current_repository': live['repository'],
                         'stored_issue_url': source['issue_url'], 'current_issue_url': live['issue_url']}
     report['source']['changed'] = source['repository'] != live['repository'] or source['issue_url'] != live['issue_url']
-    if task['schema_version'] == '0.2':
+    if task['schema_version'] in ('0.2', '0.3'):
         from .authorization import issue_identity, repository_identity
         report['source']['stored_identity'] = {key: source[key] for key in ('repository_id', 'owner_id', 'issue_id')}
         try:
@@ -69,7 +75,7 @@ def drift(task, client=None, policy_sha256=None):
     try:
         # The pinned commit is immutable: re-reading it reconstructs per-file baselines without a schema change.
         baseline = core.repository_snapshot(live['repository'], client, core.repository_metadata(live['repository'], client),
-                                            commit=source['commit'])
+                                            commit=source['commit'], invitation_protocol=protocol)
         instructions['baseline_verified'] = (not baseline['errors'] and
                                              baseline['instructions_sha256'] == source['instructions_sha256'])
         if not instructions['baseline_verified']:
@@ -86,14 +92,20 @@ def drift(task, client=None, policy_sha256=None):
     before = baseline.get('tipjar') if baseline is not None else None
     after = current.get('tipjar')
     jar_changed = None if not before or not before['complete'] or not after or not after['complete'] else not tipjar.same_declaration(before, after)
+    reviewed_jar = None
+    if external:
+        reviewed_jar = {key: task['source_review']['jar_' + key] for key in ('state','sha256','source_kind','path','blob_sha','manifest_present')}
+        jar_changed = None if not after or not after['complete'] or not before or not before['complete'] else not tipjar.same_declaration(before, after) or any(after[key] != value for key, value in reviewed_jar.items())
     report['tipjar'] = {'baseline': before, 'current': after, 'changed': jar_changed}
+    if external:
+        report['tipjar']['reviewed'] = reviewed_jar
     if jar_changed is None:
         errors.append('Tipjar declaration baseline/current read unresolved')
     report['instructions'] = instructions
     policy = {'stored_approval': task['approval']['status'], 'current_approval': current['approval']['status'],
               'current_policy_state': current['provenance']['policy_state']}
     policy['changed'] = policy['stored_approval'] != policy['current_approval']
-    if task['schema_version'] == '0.2':
+    if task['schema_version'] in ('0.2', '0.3'):
         from .authorization import policy_hash
         policy.update(stored_policy_sha256=source['policy_sha256'], current_policy_sha256=policy_hash(current['provenance']))
         policy['changed'] = policy['changed'] or policy['stored_policy_sha256'] != policy['current_policy_sha256']
@@ -104,23 +116,43 @@ def drift(task, client=None, policy_sha256=None):
                          'scope': 'open PRs in the source repository only'}
     policy_changed = False
     if policy_sha256 is not None:
-        report['repository_policy_drift'] = _policy_drift(policy_sha256, current, baseline, source, client, errors)
+        report['repository_policy_drift'] = _policy_drift(policy_sha256, current, baseline, source, client, errors, inventory_format=4 if external else 3)
         policy_changed = report['repository_policy_drift']['policy_drifted'] is True
     report['drifted'] = bool(jar_changed or report['source']['changed'] or report['issue']['changed'] or instructions['changed'] or policy['changed'] or
                              report['overlap']['added'] or report['default_branch']['stored_branch'] !=
                              report['default_branch']['current_branch'] or policy_changed)
+    if external:
+        from . import authorization, external_tip
+        fork_report = {'expected_sha256': None, 'current_sha256': None, 'changed': None,
+                       'note': 'Task 0.3 stores no fork inventory baseline; compare this hash with the retained host assertion.'}
+        try:
+            name = task['execution']['head_repository']
+            meta = authorization.repository_identity(name, client)
+            if (meta['id'], meta['owner']['id']) != (task['execution']['head_repository_id'], task['execution']['head_owner_id']):
+                errors.append('Fork repository or owner identity changed')
+            snap = core.repository_snapshot(name, client, meta)
+            errors += snap['errors']
+            inv = policy_report.report(name, snap['commit'], snap['instructions'], client,
+                                       default_branch=meta['default_branch'], tipjar_report=snap['tipjar'])
+            errors += external_tip.inventory_binding_errors(snap, inv, meta["id"])
+            fork_report['current_sha256'] = inv['inventory_sha256']
+        except core.ProtocolError as exc:
+            errors.append('Could not inspect current fork policy: ' + str(exc))
+        report['external'] = dict(fork_policy=fork_report, manual_reread_required=True,
+                                  notice='Report only; no authority. Re-read all applicable external references with host tools; '
+                                         'inventory equality does not prove prose compliance or fresh host observations.')
     report['errors'] = errors
     report['complete'] = not errors
     return report
 
 
-def _policy_drift(expected, current, baseline, source, client, errors):
+def _policy_drift(expected, current, baseline, source, client, errors, inventory_format=3):
     """Compare the reviewed policy inventory hash with the inventory at the current default-branch commit (N1).
 
     Per-source deltas need a baseline: the inventory rebuilt at the contract's pinned commit must reproduce the
     recorded hash. The owner .github repository is read at its current tip, so it may not; then only the hash
     comparison is reported, never invented deltas."""
-    now = policy_report.for_inspected(current, client)
+    now = policy_report.for_inspected(current, client, inventory_format=inventory_format)
     incomplete = not now['tipjar']['complete'] or now['limits_hide_sources'] or any(item['reason'] in POLICY_READ_FAILURES for item in now['unassessed'])
     result = {'expected_sha256': expected, 'current_sha256': now['inventory_sha256'],
               'policy_drifted': None if incomplete else now['inventory_sha256'] != expected,
@@ -135,7 +167,7 @@ def _policy_drift(expected, current, baseline, source, client, errors):
     if baseline is not None and not baseline['errors']:
         hashes = {}
         then = policy_report.report(source['repository'], source['commit'], baseline['instructions'], client,
-                                    default_branch=source['default_branch'], hashes=hashes)
+                                    default_branch=source['default_branch'], hashes=hashes, inventory_format=inventory_format)
         # The same pinned snapshot hashed under another known format identifies the recorded hash's format.
         fmt = next((fmt for fmt, digest in sorted(hashes.items(), reverse=True) if digest == expected), None)
         result['baseline_verified'] = fmt is not None

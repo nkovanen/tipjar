@@ -10,8 +10,10 @@
     />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
+    <script src="model.js" defer></script>
+    <script src="landing.js" defer></script>
     <title>Tipjar — a little work goes a long way</title>
     <link rel="icon" href="brand/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="style.css" />
@@ -32,6 +34,7 @@
       >
     </header>
     <main>
+      <p id="repository-invitation" class="shell authority-note" role="status" hidden></p>
       <section class="hero shell" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow">

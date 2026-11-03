@@ -45,6 +45,8 @@ class PolicyGitHub:
             for entry in result.get('tree', []):
                 entry.setdefault('sha', 'b' * 40)
                 entry.setdefault('mode', '100644')
+        if '/contents/' in endpoint and isinstance(result, dict):
+            result.update(type='file', path=__import__('urllib.parse',fromlist=['unquote']).unquote(endpoint.split('/contents/')[1].split('?')[0]), size=len(base64.b64decode(result['content'])))
         return result
 
     def request(self, endpoint):
@@ -57,7 +59,7 @@ class PolicyGitHub:
             raise failure
         for name, repo in self.repos.items():
             if path == f'repos/{name}':
-                return {'full_name': name, 'default_branch': repo['branch'], 'fork': False, 'has_issues': True}
+                return {'id': 101 if name == 'acme/photos' else 102, 'full_name': name, 'default_branch': repo['branch'], 'fork': False, 'has_issues': True}
             if path in (f'repos/{name}/commits/{repo["branch"]}', f'repos/{name}/commits/{repo["commit"]}'):
                 return {'sha': repo['commit'], 'commit': {'tree': {'sha': 'c' * 40}}}
             if path in (f'repos/{name}/git/trees/{repo["commit"]}', f'repos/{name}/git/trees/{"c" * 40}'):

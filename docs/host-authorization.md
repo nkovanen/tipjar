@@ -366,3 +366,12 @@ Schema 0.1 remains the default and keeps its original behavior, including its
 own-draft overlap blocker. It rejects host context and explicit lifecycle stages.
 Use a newly reviewed schema 0.2 task for this route; never silently migrate an old
 contract or reinterpret its authorization prose.
+
+## External contribution route
+
+Task schema 0.3 explicitly supports a reviewed draft from a personal immediate
+fork to a human-selected public upstream issue, with separate implementation and
+exact-result publication assertions. Welcome and undeclared sources both require
+complete source/fork policy accounting; no invitation or approval is invented.
+See [the complete external-tip workflow](external-tips.md) for commands, records, pause points and limits. Evidence
+remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.

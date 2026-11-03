@@ -881,3 +881,5 @@ dialog h2{font-size:27px}
     grid-template-columns: 1fr;
   }
 }
+
+.invitation-preview { max-width: 100%; height: auto; }

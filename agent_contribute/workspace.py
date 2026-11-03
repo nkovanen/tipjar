@@ -121,7 +121,7 @@ def evidence_skeleton(task, directory, base):
             'base_history', 'Base must descend from source.commit and be an ancestor of HEAD')) from None
     if core.has_gitlink(directory, head, base):
         raise core.ProtocolError('gitlink', 'Submodule/gitlink evidence is unsupported; no submodule commands were run')
-    version = task['schema_version']
+    version = core.evidence_version(task['schema_version'])
     attestation = {'status': 'pending', 'reviewer': '', 'git_head': '', 'contract_sha256': '', 'notes': ''}
     skeleton = {'schema_version': version, 'contract_sha256': core.canonical_hash(task),
                 'git_head': head, 'git_tree': core.git_read(directory, 'rev-parse', head + '^{tree}'), 'base_commit': base,

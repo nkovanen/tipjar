@@ -7,6 +7,12 @@ import unittest
 
 
 class WebModelTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('node'), 'Node required for landing handoff tests')
+    def test_landing_repository_handoff_is_validated_and_encoded(self):
+        root=Path(__file__).resolve().parents[1]
+        result=subprocess.run(['node',str(root/'tests/web/landing.test.cjs')],cwd=root,capture_output=True,text=True,timeout=20)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+
     @unittest.skipUnless(shutil.which('node'), 'Node required for static web model tests')
     def test_snapshot_and_manifest_boundaries(self):
         root = Path(__file__).resolve().parents[1]

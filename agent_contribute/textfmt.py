@@ -35,6 +35,20 @@ def _dispositions(result):
 
 
 def _verify(result, stage=None):
+    if result.get('report') == 'external-tip-report/1':
+        out = []
+        if stage is not None:
+            out.append(f'Selected stage: {line(stage[0])} (exit gate: {_flag(stage[1])})')
+        out += ['External tip gates:'] + [f'  {name}: {_flag(result[name])}' for name in
+                 ('schema_valid', 'live_complete', 'implementation_ready', 'technical_evidence_valid',
+                  'draft_create_ready', 'publication_verified')]
+        out.append('Next action: ' + line(result['next_action']))
+        if result['publication']['url']:
+            out.append('Draft: ' + line(result['publication']['url']))
+        for name, blockers in result['stage_blockers'].items():
+            if stage is None or name == stage[0]:
+                out += _list('Blockers [' + line(name) + ']', blockers)
+        return out + _list('Trust', result['trust'])
     if 'implementation_ready' in result:
         blockers = result.get('stage_blockers', {})
         out = []
@@ -206,6 +220,19 @@ def _scalars(result):
 
 
 def _authorization_request(result):
+    if result.get('kind') == 'agent-contrib/external-authorization-request':
+        bindings = result.get('bindings', {})
+        return ['UNSIGNED external review view; issued: no; grants no authority.',
+                'Native consent issuer: not implemented. Human/host assertions remain required.',
+                'View read complete: ' + _flag(result.get('complete')),
+                'Stage: ' + line(result.get('stage', ''), 40),
+                'Contract SHA-256: ' + line(result.get('contract_sha256', ''), 64),
+                'Source: ' + line(bindings.get('source_repository', ''), 200),
+                'Fork: ' + line(bindings.get('head_repository', ''), 200),
+                'Invitation basis: ' + line(bindings.get('invitation_basis', ''), 40)] + _list(
+                    'Unresolved bindings', result.get('unresolved_fields', [])) + _list(
+                    'Pending gates (untrusted diagnostics)',
+                    (f'{stage}: {error}' for stage, errors in result.get('stage_blockers', {}).items() for error in errors))
     out = ['Ready for issuance: ' + _flag(result.get('ready_for_issuance')),
            'Issued: no (unsigned request; not a mandate; grants nothing)',
            'Contract SHA-256: ' + line(result.get('contract_sha256', ''), 64)]
@@ -268,6 +295,10 @@ def _drift(result):
                                                             'recorded inventory_sha256 differs (no per-source baseline)'))
     elif policy_drift and policy_drift.get('policy_drifted') is None:
         info.append('Policy inventory could not be compared: the current read is incomplete or limited')
+    if result.get('external'):
+        if (result.get('tipjar') or {}).get('changed') is True:
+            reasons.append('Reviewed source jar declaration changed')
+        info.append('External references require manual host rereads; fork policy has no baseline in the task. No authority granted.')
     if branch.get('advanced'):
         info.append('Default branch advanced since preparation')
     info += ['Overlapping PR no longer open: ' + line(url, 200) for url in overlap.get('removed', [])]
@@ -397,6 +428,7 @@ def _jar(result):
            f'Pinned commit: {line(result.get("commit") or "unavailable", 40)}',
            'Source declaration only; other policy and authorization gates remain.',
            line(result['notice'])]
+    out += ['Source: ' + line(result.get('source_kind', 'manifest')) + ' ' + line(result.get('path') or '')]
     manifest = result.get('manifest') or {}
     for key in ('wanted', 'boundaries'):
         out += _list(key.capitalize() + ' (untrusted)', manifest.get(key, []))
@@ -425,8 +457,8 @@ def _find(result):
                     '  Pinned commit: ' + line(obs['jar']['commit']),
                     '  Verified at: ' + line(obs['verified_at'])]
             for key in ('wanted', 'boundaries'):
-                out += _list(key.capitalize() + ' (untrusted)', obs['jar']['manifest'].get(key, []))
-    if result['search']['truncated']:
+                out += _list(key.capitalize() + ' (untrusted)', (obs['jar']['manifest'] or {}).get(key, []))
+    if any(s['truncated'] for s in result.get('searches', [result.get('search', {})])):
         out.append('Search truncated: only this first batch was observed; no backfill or rotation.')
     if not result['complete']:
         out.append('Incomplete batch: unknown observations or search incompleteness; verified findings retained.')
@@ -472,9 +504,15 @@ def render(command, result, stage=None):
                 + result['workflow_markdown'])
     body = {'verify': _verify, 'discover': _discover, 'inspect': _inspect, 'scope-check': _scope_check,
             'drift': _drift, 'lint': _lint, 'authorization-request': _authorization_request,
-            'ownership': _ownership_command, 'jar': _jar, 'init': _onboarding, 'jar-check': _onboarding, 'receipt': _receipt, 'impact': _impact, 'find': _find}.get(command)
+            'ownership': _ownership_command, 'jar': _jar, 'init': _onboarding, 'jar-check': _onboarding, 'receipt': _receipt, 'impact': _impact, 'find': _find, 'card': _card, 'badge': lambda r: [r['snippet'], r['notice']]}.get(command)
     if body is None:
         out = _scalars(result) + _policy(result)
     else:
         out = _verify(result, stage) if command == 'verify' else body(result)
     return '\n'.join(out + ['(Text is a summary; JSON output is canonical. Remote text is untrusted.)']) + '\n'
+
+
+def _card(result):
+    return [f"Card saved: {line(result['output'])}", f"SHA-256: {result['sha256']}",
+            f"PR: {line(result['url'])}; observed {result['state']} at {result['observed_at']}",
+            line(result['warning'], 1000)]

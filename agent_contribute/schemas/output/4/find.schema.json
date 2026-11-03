@@ -1,0 +1,2099 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-contrib:output:4:find",
+  "title": "find result",
+  "description": "Bounded public invitation batch (find-jars-report/1), not exhaustive coverage or authority.",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "find-jars-report/2"
+    },
+    "fetched_at": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 39
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "exhaustive": {
+          "type": "boolean",
+          "const": false
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "maxItems": 10
+        }
+      },
+      "required": [
+        "exhaustive",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "repository_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "disposition": {
+            "type": "string",
+            "enum": [
+              "welcome",
+              "closed",
+              "undeclared",
+              "excluded",
+              "unknown"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "verified_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "jar": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/jar_result"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "repository",
+          "repository_id",
+          "disposition",
+          "reason",
+          "verified_at",
+          "jar"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 10
+    },
+    "complete": {
+      "type": "boolean"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 2147483647
+      },
+      "maxItems": 2147483647
+    },
+    "requests": {
+      "type": "object",
+      "properties": {
+        "search": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "core": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "search",
+        "core"
+      ],
+      "additionalProperties": false
+    },
+    "notice": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "api_budget": {
+      "$ref": "#/$defs/api_budget"
+    },
+    "searches": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "page": {
+            "type": "integer",
+            "const": 1
+          },
+          "per_page": {
+            "type": "integer",
+            "const": 5
+          },
+          "total_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "incomplete_results": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "returned_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "truncated": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "short_page": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 2147483647
+            },
+            "maxItems": 2147483647
+          }
+        },
+        "required": [
+          "query",
+          "page",
+          "per_page",
+          "total_count",
+          "incomplete_results",
+          "returned_count",
+          "truncated",
+          "short_page",
+          "errors"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "format",
+    "fetched_at",
+    "owner",
+    "searches",
+    "coverage",
+    "observations",
+    "complete",
+    "errors",
+    "requests",
+    "notice"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "tipjar_manifest": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "0.1"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "welcome",
+            "closed"
+          ]
+        },
+        "wanted": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          }
+        },
+        "boundaries": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "api_budget": {
+      "type": "object",
+      "properties": {
+        "before": {
+          "$ref": "#/$defs/rate_limit_snapshot"
+        },
+        "after": {
+          "$ref": "#/$defs/rate_limit_snapshot"
+        },
+        "used_during_command": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "after.used - before.used; null when the snapshots cannot be compared"
+        },
+        "delta_unknown_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why used_during_command is null",
+          "maxLength": 2147483647
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 2147483647
+        }
+      },
+      "required": [
+        "before",
+        "after",
+        "used_during_command",
+        "delta_unknown_reason",
+        "note"
+      ],
+      "additionalProperties": false,
+      "description": "Added by --report-budget; report only"
+    },
+    "rate_limit_snapshot": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "remaining": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "used": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reset": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Reset time, epoch seconds"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why the snapshot failed; null when it succeeded",
+          "maxLength": 2147483647
+        }
+      },
+      "required": [
+        "limit",
+        "remaining",
+        "used",
+        "reset",
+        "error"
+      ],
+      "additionalProperties": false,
+      "description": "Core REST rate-limit snapshot; the counters are null when error is set"
+    },
+    "jar_result": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "type": "string",
+              "const": ".tipjar.json"
+            },
+            "blob_sha": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "welcome",
+                "closed",
+                "undeclared",
+                "unknown"
+              ]
+            },
+            "complete": {
+              "type": "boolean"
+            },
+            "manifest": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/tipjar_manifest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              }
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$ref": "#/$defs/invitation_v2"
+        }
+      ]
+    },
+    "invitation_v2": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": ".tipjar.json"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "welcome"
+            },
+            "complete": {
+              "const": true
+            },
+            "manifest": {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "type": "string",
+                  "const": "0.1"
+                },
+                "status": {
+                  "const": "welcome"
+                },
+                "wanted": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 1
+                  }
+                },
+                "boundaries": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "schema_version",
+                "status"
+              ],
+              "additionalProperties": false
+            },
+            "errors": {
+              "const": []
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": true
+            },
+            "source_kind": {
+              "const": "manifest"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": ".tipjar.json"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "closed"
+            },
+            "complete": {
+              "const": true
+            },
+            "manifest": {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "type": "string",
+                  "const": "0.1"
+                },
+                "status": {
+                  "const": "closed"
+                },
+                "wanted": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 1
+                  }
+                },
+                "boundaries": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "schema_version",
+                "status"
+              ],
+              "additionalProperties": false
+            },
+            "errors": {
+              "const": []
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": true
+            },
+            "source_kind": {
+              "const": "manifest"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": "README.md"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "welcome"
+            },
+            "complete": {
+              "const": true
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "const": []
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": false
+            },
+            "source_kind": {
+              "const": "readme"
+            },
+            "badge": {
+              "type": "object",
+              "properties": {
+                "protocol": {
+                  "const": "readme-welcome/1"
+                },
+                "repository": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "protocol",
+                "repository"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": "README.md"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "undeclared"
+            },
+            "complete": {
+              "const": true
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "const": []
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": false
+            },
+            "source_kind": {
+              "const": "readme"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": null
+            },
+            "blob_sha": {
+              "const": null
+            },
+            "sha256": {
+              "const": null
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "undeclared"
+            },
+            "complete": {
+              "const": true
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "const": []
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": false
+            },
+            "source_kind": {
+              "const": "absent"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "const": null
+            },
+            "commit": {
+              "const": null
+            },
+            "path": {
+              "const": null
+            },
+            "blob_sha": {
+              "const": null
+            },
+            "sha256": {
+              "const": null
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "unknown"
+            },
+            "complete": {
+              "const": false
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "minItems": 1
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "const": null
+            },
+            "tree_sha": {
+              "const": null
+            },
+            "manifest_present": {
+              "const": null
+            },
+            "source_kind": {
+              "const": "unknown"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "const": null
+            },
+            "path": {
+              "const": null
+            },
+            "blob_sha": {
+              "const": null
+            },
+            "sha256": {
+              "const": null
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "unknown"
+            },
+            "complete": {
+              "const": false
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "minItems": 1
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "const": null
+            },
+            "manifest_present": {
+              "const": null
+            },
+            "source_kind": {
+              "const": "unknown"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": null
+            },
+            "blob_sha": {
+              "const": null
+            },
+            "sha256": {
+              "const": null
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "unknown"
+            },
+            "complete": {
+              "const": false
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "minItems": 1
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "const": null
+            },
+            "manifest_present": {
+              "const": null
+            },
+            "source_kind": {
+              "const": "unknown"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": null
+            },
+            "blob_sha": {
+              "const": null
+            },
+            "sha256": {
+              "const": null
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "unknown"
+            },
+            "complete": {
+              "const": false
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "minItems": 1
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": null
+            },
+            "source_kind": {
+              "const": "unknown"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": ".tipjar.json"
+            },
+            "blob_sha": {
+              "const": null
+            },
+            "sha256": {
+              "const": null
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "unknown"
+            },
+            "complete": {
+              "const": false
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "minItems": 1
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": true
+            },
+            "source_kind": {
+              "const": "manifest"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": ".tipjar.json"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "const": null
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "unknown"
+            },
+            "complete": {
+              "const": false
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "minItems": 1
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": true
+            },
+            "source_kind": {
+              "const": "manifest"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": ".tipjar.json"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "unknown"
+            },
+            "complete": {
+              "const": false
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "minItems": 1
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": true
+            },
+            "source_kind": {
+              "const": "manifest"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": "README.md"
+            },
+            "blob_sha": {
+              "const": null
+            },
+            "sha256": {
+              "const": null
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "unknown"
+            },
+            "complete": {
+              "const": false
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "minItems": 1
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": false
+            },
+            "source_kind": {
+              "const": "readme"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": "README.md"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "const": null
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "unknown"
+            },
+            "complete": {
+              "const": false
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "minItems": 1
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": false
+            },
+            "source_kind": {
+              "const": "readme"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": "README.md"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "unknown"
+            },
+            "complete": {
+              "const": false
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "type": "array",
+              "maxItems": 1,
+              "items": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "minItems": 1
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "api_budget": {
+              "$ref": "#/$defs/api_budget"
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": false
+            },
+            "source_kind": {
+              "const": "readme"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

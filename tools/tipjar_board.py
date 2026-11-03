@@ -363,7 +363,7 @@ def _directory(reads, candidate):
     if meta['archived'] or meta['disabled']:
         state='excluded'
     else:
-        jar=tipjar.read_jar(name,reads,metadata=meta)
+        jar=tipjar.read_jar(name,reads,metadata=meta,invitation_protocol=tipjar.LEGACY)
         # Refuse future reader contracts rather than guessing their provenance.
         if set(jar) != {'repository','default_branch','commit','path','blob_sha','sha256','fetched_at','state','complete','manifest','errors','notice'}:
             raise core.ProtocolError('unsupported_board_reader','Unsupported canonical reader contract for board/1')
@@ -455,7 +455,7 @@ def collect(registry: dict, client=None, *, now=None, source_commit, controller_
             except core.ProtocolError:
                 continue
         if key not in tips:coverage['unknown_tips']+=1
-    report=find.find_jars(reads)
+    report=find.find_jars(reads,invitation_protocol=tipjar.LEGACY)
     require(report.get('format')=='find-jars-report/1')
     directory={'complete':bool(report['complete']),'search_failed':'search_failed' in report['errors'],
                'server_incomplete':bool(report['search'].get('incomplete_results')),

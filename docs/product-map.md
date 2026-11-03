@@ -9,16 +9,21 @@ Tipjar 0.3.0 is an **unreleased candidate**. Development continues in
 - Public community board: curated opt-in merged tips, most-tipped projects and
   fresh welcoming jars, with partial coverage and expiring observations. The
   production registry starts empty; no participation is implied.
-- Repository invitations: validate `.tipjar.json` manifest 0.1, inspect a pinned
+- Repository invitations: recognize the exact repository-scoped official README
+  prefix and validate `.tipjar.json` manifest 0.1, inspect a pinned
   declaration with `jar`, and enforce welcome/closed/unknown states during
   discovery, preparation and live verification. A valid `closed` declaration is
   an implemented machine-readable opt-out. An absent jar grants no approval.
-- `find`: verify one indexed public batch of at most ten invitation candidates;
+- `find`: verify one shared batch from two indexed public searches, five hits each;
   `--owner` narrows the search. Indexing can lag and no adoption is established.
 - Issue discovery across named repositories, bounded `discover --limit` display,
   optional heuristic ranking and reports of ownership, overlap and prior fixes.
 - Offline GitHub dependency candidates, bounded gift-session planning, public PR
-  receipts and offline impact summaries.
+  receipts, offline impact summaries and SVG gift cards.
+- Task 0.3 external contributions from an immediate personal fork to a reviewed
+  public issue, with separate implementation and exact-result publication gates.
+  README/manifest provenance is bound through inventory format 4; old unpublished
+  0.3 drafts require repreparation and fresh authorization.
 - Task preparation, offline lint/scope checks, evidence skeletons, drift reports,
   PR-body generation and feedback observations.
 - Schema 0.2 owner/maintainer authorization with separate implementation, draft
@@ -36,9 +41,9 @@ Tipjar 0.3.0 is an **unreleased candidate**. Development continues in
 - Authorization records are checked, but no native human/host mandate issuer
   ships. Evidence remains self-attested consistency data, not proof of consent
   or execution. See [host authorization](host-authorization.md).
-- The general outside-contributor upstream route is not implemented by a jar
-  invitation alone. Existing fork experiments and owner/maintainer routes keep
-  their documented boundaries.
+- A jar invitation alone grants no outside-contributor upstream authority; use
+  the explicit [external-tip route](external-tips.md). Existing fork experiments
+  and owner/maintainer routes retain their documented boundaries.
 - Draft updates are recognized after the authorized push; pre-push readiness,
   force-push adoption and reopening are unsupported.
 - Policy hints, ownership, possible prior fixes and signature observations are

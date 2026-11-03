@@ -44,7 +44,7 @@ def _sha(value):
     return value
 
 
-def read_jar(repository: str, client=None, *, commit: str | None = None, metadata: dict | None = None) -> dict:
+def _read_legacy(repository: str, client=None, *, commit: str | None = None, metadata: dict | None = None) -> dict:
     """At most four gh api invocations without application retries; require a complete pinned tree.
 
     gh may follow internal HTTP redirects; this is not a raw HTTP request cap.
@@ -122,14 +122,97 @@ def read_jar(repository: str, client=None, *, commit: str | None = None, metadat
     return result
 
 
+LEGACY = 'tipjar-invitation/1'
+CURRENT = 'tipjar-invitation/2'
+
+
+def read_jar(repository, client=None, *, commit=None, metadata=None, invitation_protocol=CURRENT):
+    if invitation_protocol == LEGACY:
+        return _read_legacy(repository, client, commit=commit, metadata=metadata)
+    if invitation_protocol != CURRENT:
+        raise core.ProtocolError('unsupported_schema', 'Unsupported invitation protocol')
+    from . import readme_invitation as readme
+    repository = core.parse_repository(repository)
+    client = client or core.GitHub()
+    get = getattr(client, 'request_once', None) or client.request
+    result = dict(repository=repository, repository_id=None, default_branch=None, commit=None, tree_sha=None,
+                  manifest_present=None, source_kind='unknown', path=None, blob_sha=None, sha256=None,
+                  fetched_at=dt.datetime.now(dt.timezone.utc).isoformat(), state='unknown', complete=False,
+                  manifest=None, badge=None, errors=[], notice=NOTICE)
+    try:
+        meta = core.require(metadata if metadata is not None else get('repos/' + repository), dict, 'metadata')
+        canonical = core.parse_repository(meta.get('full_name'))
+        if canonical.casefold() != repository.casefold() or type(meta.get('id')) is not int or meta['id'] <= 0:
+            raise core.ProtocolError('repository_identity', 'Invalid or changed repository identity')
+        branch = core.require(meta.get('default_branch'), str, 'default branch')
+        if not branch.strip() or len(branch) > 1024 or any(ord(c) < 32 or ord(c) == 127 for c in branch):
+            raise core.ProtocolError('api_shape', 'Invalid default branch')
+        result.update(repository=canonical, repository_id=meta['id'], default_branch=branch)
+        reference = _sha(commit) if commit is not None else quote(branch, safe='')
+        resolved = core.require(get(f'repos/{canonical}/commits/{reference}'), dict, 'commit')
+        pinned = _sha(resolved.get('sha'))
+        if commit is not None and pinned != commit:
+            raise core.ProtocolError('api_shape', 'Mismatched pinned commit')
+        result['commit'] = pinned
+        expected = _sha(core.require(core.require(resolved.get('commit'), dict, 'commit').get('tree'), dict, 'tree').get('sha'))
+        tree = core.require(get(f'repos/{canonical}/git/trees/{expected}?recursive=1'), dict, 'tree')
+        if _sha(tree.get('sha')) != expected:
+            raise core.ProtocolError('api_shape', 'Mismatched tree')
+        result['tree_sha'] = expected
+        if tree.get('truncated') is not False:
+            raise core.ProtocolError('api_shape', 'Incomplete tree')
+        entries = core.require(tree.get('tree'), list, 'entries')
+        core.tree_entries(entries)
+        for entry in entries:
+            _sha(entry.get('sha'))
+        manifest = next((e for e in entries if e['path'] == PATH), None)
+        result['manifest_present'] = manifest is not None
+        selected = manifest if manifest is not None else next((e for e in entries if e['path'] == 'README.md'), None)
+        if selected is None:
+            result.update(source_kind='absent', state='undeclared', complete=True)
+            return result
+        path = selected['path']
+        result.update(path=path, source_kind='manifest' if manifest is not None else 'readme')
+        if selected['type'] != 'blob' or selected.get('mode') not in ('100644', '100755'):
+            raise core.ProtocolError('invalid_tipjar', 'Invitation source must be a regular blob')
+        result['blob_sha'] = selected['sha']
+        bound = MAX_BYTES if manifest is not None else readme.MAX_BYTES
+        if 'size' in selected and (type(selected['size']) is not int or not 0 <= selected['size'] <= bound):
+            raise core.ProtocolError('invalid_tipjar', 'Invitation source exceeds byte bound')
+        value = core.require(get(f'repos/{canonical}/contents/{path}?ref={pinned}'), dict, 'contents')
+        if value.get('path') != path or value.get('type') != 'file' or value.get('encoding') != 'base64':
+            raise core.ProtocolError('invalid_tipjar', 'Invalid invitation contents response')
+        encoded = core.require(value.get('content'), str, 'base64')
+        if len(encoded) > (bound + 2) // 3 * 4 + 1024:
+            raise core.ProtocolError('invalid_tipjar', 'Invitation source exceeds encoded bound')
+        try:
+            data = base64.b64decode(encoded.replace('\n', '').encode('ascii'), validate=True)
+        except (ValueError, UnicodeError, binascii.Error):
+            raise core.ProtocolError('invalid_tipjar', 'Invalid invitation base64') from None
+        if (len(data) > bound or 'size' in selected and selected['size'] != len(data) or
+                type(value.get('size')) is not int or value['size'] != len(data) or
+                value.get('sha') != selected['sha'] or cache.blob_sha(data) != selected['sha']):
+            raise core.ProtocolError('invalid_tipjar', 'Invitation bytes do not match pinned size/blob')
+        result['sha256'] = hashlib.sha256(data).hexdigest()
+        if manifest is not None:
+            parsed = parse_manifest(data)
+            result.update(manifest=parsed, state=parsed['status'], complete=True)
+        else:
+            parsed = readme.parse_readme_invitation(data, canonical)
+            result.update(parsed, complete=parsed['state'] != 'unknown')
+    except core.ProtocolError:
+        result['errors'] = ['Invitation source could not be resolved or validated at its pinned identity']
+    return result
+
+
 # Reviewed plan name; keep one implementation for both callers.
 inspect_jar = read_jar
 
 
-def _complete_report(report):
+def _complete_legacy(report):
     """Validate report data, not its authenticity; live callers must establish their own pin."""
     from .outputs import output_schema
-    if core.schema_errors(report, output_schema('jar')) or report['complete'] is not True:
+    if core.schema_errors(report, output_schema('jar', version='3')) or report['complete'] is not True:
         return False
     try:
         core.parse_repository(report['repository'])
@@ -137,7 +220,9 @@ def _complete_report(report):
         branch = report['default_branch']
         if not isinstance(branch, str) or not branch.strip() or any(ord(c) < 32 or ord(c) == 127 for c in branch):
             return False
-        if not report['notice'].strip() or dt.datetime.fromisoformat(report['fetched_at']).utcoffset() is None:
+        stamp = report['fetched_at']
+        stamp = stamp[:-1] + '+00:00' if stamp.endswith('Z') else stamp
+        if not report['notice'].strip() or dt.datetime.fromisoformat(stamp).utcoffset() is None:
             return False
         if report['errors']:
             return False
@@ -151,17 +236,51 @@ def _complete_report(report):
         return False
 
 
+def _complete_report(report):
+    if not isinstance(report, dict):
+        return False
+    if 'source_kind' not in report:
+        return _complete_legacy(report)
+    from .outputs import output_schema
+    if core.schema_errors(report, output_schema('jar')) or not report['complete']:
+        return False
+    try:
+        core.parse_repository(report['repository'])
+        branch = report['default_branch']
+        if not isinstance(branch, str) or not branch.strip() or any(ord(c) < 32 or ord(c) == 127 for c in branch):
+            return False
+        if report['source_kind'] == 'manifest':
+            parsed = parse_manifest(json.dumps(report['manifest'], ensure_ascii=False, separators=(',', ':')).encode('utf-8'))
+            if parsed['status'] != report['state']: return False
+        stamp = report['fetched_at']
+        stamp = stamp[:-1] + '+00:00' if stamp.endswith('Z') else stamp
+        if dt.datetime.fromisoformat(stamp).utcoffset() is None or report['errors']:
+            return False
+        if report['source_kind'] == 'readme' and report['state'] == 'welcome':
+            return report['badge'] == dict(protocol='readme-welcome/1', repository=report['repository'].lower())
+        return True
+    except (ValueError, TypeError, core.ProtocolError):
+        return False
+
+
 def same_declaration(before: dict, after: dict) -> bool:
     """Compare structurally complete declarations; matching data alone authenticates neither report."""
+    keys = ('default_branch', 'path', 'state', 'sha256', 'blob_sha', 'manifest')
+    if isinstance(before, dict) and 'source_kind' in before:
+        keys += ('repository_id', 'source_kind', 'manifest_present', 'badge')
     return (_complete_report(before) and _complete_report(after) and
-            all(before[key] == after[key] for key in
-                ('repository', 'default_branch', 'path', 'state', 'sha256', 'blob_sha', 'manifest')))
+            ('source_kind' in before) == ('source_kind' in after) and
+            (before['repository'].casefold() == after['repository'].casefold() if 'source_kind' in before else
+             before['repository'] == after['repository']) and
+            all(before.get(key) == after.get(key) for key in keys))
 
 
 def preparation_errors(report: dict, *, source=None) -> list[str]:
     """Validate pending-draft input offline. A caller report is not proof of a source read."""
     if not _complete_report(report):
         return ['Tipjar source declaration is unknown; refresh and review source policy']
+    if source is not None and isinstance(source, dict) and 'repository_id' in source and report.get('repository_id') != source['repository_id']:
+        return ['Tipjar numeric source identity does not match inspection; refresh inspection']
     if source is not None and (not isinstance(source, dict) or
             any(report[key] != source.get(key) for key in ('repository', 'commit', 'default_branch'))):
         return ['Tipjar source identity does not match inspection; refresh inspection']
@@ -175,13 +294,13 @@ def live_errors(task: dict, current: dict, client) -> list[str]:
     source = task['source']
     supplied = current.get('tipjar')
     errors = preparation_errors(supplied, source=current.get('source', {}))
-    report = inspect_jar(source['repository'], client)
+    report = inspect_jar(source['repository'], client, invitation_protocol=LEGACY)
     errors.extend(preparation_errors(report, source=current.get('source', {})))
     if report.get('default_branch') != source['default_branch']:
         errors.append('Tipjar source default branch changed; refresh and review contract')
     if not same_declaration(supplied, report):
         errors.append('Tipjar supplied declaration does not match the freshly read source')
-    baseline = inspect_jar(source['repository'], client, commit=source['commit'])
+    baseline = inspect_jar(source['repository'], client, commit=source['commit'], invitation_protocol=LEGACY)
     errors.extend('Baseline: ' + error for error in preparation_errors(baseline))
     if not same_declaration(baseline, report):
         errors.append('Tipjar declaration changed or baseline unresolved; refresh and review contract')

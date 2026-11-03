@@ -1,3 +1,6 @@
+<!-- tipjar:welcome:v1 -->
+[![Agent-work tips welcome](https://nkovanen.github.io/tipjar/brand/agent-work-welcome.svg)](https://nkovanen.github.io/tipjar/?repo=nkovanen%2Ftipjar)
+
 # Tipjar
 
 **[Visit Tipjar →](https://nkovanen.github.io/tipjar/)** · [Community board](https://nkovanen.github.io/tipjar/leaderboard.html) · [Find a welcoming jar](https://nkovanen.github.io/tipjar/leaderboard.html#welcoming)
@@ -63,7 +66,7 @@ tipjar lint task.json
 tipjar verify task.json
 ```
 
-`find` verifies one batch of at most ten indexed public invitation candidates.
+`find` verifies one batch from two searches of at most five indexed public invitation candidates each.
 It is not an exhaustive directory, indexing can lag, and no adoption is
 established. `jar` reads one repository's pinned invitation directly. `find` and
 `discover --welcomed-only` select only `welcome` observations, subject to policy
@@ -81,6 +84,21 @@ nothing is automatically merged or released.
 You can also shortlist GitHub projects from local dependency declarations with
 `dependencies`, plan a bounded offline gift-work `session`, and record public
 PR observations with `receipt` and `impact`. These reports grant no authority.
+
+## Welcome tips with your README
+
+Generate the exact repository-scoped snippet offline with `tipjar badge owner/repo`.
+Paste it at byte zero of root README.md, including its blank third line.
+`.tipjar.json` takes precedence, including a closed manifest. A copied fork badge
+is unresolved until its owner intentionally corrects or removes it. See
+[README invitations](docs/readme-invitations.md).
+
+For an outside contribution, explicitly use **task 0.3 external tips**: review a
+public issue and both source/fork policies, authorize work in your immediate
+personal fork, then separately approve the tested result and exact upstream draft
+payload. `verify --stage published` returns the observed draft URL; fork-only work
+is not delivery upstream. Start with the complete
+[external-tip workflow](docs/external-tips.md), including its manual no-jar path.
 
 ## Approval and authorization
 
@@ -115,6 +133,7 @@ an audit trail, not cryptographic consent ([host authorization](docs/host-author
 
 | Command | Purpose |
 | --- | --- |
+| `badge` | Print the official repository-scoped README invitation snippet offline |
 | `init`, `jar-check` | Create an explicit-state local invitation template; validate a local manifest offline |
 | `dependencies` | Offline GitHub give-back candidates from local dependency declarations ([workflow](docs/dependencies.md)) |
 | `session` | [Plan an offline gift-work shortlist](docs/planning-sessions.md) with explicit stopping caps |
@@ -122,14 +141,14 @@ an audit trail, not cryptographic consent ([host authorization](docs/host-author
 | `find` | Verify one public invitation batch (`--owner OWNER` optional) |
 | `discover` | Rank issues of one repository, or 2–20 repositories |
 | `inspect` | One issue: approval, instructions, exclusions, overlapping PRs |
-| `prepare` | Write a draft contract (schema 0.1, or 0.2 when selected) |
+| `prepare` | Write a draft contract (schema 0.1, 0.2, or explicit external 0.3) |
 | `lint` | Offline check of a contract against its schema and review rules |
-| `verify` | Check a contract and evidence against live GitHub (0.2: `--stage`) |
-| `authorization-request` | Schema 0.2: unsigned mandate request; grants nothing |
+| `verify` | Check a contract and evidence against live GitHub (0.2/0.3: `--stage`) |
+| `authorization-request` | Schema 0.2/0.3 unsigned review request; grants nothing |
 | `drift` | What changed since the contract was prepared |
 | `scope-check`, `evidence init` | Offline scope check; evidence skeleton from observed Git facts |
 | `pr-body`, `feedback` | PR description (publishes nothing); reviews and checks on a published PR |
-| `receipt`, `impact` | Save public PR observations and summarize recorded impact offline ([receipts](docs/receipts.md)) |
+| `receipt`, `impact`, `card` | Save public PR observations, summarize impact and create offline SVG gift cards ([receipts](docs/receipts.md)) |
 | `audit`, `ownership` | Maintainer view of a repository; claims and possible prior fixes |
 | `instructions`, `skill`, `schema` | Installed workflow, Skill export, output JSON Schemas |
 
@@ -139,6 +158,7 @@ with exit 0. See the [command and exit-code index](docs/cli.md#command-index).
 
 ## Documentation
 
+- [External tips](docs/external-tips.md): the explicit task 0.3 fork-to-upstream route.
 - [Getting started](docs/getting-started.md): a complete contribution walkthrough.
 - [Installation](docs/installation.md) and [upgrading](docs/upgrading.md).
 - [CLI reference](docs/cli.md) and [output schemas](docs/output-reference.md).

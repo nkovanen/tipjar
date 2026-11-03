@@ -38,7 +38,7 @@ class HintNoiseTests(unittest.TestCase):
 
     def test_pr_hints_in_policy_files_outrank_earlier_non_policy_sources(self):
         instructions = [{'path': 'README.md', 'sha256': '1' * 64, 'untrusted_text': 'Pull requests are only merged weekly.'}]
-        result, _ = report({'README.md': 'x', 'CONTRIBUTING.md': 'Contributions must include tests.'}, {},
+        result, _ = report({'README.md': 'Pull requests are only merged weekly.', 'CONTRIBUTING.md': 'Contributions must include tests.'}, {},
                            instructions=instructions)
         pr = [result['sources_scanned'][h['source']]['path'] for h in result['hints']
               if h['kind'] == 'possible_pr_restriction']

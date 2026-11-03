@@ -229,6 +229,6 @@ class DiscoveryLimitTests(unittest.TestCase):
         with patch.object(core.dt, 'datetime', FrozenClock):
             for name, (repo, client) in scenarios().items():
                 with self.subTest(name=name):
-                    result = core.discover(repo, client, limit=None)
+                    result = core.discover(repo, client, limit=None, invitation_protocol='tipjar-invitation/1')
                     expected = json.loads((GOLDEN / (name + '.json')).read_text())
                     self.assertEqual({'result': result, 'calls': client.calls}, expected)

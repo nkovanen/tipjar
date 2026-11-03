@@ -10,7 +10,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import (audit, authrequest, budget, cache, ci, core, dependencies, drift, feedback, find, multi, onboarding, outputs,
+from . import (audit, authrequest, budget, cache, cards, ci, core, dependencies, drift, feedback, find, multi, onboarding, outputs,
                ownership, policy, prbody, receipts, remote, sessions, signals, signatures, textfmt, tipjar, workspace, __version__)
 
 
@@ -49,7 +49,7 @@ def read_host_context_stdin():
 
 GLOBAL_OPTIONS = ('--format', '--report-budget', '--min-remaining', '--cache')
 # Commands that never read GitHub; GitHub-only global options are refused on them alike.
-OFFLINE_COMMANDS = ('instructions', 'schema', 'skill', 'lint', 'scope-check', 'evidence', 'init', 'jar-check', 'dependencies', 'impact', 'session')
+OFFLINE_COMMANDS = ('instructions', 'schema', 'skill', 'lint', 'scope-check', 'evidence', 'init', 'jar-check', 'badge', 'dependencies', 'impact', 'session', 'card')
 AI_POLICY_NOTICE = ('agent-contrib: --ai-policy is deprecated and ignored; '
                     'inspect always adds repository_policy')
 
@@ -116,11 +116,19 @@ def prevalidate(args):
         core.parse_repository(args.names[0]) if len(args.names) == 1 else multi.validate(args.names)
     elif args.command in ('inspect', 'prepare', 'ownership', 'feedback', 'receipt'):
         core.parse_issue(args.reference)
+        if args.command == 'prepare':
+            if args.schema_version == '0.3':
+                from .authorization import valid_ref
+                if not args.fork or not valid_ref(args.head_ref):
+                    raise core.ProtocolError('usage', 'Schema 0.3 preparation requires --fork and --head-ref')
+                core.parse_repository(args.fork)
+            elif args.fork is not None or args.head_ref is not None:
+                raise core.ProtocolError('usage', '--fork and --head-ref require schema 0.3')
         if args.command == 'feedback' and args.expected_head is not None and not remote.SHA.fullmatch(args.expected_head):
             raise core.ProtocolError('invalid_head', 'Expected head must be a full 40-character commit SHA')
     elif args.command == 'find':
         find.validate_owner(args.owner)
-    elif args.command == 'jar':
+    elif args.command in ('jar','badge'):
         try:
             core.parse_repository(args.repository)
         except core.ProtocolError as exc:
@@ -130,6 +138,16 @@ def prevalidate(args):
     elif args.command == 'authorization-request':
         args.task = core.read_json(args.contract)  # read once; dispatch builds from this object
         authrequest.check_contract(args.task)
+        args.evidence_data = core.read_json(args.evidence) if args.evidence else None
+        args.payload_data = core.read_json(args.publication_payload) if args.publication_payload else None
+        args.assessment_data = core.read_json(args.policy_assessment) if args.policy_assessment else None
+        args.ledger_data = core.read_regular(args.policy_ledger, core.MAX_BYTES) if args.policy_ledger else None
+        authrequest.check_options(args.task, args.stage, args.evidence_data, args.repo_dir,
+                                  args.payload_data, args.assessment_data, args.ledger_data)
+        if args.repo_dir:
+            for path in (args.evidence, args.publication_payload, args.policy_assessment, args.policy_ledger):
+                if path:
+                    workspace.require_outside_checkout(args.repo_dir, path)
     elif args.command in ('verify', 'drift', 'pr-body'):
         # Each file is read once; dispatch uses these objects, so a file changed later cannot change the route.
         args.evidence_data = None
@@ -138,11 +156,28 @@ def prevalidate(args):
         if args.command == 'drift' and args.policy_sha256 is not None and not re.fullmatch('[0-9a-f]{64}', args.policy_sha256):
             raise core.ProtocolError('usage', '--policy-sha256 must be a lowercase 64-character SHA-256 hex digest')
         task = args.task = core.read_json(args.contract)
+        if isinstance(task, dict) and task.get('schema_version') == '0.3' and args.command == 'pr-body' and args.closes:
+            raise core.ProtocolError('usage', 'External PR bodies support Refs only; --closes is unsupported')
         if args.command in ('drift', 'pr-body') and core.validate_contract(task):
-            raise core.ProtocolError('invalid_contract', 'Contract does not match its bundled schema')
+            raise core.ProtocolError('invalid_contract', '; '.join(core.validate_contract(task)))
+        if args.command == 'drift' and isinstance(task, dict) and task.get('schema_version') == '0.3' and args.policy_sha256 is not None:
+            if args.policy_sha256 != task['source_review']['inventory_sha256']:
+                raise core.ProtocolError('usage', 'Task 0.3 policy baseline must match source_review.inventory_sha256')
         if args.command == 'verify':
             version = task.get('schema_version') if isinstance(task, dict) else None
-            if version != '0.2' and (args.stage is not None or args.host_context_stdin):
+            args.payload_data = None
+            if version == '0.3':
+                if args.stage not in ('implementation', 'draft', 'published'):
+                    raise core.ProtocolError('usage', 'Schema 0.3 requires --stage implementation, draft or published')
+                if args.stage in ('draft', 'published') and not args.publication_payload:
+                    raise core.ProtocolError('usage', 'External draft/published stages require --publication-payload')
+                if args.publication_payload:
+                    args.payload_data = core.read_json(args.publication_payload)
+                    if args.repo_dir:
+                        workspace.require_outside_checkout(args.repo_dir, args.publication_payload)
+            elif args.publication_payload or args.stage == 'published':
+                raise core.ProtocolError('usage', 'External publication options require schema 0.3')
+            if version not in ('0.2', '0.3') and (args.stage is not None or args.host_context_stdin):
                 raise core.ProtocolError('schema_options', 'Lifecycle options require an explicit schema 0.2 task')
             if args.evidence:
                 args.evidence_data = core.read_json(args.evidence)
@@ -197,8 +232,10 @@ def main(argv=None):
                                   'repository_policy')
         if command == 'prepare':
             sub.add_argument('--output', required=True, help='New file for the draft contract; never overwritten')
-            sub.add_argument('--schema-version', choices=('0.1', '0.2'), default='0.1',
+            sub.add_argument('--schema-version', choices=('0.1', '0.2', '0.3'), default='0.1',
                              help='Task schema (default 0.1; 0.2 is the same-repository candidate route)')
+            sub.add_argument('--fork', help='Schema 0.3: immediate personal fork owner/repo')
+            sub.add_argument('--head-ref', help='Schema 0.3: new contribution branch')
     sub = commands.add_parser('dependencies', help='Offline GitHub give-back candidates from explicit dependency URLs')
     sub.add_argument('path', help='Project directory or package.json, package-lock.json or requirements.txt')
     sub.add_argument('--installed', action='store_true',
@@ -207,8 +244,14 @@ def main(argv=None):
     sub = commands.add_parser('receipt', help='Save a public PR observation; never proof or permission')
     sub.add_argument('reference', help='Public GitHub owner/repo#PR')
     sub.add_argument('--output', required=True, help='New receipt file; never overwritten')
+    sub = commands.add_parser('card', help='Create an offline SVG from a local receipt; share manually')
+    sub.add_argument('receipt', help='Validated local receipt JSON, at most 64 KiB')
+    sub.add_argument('--caption', help='Optional personal caption (1–4096 characters); never a GitHub title')
+    sub.add_argument('--output', required=True, help='New SVG file; never overwritten')
     sub = commands.add_parser('impact', help='Offline impact from editable recorded PR observations')
     sub.add_argument('files', nargs='+', help='1-100 receipt files, at most 64 KiB each')
+    sub = commands.add_parser('badge', help='Print an offline repository-scoped README welcome snippet')
+    sub.add_argument('repository', help='GitHub owner/repo welcoming tips')
     sub = commands.add_parser('jar', help='Inspect the pinned root Tipjar invitation; inspection only, grants no authority',
                               description='Pinned root invitation inspection only; grants no approval or authority.')
     sub.add_argument('repository', help='GitHub owner/repo to inspect directly, without parent tracker resolution')
@@ -236,20 +279,27 @@ def main(argv=None):
     sub.add_argument('contract', help='Task contract JSON file')
     sub.add_argument('--evidence', help='Evidence JSON file for this contract')
     sub.add_argument('--repo-dir', help='Local checkout the evidence describes')
-    sub.add_argument('--stage', choices=('implementation', 'draft', 'completion'),
+    sub.add_argument('--stage', choices=('implementation', 'draft', 'completion', 'published'),
                      help='Schema 0.2: stage whose gate sets the exit status (default completion)')
     sub.add_argument('--host-context-stdin', action='store_true',
                      help='Schema 0.2: read a host-issued record as JSON on stdin (8 MiB, 5 s timeout); '
                           'not proof of human consent')
+    sub.add_argument('--publication-payload', help='Schema 0.3: exact local draft-payload 0.1 JSON outside checkout')
     sub.add_argument('--observe-ci', action='store_true',
                      help='Add report-only CI results for the evidence head; exit status unchanged')
     sub.add_argument('--observe-signatures', action='store_true',
                      help='Add report-only commit-signature observations for the evidence range; never verifies '
                           'locally or changes the exit status')
     sub = commands.add_parser('authorization-request',
-                              help='Schema 0.2: print an unsigned mandate request pre-filled from the contract; grants nothing')
+                              help='Print an unsigned host request (0.2) or external review view (0.3); grants nothing')
     sub.add_argument('contract', help='Task contract JSON file')
-    sub = commands.add_parser('lint', help='Offline check of a contract against its schema and the reviewed-contract '
+    sub.add_argument('--stage', choices=('implementation', 'draft'), help='Task 0.3 unsigned view (default implementation)')
+    sub.add_argument('--repo-dir', help='Task 0.3 checkout to inspect; never executes code')
+    sub.add_argument('--evidence', help='Task 0.3 draft view: evidence 0.2 JSON')
+    sub.add_argument('--publication-payload', help='Task 0.3 draft view: exact draft-payload 0.1 JSON')
+    sub.add_argument('--policy-assessment', help='Task 0.3: assessment JSON to hash, never declared clear')
+    sub.add_argument('--policy-ledger', help='Task 0.3: original ledger bytes to hash (bounded regular file)')
+    sub = commands.add_parser('lint' , help='Offline check of a contract against its schema and the reviewed-contract '
                                            'rules; no GitHub or Git reads')
     sub.add_argument('contract', help='Task contract JSON file')
     sub = commands.add_parser('scope-check', help='Offline check of local changes against the contract scope; never evidence')
@@ -323,6 +373,9 @@ def main(argv=None):
                                     'evidence_schema_0.2': 'agent_contribute/schemas/0.2/evidence.schema.json',
                                     'host_context_schema': 'agent_contribute/schemas/host-context/0.1.schema.json',
                                     'host_context_schema_0.2': 'agent_contribute/schemas/host-context/0.2.schema.json',
+                                    'task_schema_0.3': 'agent_contribute/schemas/0.3/task.schema.json',
+                                    'external_context_schema': 'agent_contribute/schemas/external-context/0.1.schema.json',
+                                    'draft_payload_schema': 'agent_contribute/schemas/draft-payload/0.1.schema.json',
                                     'output_schemas': 'agent_contribute/' + outputs.DIRECTORY},
                       'output_schema_version': outputs.VERSION,
                       'automatic_updates': False}
@@ -353,6 +406,13 @@ def main(argv=None):
             write_new_json(args.output, receipt)
             result = {'output': str(args.output), 'receipt': receipt, 'warning': receipts.NOTICE}
             code = 0
+        elif args.command == 'card':
+            svg, receipt = cards.render(args.receipt, caption=args.caption)
+            create_new(args.output, svg, 'SVG card')
+            result = {'output': str(args.output), 'sha256': hashlib.sha256(svg.encode('utf-8')).hexdigest(),
+                      'url': receipt['pull_request']['url'], 'observed_at': receipt['observed_at'],
+                      'state': receipt['pull_request']['state'], 'warning': cards.NOTICE}
+            code = 0
         elif args.command == 'impact':
             result = receipts.impact(args.files)
             code = 0
@@ -368,7 +428,7 @@ def main(argv=None):
             workspace.require_outside_checkout(args.repo_dir, args.output)
             write_new_json(args.output, skeleton)
             result = {'output': str(args.output), 'evidence_valid': False,
-                      'schema_errors': len(core.schema_errors(skeleton, core.bundled_schema('evidence', task['schema_version']))),
+                      'schema_errors': len(core.schema_errors(skeleton, core.bundled_schema('evidence', core.evidence_version(task['schema_version'])))),
                       'warning': 'Skeleton only: fill every result from real runs and reviews; nothing was executed'}
             code = 0
         elif args.command == 'pr-body':
@@ -380,11 +440,16 @@ def main(argv=None):
                       'warning': 'Rendered text only; it grants no publication authority and the CLI never writes to GitHub'}
             code = 0
         elif args.command == 'authorization-request':
-            result = authrequest.build(args.task)
-            code = 0 if result.get('ready_for_issuance') is True else 1
+            result = authrequest.build(args.task, stage=args.stage, evidence=args.evidence_data,
+                                       repo_dir=args.repo_dir, payload=args.payload_data,
+                                       policy_assessment=args.assessment_data, policy_ledger=args.ledger_data)
+            code = 0 if result.get('complete' if args.task['schema_version'] == '0.3' else 'ready_for_issuance') is True else 1
         elif args.command == 'find':
             result = find.find_jars(owner=args.owner)
             code = 0 if result['complete'] else 1
+        elif args.command == 'badge':
+            result = onboarding.badge(args.repository)
+            code = 0
         elif args.command == 'jar':
             result = tipjar.read_jar(args.repository)
             code = 0 if result['complete'] else 1
@@ -426,12 +491,21 @@ def main(argv=None):
             if args.responsiveness:  # Like --ownership: an incomplete opted-in report is a nonzero exit.
                 reports = [r.get('repository_signals', {}).get('responsiveness') for r in result.get('repositories', [result])]
                 code = code or (0 if all(r and r['complete'] for r in reports) else 1)
+        elif args.command == 'prepare' and args.schema_version == '0.3':
+            from . import external_tip
+            task = external_tip.prepare(args.reference, args.fork, args.head_ref)
+            write_new_json(args.output, task)
+            result = dict(output=str(args.output), complete=True, contract=task,
+                          warning='Pending contract only; review policies and obtain scoped host implementation authority')
+            code = 0
         elif args.command in ('inspect', 'prepare'):
             client = core.GitHub()
-            result = core.inspect_issue(args.reference, client)
+            legacy_prepare = args.command == 'prepare'
+            result = core.inspect_issue(args.reference, client,
+                                        invitation_protocol=tipjar.LEGACY if legacy_prepare else tipjar.CURRENT)
             code = 0 if result['complete'] else 1
             # Default-on, report only: the policy report never changes the result, the contract or the exit code.
-            report = policy.for_inspected(result, client) if 'source' in result else None
+            report = policy.for_inspected(result, client, inventory_format=3 if legacy_prepare else None) if 'source' in result else None
             if args.command == 'inspect' and 'source' in result:
                 if args.ownership:
                     result['ownership_signals'] = ownership.ownership_signals(
@@ -449,7 +523,13 @@ def main(argv=None):
         else:
             task, evidence = args.task, args.evidence_data
             version = task.get('schema_version') if isinstance(task, dict) else None
-            if version == '0.2':
+            if version == '0.3':
+                context = read_host_context_stdin() if args.host_context_stdin else None
+                result = core.verify(task, evidence, args.repo_dir, host_context=context, payload=args.payload_data)
+                gate = {'implementation': 'implementation_ready', 'draft': 'draft_create_ready', 'published': 'publication_verified'}[args.stage]
+                code = 0 if result[gate] else 1
+                stage_gate = (args.stage, code == 0)
+            elif version == '0.2':
                 context = read_host_context_stdin() if args.host_context_stdin else None
                 result = core.verify(task, evidence, args.repo_dir, host_context=context)
                 stage = args.stage or 'completion'

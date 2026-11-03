@@ -19,9 +19,9 @@ class RepositoryGitHub:
     """Replace only GitHub GETs, with distinct source and target fixtures."""
     def __init__(self):
         self.metadata = {
-            'acme/photos': {'full_name': 'acme/photos', 'default_branch': 'main',
+            'acme/photos': {'id':101, 'full_name': 'acme/photos', 'default_branch': 'main',
                             'fork': False, 'has_issues': True},
-            'person/photos': {'full_name': 'person/photos', 'default_branch': 'main',
+            'person/photos': {'id':202, 'full_name': 'person/photos', 'default_branch': 'main',
                               'fork': True, 'has_issues': False,
                               'parent': {'full_name': 'acme/photos'}}}
         self.repos = {'acme/photos': FakeGitHub(POLICY, ['agent-ok']),

@@ -1,5 +1,10 @@
 # Getting started: one contribution, end to end
 
+For an outside-contributor gift, follow [external tips (task 0.3)](external-tips.md):
+`prepare --schema-version 0.3 --fork OWNER/REPO --head-ref NEW_BRANCH`, then explicit
+`implementation`, `draft` and `published` verify stages. The historical routes
+below retain their separate approval and owner/maintainer requirements.
+
 This walkthrough follows the installed workflow's Quick path (`agent-contrib
 --format text instructions`) for "Go help acme/photos", the request a user gives
 an agent. Normally the agent runs these commands; you see them here so you know
@@ -252,3 +257,12 @@ you use or a list you supply; there is no global jar registry. Selection means
 use the same ordinary discovery and preparation commands without this filter.
 Absence grants no approval and needs no override. Closed or unknown source
 jars block this contribution workflow even through a fork or host mandate.
+
+## External contribution route
+
+Task schema 0.3 explicitly supports a reviewed draft from a personal immediate
+fork to a human-selected public upstream issue, with separate implementation and
+exact-result publication assertions. Welcome and undeclared sources both require
+complete source/fork policy accounting; no invitation or approval is invented.
+See [the complete external-tip workflow](external-tips.md) for commands, records, pause points and limits. Evidence
+remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.
