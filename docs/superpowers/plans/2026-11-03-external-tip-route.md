@@ -1,0 +1,96 @@
+# External Tip Route Implementation Plan
+
+> **For agentic workers:** Use superpowers:executing-plans to implement task-by-task after controller approval. This design assignment uses no sub-agents; the controller arranges independent authority review before implementation and publication.
+
+**Goal:** Complete an explicitly selected public issue through authorized personal-fork work and a reviewed, separately authorized draft upstream.
+
+**Architecture:** Task 0.3 adds one external route; unchanged evidence 0.2 checks and independent review validate its result. New external host assertions bind implementation and exact publication separately. Existing 0.1 and 0.2 verifier semantics remain intact.
+
+**Tech Stack:** Python 3.10+, stdlib, existing fixed GET client and hardened Git reads; unittest fake API and temporary real Git fixtures; no runtime dependencies.
+
+**Spec:** [External tip design](../specs/2026-11-03-external-tip-route-design.md). Read it and AGENTS/README/CONTRIBUTING/SECURITY before execution.
+
+## Global constraints
+
+- Design base `c312c57`, main update `bdef0bab18a6905b9e6d3994108756e53d9f119e`; Tipjar plan Tasks 1–3 are prerequisites, not implemented at this design base. Preserve their approved schemas and exact request_once jar budget.
+- Task versions {0.1,0.2,0.3}; evidence versions {0.1,0.2}; explicit 0.3 → evidence 0.2 mapping. New external-context 0.1 never widens existing host-context schemas.
+- Inventory format 3; output/3 follows prerequisite output/2. Preserve all historical task/evidence/host/output schema resources. Release SemVer is controller-selected.
+- CLI GET-only; validation argv is data; no execution/push/PR creation/maintainer contact. No invented maintainer acceptance or authenticated human-presence claim.
+- Source invitation, scoped implementation permission and exact publication permission are separate. Closed/unknown/unresolved policy cannot be waived.
+- One public personal-owned immediate fork, one issue, source default base, one new branch, one reviewed draft; no updates, waivers or prior-work adoption.
+
+## Review focus
+
+- A display limit hides the only overlapping PR: scans remain complete and the new route blocks (Task 2).
+- Repository name survives deletion/recreation or actor changes: numeric identities block rebinding (Task 2).
+- Validation passes but evidence review or payload changes after approval: exact evidence/review/payload hashes block (Tasks 3–4).
+- Existing own draft appears in multiple scans: exempt only the fully observed same numeric identity; unrelated errors remain (Task 4).
+- Authorization expires during blocking reads: judge fresh expiry last; historical recognition grants no new actions (Tasks 2–4).
+
+## File map and shared interfaces
+
+Create `agent_contribute/external_tip.py` for preparation, source/fork/overlap facts and stage composition; `agent_contribute/external_authorization.py` for external assertion checks only. Create `schemas/0.3/task.schema.json`, `schemas/external-context/0.1.schema.json`, `schemas/draft-payload/0.1.schema.json`. Modify core schema dispatch, CLI, workspace evidence initialization, outputs/textfmt and package resources narrowly. Extract a private route-neutral history observer in `pr_identity.py`; keep its old public wrappers unchanged. Do not restructure lifecycle/authorization generally.
+
+Public library interfaces (all dicts use the closed shapes in the spec):
+
+- `external_tip.prepare(reference: str, fork: str, head_ref: str, client=None) -> dict`: returns draft task 0.3, never an authorization.
+- `external_tip.live_facts(task: dict, directory, client) -> dict`: returns identities, pinned policy/jars, issue, complete overlap/ownership/history observations, safe checkout facts, provenance and errors; no readiness booleans or authority inference.
+- `external_authorization.check(task: dict, context, facts: dict, *, evidence=None, payload=None, now) -> dict`: returns implementation historical/current validity, publication historical/current validity, canonical assertion hashes and explicit errors. It does not issue assertions or read GitHub.
+- `external_tip.verify(task: dict, evidence=None, repo_dir=None, client=None, *, context=None, payload=None) -> dict`: returns `external-tip-report/1`; stage exit selection lives in CLI.
+- `pr_identity.check_external_publication(binding: dict, publication_claim, expected_head, client) -> dict`: verifies external exact-head observation; binding schema is internal, explicitly external, and has the observer fields plus source/fork/actor numeric identities. Caller still checks policy/evidence/authority/payload and unrelated overlap.
+- Core adds `evidence_version(task_version: str) -> str` with exact mapping; `bundled_schema` uses separate supported sets for each namespace. Unsupported input raises ProtocolError, never defaults into acceptance.
+
+### Task 1: Closed documents, explicit dispatch and pending preparation
+
+**Files:** New schema files above, `external_tip.py`; modify `core.py`, `workspace.py`; tests `tests/test_external_tip_schema.py`, `tests/test_external_tip_prepare.py`, existing compatibility tests.
+
+- [ ] Write failures named `test_exact_supported_versions`, `test_03_evidence_is_02`, `test_old_documents_unchanged`, `test_missing_or_unknown_field_fails_closed`, `test_prepare_pending_welcome_and_undeclared`. Assert no authority in a prepared task; numeric source/fork/actor IDs and both route refs pinned; explicit source has enabled tracker; no parent-tracker fallback; blocked jar/incomplete policy writes nothing. Check unknown context versions/properties, boolean IDs and wrong invitation/digest combinations fail schema or route review.
+- [ ] Run `python -m unittest tests.test_external_tip_schema tests.test_external_tip_prepare -v`; observe meaningful failures before implementation.
+- [ ] Implement exact schema registration and `external_tip.prepare`. Reuse source inspection, identity helpers and prerequisite jar/policy functions. Reject unsafe initial source/fork relationship at preparation; leave unanswered scope/policy review as draft questions. Add schema-aware reviewed-contract dispatch without passing 0.3 through the old schema-specific branch by accident; retain all common scope/criteria/validation/done/prerequisite checks. Reject nonempty prepared duplicates for this route.
+- [ ] Extend evidence initialization to emit unchanged evidence 0.2 for task 0.3 (including reviewed_at); existing 0.1/0.2 output is unchanged. Update observation_target/schema-dependent helpers only where required by the explicit mapping. Preserve exclusive writes/outside-checkout evidence rule. No passing attestations are generated.
+- [ ] Run focused tests plus `python -m unittest tests.test_schema_compatibility -v` and full discovery. Commit the schema/preparation unit after passing checks; it is not yet a shipped complete route.
+
+### Task 2: Current source facts and scoped implementation permission
+
+**Files:** `external_tip.py`, new `external_authorization.py`; tests `tests/test_external_tip_policy.py`, `tests/test_external_tip_authorization.py`, `tests/test_external_tip_overlap.py`.
+
+- [ ] Write `test_welcome_is_invitation_not_label_approval`, `test_nojar_requires_explicit_acknowledgement`, `test_clear_assertion_cannot_override_ban_or_unknown`, `test_policy_and_jar_drift`, `test_fork_policy_drift`, `test_history_baseline_failure`, `test_actor_owner_parent_numeric_identity`, `test_checkout_initial_head_and_ref`, `test_all_overlap_and_claims_block`, `test_overlap_in_hidden_tail`, `test_malformed_and_capped_reads_block`, `test_implementation_expiry_after_reads`. Each individual failing predicate must make implementation_ready false with a named blocker; unrelated facts remain visible.
+- [ ] Run these three modules; confirm failures before code changes.
+- [ ] Implement `live_facts` and assertion `check`, using complete scans independent of any display cap. Live policy/jar hashes must match the pinned baseline; label hash remains separate from inventory hash. Source/fork metadata, current credential, immediate parent and permissions must match all numeric bindings. Use GET-only ref reads to establish absence, not an empty list from a failed read. Harden every initial checkout read and require exact source commit, clean tree and fork remote.
+- [ ] Implement the implementation stage in `external_tip.verify`; derive blockers from structured facts and authority once, retaining all errors. Do not call 0.1/0.2 verifier then filter errors. New external-context inputs use the existing bounded explicit-stdin reader in the later CLI task, not checkout discovery. Record policy ledger digest and exact acknowledgement without granting authority from text.
+- [ ] Run focused modules and full unittest discovery. Commit only after tests pass. External reviewers must inspect boundaries before any release.
+
+### Task 3: Complete technical evidence, independent review and exact payload authority
+
+**Files:** `external_tip.py`, `external_authorization.py`; tests `tests/test_external_tip_evidence.py`, `tests/test_external_tip_publication.py`.
+
+- [ ] Write `test_every_common_evidence_failure_blocks_draft` with real temp-Git fixtures: wrong task hash/base/head/tree/branch/remote, dirty checkout, scope escape/symlink/gitlink, unsafe config, missing artifacts, skipped/failed validations, mismatched criteria and malformed/future timestamps. Assert the entire `core.check_evidence` error list is retained. Pin schema 0.2 and attestations=() deliberately; independent review is checked separately in full, not skipped.
+- [ ] Write `test_same_reviewer_or_prevalidation_review_blocks`, `test_final_ledger_artifacts_required`, `test_publication_requires_distinct_later_event`, `test_publication_hashes_every_final_input`, `test_payload_exact_utf8_bounds`, `test_base_tip_moves`, `test_expired_implementation_can_be_historical_but_not_new_work`, `test_expired_publication_never_authorizes_action`. Mutating evidence, review, payload, refs, actor, jar/inventory or base_tip must invalidate exact publication permission.
+- [ ] Run focused modules and observe failures. Implement full common evidence call plus unchanged `lifecycle.independent_review`. Validate initial ledger artifact against implementation review; check final compliance evidence without rewriting that initial ledger. Implement publication assertion/payload checks, strict timing and canonical hashes; current expiry judged after blocking reads. Read live fork head absent/equal/other and commit/tree, preserving unknown as failure. Derive draft stage without reapplying the pre-work initial HEAD condition.
+- [ ] Run focused modules plus existing evidence/authorization/lifecycle tests and full discovery. Commit the independently testable prepublication gate. No push/PR command is added.
+
+### Task 4: Cross-repository exact draft recognition
+
+**Files:** `pr_identity.py`, `external_tip.py`; tests `tests/test_external_tip_identity.py`, existing `tests/test_pr_identity.py` and lifecycle regressions.
+
+- [ ] Write `test_old_same_repo_wrapper_still_rejects_cross_repo`, `test_claim_requires_exact_numeric_route_and_actor`, `test_history_list_detail_race`, `test_existing_closed_or_open_history_blocks_creation`, `test_only_exact_own_draft_exempt`, `test_other_overlap_claim_or_fix_remains_blocking`, `test_title_body_or_maintainer_edit_mismatch`, `test_head_ref_tree_or_base_mismatch`, `test_future_creation_and_late_expiry`, `test_recognition_never_grants_republication`. Include missing head repo after fork deletion, scan/detail ID disagreement, two PRs on exact history, and valid own PR plus unrelated incomplete scan.
+- [ ] Run focused tests and observe failures before refactoring. Extract only the route-neutral observer used by `check_external_publication`, leaving old `_binding` and same-repository errors intact. The external wrapper verifies source/fork route, history and author/timing; new route checks payload/state/final detail reread. No mock same-repository binding is permitted.
+- [ ] In the external gate, exempt only exact verified own PR identity from duplicate and open-cross-reference observations before blockers are formed. Do not drop any claims, prior fixes, policy failures, evidence errors or other overlaps. For recognition require authorized base_tip to remain in current source history (ordinary advancement is allowed); new publication still requires exact current base_tip. Return URL with next_action return_draft; no completion/acceptance claim. Expired publication may be historically recognized only when created in its bound interval.
+- [ ] Run focused and all old PR-identity/lifecycle tests, then full discovery. Confirm old-wrapper results match unchanged fixtures. Commit after checks; do not import update/reopen/disposition machinery.
+
+### Task 5: Runnable CLI, packaged reports and truthful installed workflow
+
+**Files:** `cli.py`, `core.py`, `workspace.py`, `outputs.py`, `textfmt.py`, `pyproject.toml`, new complete `schemas/output/3` resources, `tools/check_install.py`; `instructions.md`, README, SECURITY, docs/cli, docs/getting-started, docs/host-authorization, docs/architecture, docs/output-reference, docs/product-map, docs/upgrading and CHANGELOG. Tests `tests/test_external_tip_cli.py`, `tests/test_external_tip_e2e.py`, existing schema/help/text/workflow/install tests.
+
+- [ ] Write failing parser/stage/output tests for exact commands in spec; 0.3 requires a stage, context stdin is explicit, publication payload is required for draft/published stages, unsupported older helper commands fail closed before network. Preserve old verify options and exit behavior. Invalid input has null unknown identities and false gates, not fabricated facts. New report JSON validates against output/3; old output resources and old emitted branches stay unchanged.
+- [ ] Write two `ExternalTipEndToEndTests` flows (welcome, undeclared): prepare pending task → reviewed scope/ledger and actual fixture host assertion → implementation gate → simulated host-made Git commit/check results → evidence init still pending → independent fixture review → distinct exact publication assertion/payload → draft gate → fake remote publication observation → existing draft returned. Assert no source approval promotion, no fork-only success masquerading as delivery and no network writes/executor calls. Use no real repository contact or contract argv execution. Negative variants cover all Review Focus inputs and replayed publication with a different head.
+- [ ] Run new CLI/e2e tests and observe failures. Add explicit 0.3 dispatch in `core.verify` and CLI; external context is passed only to the new verifier. Existing lifecycle helpers `authorization-request`, `pr-body`, `feedback`, `drift` reject task 0.3 deliberately; audit every task-version branch, including scope-check/evidence init, so none guesses from task version. Extend prepare/lint/evidence/scope/verify output schemas with exact 0.3 branches under output/3 only. Register packaged task/context/payload schemas and text rendering; retain all new trust notices and blockers in canonical JSON.
+- [ ] Update installed instructions with the complete manual/welcome paths and exact pause points. The sole canonical Skill still delegates to instructions; export through CLI, do not duplicate repository policy or add another Skill. Explain manual host payload preparation and script inspection, exact publication permission, host single-use responsibility, bounded detection limits and the intentionally unsupported helpers/lifecycle actions. Remove claims that imply fork completion delivers upstream work.
+- [ ] Run `python -m unittest discover -v`, `python -m build`, and `python tools/check_install.py` from root. Require successful wheel/sdist and installed clean-environment checks for both entry points, 0.3 resources, unchanged old fixtures and Skill export. Keep command outputs and limitations outside Git. Run `git diff --check`; inspect GET-only transport and validation execution spy assertions.
+- [ ] Commit tested candidate; controller obtains independent Terra authority review of the exact SHA. Do not push, publish, merge, contact maintainers or run a live contribution trial without actual authorization.
+
+## Delivery boundary and self-review
+
+Tasks 1–4 are internal implementation checkpoints; Task 5 is the first runnable **complete** external contribution route. Do not release earlier checkpoints as the central Tipjar path. Prerequisite jar inspection alone remains inspection-only; no global discovery/adoption is needed for this route.
+
+Coverage: architecture choice and compatibility (1/4/5), source/fork identity and policy (1/2), independent implementation authority (2), exact evidence/review/payload and publication authority (3), observed upstream draft with narrow own-PR exclusion (4), installed end-to-end behavior and output versioning (5). Review Focus has named tests in owning tasks. Known gaps are explicit in the spec: human presence/consent and evidence truth are not authenticated; policy/claim/prior-work detection is bounded; publication history is not durable proof. No requirement is delegated to a filtered legacy verifier result.
