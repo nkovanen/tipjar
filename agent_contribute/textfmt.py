@@ -35,6 +35,20 @@ def _dispositions(result):
 
 
 def _verify(result, stage=None):
+    if result.get('report') == 'external-tip-report/1':
+        out = []
+        if stage is not None:
+            out.append(f'Selected stage: {line(stage[0])} (exit gate: {_flag(stage[1])})')
+        out += ['External tip gates:'] + [f'  {name}: {_flag(result[name])}' for name in
+                 ('schema_valid', 'live_complete', 'implementation_ready', 'technical_evidence_valid',
+                  'draft_create_ready', 'publication_verified')]
+        out.append('Next action: ' + line(result['next_action']))
+        if result['publication']['url']:
+            out.append('Draft: ' + line(result['publication']['url']))
+        for name, blockers in result['stage_blockers'].items():
+            if stage is None or name == stage[0]:
+                out += _list('Blockers [' + line(name) + ']', blockers)
+        return out + _list('Trust', result['trust'])
     if 'implementation_ready' in result:
         blockers = result.get('stage_blockers', {})
         out = []
@@ -206,6 +220,19 @@ def _scalars(result):
 
 
 def _authorization_request(result):
+    if result.get('kind') == 'agent-contrib/external-authorization-request':
+        bindings = result.get('bindings', {})
+        return ['UNSIGNED external review view; issued: no; grants no authority.',
+                'Native consent issuer: not implemented. Human/host assertions remain required.',
+                'View read complete: ' + _flag(result.get('complete')),
+                'Stage: ' + line(result.get('stage', ''), 40),
+                'Contract SHA-256: ' + line(result.get('contract_sha256', ''), 64),
+                'Source: ' + line(bindings.get('source_repository', ''), 200),
+                'Fork: ' + line(bindings.get('head_repository', ''), 200),
+                'Invitation basis: ' + line(bindings.get('invitation_basis', ''), 40)] + _list(
+                    'Unresolved bindings', result.get('unresolved_fields', [])) + _list(
+                    'Pending gates (untrusted diagnostics)',
+                    (f'{stage}: {error}' for stage, errors in result.get('stage_blockers', {}).items() for error in errors))
     out = ['Ready for issuance: ' + _flag(result.get('ready_for_issuance')),
            'Issued: no (unsigned request; not a mandate; grants nothing)',
            'Contract SHA-256: ' + line(result.get('contract_sha256', ''), 64)]
@@ -268,6 +295,10 @@ def _drift(result):
                                                             'recorded inventory_sha256 differs (no per-source baseline)'))
     elif policy_drift and policy_drift.get('policy_drifted') is None:
         info.append('Policy inventory could not be compared: the current read is incomplete or limited')
+    if result.get('external'):
+        if (result.get('tipjar') or {}).get('changed') is True:
+            reasons.append('Reviewed source jar declaration changed')
+        info.append('External references require manual host rereads; fork policy has no baseline in the task. No authority granted.')
     if branch.get('advanced'):
         info.append('Default branch advanced since preparation')
     info += ['Overlapping PR no longer open: ' + line(url, 200) for url in overlap.get('removed', [])]

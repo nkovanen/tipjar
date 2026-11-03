@@ -122,7 +122,7 @@ class SchemaCommandTests(unittest.TestCase):
         code, result = invoke('instructions')
         self.assertEqual(code, 0)
         self.assertEqual(result['output_schema_version'], outputs.VERSION)
-        self.assertEqual(result['resources']['output_schemas'], 'agent_contribute/schemas/output/2')
+        self.assertEqual(result['resources']['output_schemas'], 'agent_contribute/schemas/output/3')
         self.assertIn('agent-contrib schema', result['workflow_markdown'])
 
     def test_every_command_has_a_schema(self):

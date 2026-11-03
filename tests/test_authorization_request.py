@@ -215,7 +215,7 @@ class RequestCLITests(unittest.TestCase):
         self.assertEqual((code, result['ready_for_issuance']), (1, False))
 
     def test_legacy_or_unknown_schema_is_a_usage_error_without_reads(self):
-        for version in ('0.1', '0.3', None):
+        for version in ('0.1', '0.4', None):
             with self.subTest(version=version):
                 code, result = self.invoke('authorization-request', 'task.json', task={'schema_version': version})
                 self.assertEqual(code, 2)

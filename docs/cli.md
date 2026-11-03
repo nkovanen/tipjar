@@ -1,5 +1,10 @@
 # Command reference
 
+For an outside-contributor gift, follow [external tips (task 0.3)](external-tips.md):
+`prepare --schema-version 0.3 --fork OWNER/REPO --head-ref NEW_BRANCH`, then explicit
+`implementation`, `draft` and `published` verify stages. The historical routes
+below retain their separate approval and owner/maintainer requirements.
+
 Every `agent-contrib` command, its options, exit codes and limits. Commands print JSON
 by default (see [text output](#text-output-unreleased)); the field-by-field JSON reference is in
 [output-reference.md](output-reference.md). Start with the [command index](#command-index);
@@ -1096,7 +1101,7 @@ Every command's JSON output has a packaged JSON Schema (draft 2020-12 subset).
 `agent-contrib schema COMMAND` prints it; `error` is the error envelope that
 replaces any command's result on a usage, input or protocol error, and
 `evidence-init` is `evidence init`. `instructions` reports the
-`output_schema_version` (currently `2`) and the package directory. Objects are
+`output_schema_version` (currently `3`) and the package directory. Objects are
 closed: a field is required unless marked optional, and fields not listed never
 appear. Output values do not carry the schema version; a shape change bumps the
 version together with the CLI's semantic version and changelog. Remote text in
@@ -1347,7 +1352,7 @@ Malformed repository arguments are usage errors (exit 2) before any GitHub read,
 including budget instrumentation. Existing commands keep their argument-exit
 behavior.
 
-The JSON is `tipjar-report/1` (output schema version 2). States:
+The JSON is `tipjar-report/1` (frozen output/2 and active output/3). States:
 
 | State | Meaning | Exit |
 | --- | --- | --- |
@@ -1435,8 +1440,75 @@ authority. Schema 0.1 upstream mode still requires matching label approval;
 its existing fork route requires an available immediate GitHub fork and actual
 local execution authorization, and fork completion grants no upstream authority.
 Schema 0.2 still requires actual admin/maintain authority and host mandates.
-An arbitrary no-jar repository has no new outside-contributor upstream route
-in this slice.
+For an explicitly selected no-jar repository, use the separately reviewed task 0.3
+external route below; absence of a jar supplies no approval or authority.
+
+## External contribution route
+
+Task schema 0.3 explicitly supports a reviewed draft from a personal immediate
+fork to a human-selected public upstream issue, with separate implementation and
+exact-result publication assertions. Welcome and undeclared sources both require
+complete source/fork policy accounting; no invitation or approval is invented.
+See [the complete external-tip workflow](external-tips.md) for commands, records, pause points and limits. Evidence
+remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.
+
+
+## Task 0.3 helper handoff (candidate)
+
+```sh
+tipjar authorization-request task.json --repo-dir CHECKOUT
+tipjar authorization-request task.json --repo-dir CHECKOUT --policy-assessment assessment.json --policy-ledger policy.md
+tipjar authorization-request task.json --stage draft --repo-dir CHECKOUT --evidence evidence.json --publication-payload payload.json --policy-assessment assessment.json --policy-ledger policy.md
+tipjar drift task.json
+tipjar pr-body task.json --repo-dir CHECKOUT --evidence evidence.json --output body.md
+```
+
+For task 0.3, `authorization-request` emits
+`kind: agent-contrib/external-authorization-request`, request version 0.1: a
+review view with `issued: false` and `ready_for_issuance: false` **always**. It
+contains no fillable consent record. Neither this envelope nor `bindings` can
+serve as an external-context assertion. A zero exit means live view reads
+completed, including when authorization or evidence remains blocked. Exit 1
+means incomplete reads or invalid input; unsupported options give exit 2 before
+GitHub/budget reads. Task 0.2 retains its original request shape, readiness
+semantics and default behavior; the new options are refused for it.
+
+The default view is implementation. The draft view requires checkout, evidence
+0.2 and exact draft-payload 0.1. Optional policy assessment JSON is shape-checked
+and canonically hashed; the original ledger is read as bounded regular bytes
+(up to 8 MiB) and hashed without normalization. Neither becomes “policy clear.”
+Absent assessment/ledger hashes remain null and unresolved. Inputs named with
+`--repo-dir` must be outside that checkout. Source/fork inventory digests, task,
+actor, refs and invitation basis are shown; a draft view adds evidence, review,
+payload, head/tree and current base-tip bindings. A no-jar acknowledgement is a
+required human decision, never an emitted approval. All inventory and blocker
+text remains untrusted. The host must render its own full snapshot, issue actual
+assertions, refresh applicable-target observations and retain real decision
+events. No native human authorization issuer is implemented.
+
+Task 0.3 `drift` defaults to the task's stored source inventory digest. An explicit
+`--policy-sha256` must match that binding. Source identity, issue, instructions,
+label policy, jar state/exact byte hash and current inventory comparisons remain
+report-only. A moved source tip alone is informational. `tipjar.reviewed` holds
+the jar binding from the task; `baseline` is a reconstructed observation, which
+need not reproduce reviewed bytes. `external.fork_policy` reports the current
+fork digest with null expected/changed values because the task contains no fork
+baseline; compare with the retained host assertion. Applicable external links
+must still be reread by host tools. An unchanged report grants no authority and
+does not establish policy compliance or fresh host observations.
+
+Task 0.3 `pr-body` consumes evidence **0.2**, renders self-attested claims and
+pending host-context gates, points to source templates and describes bounded
+external overlap/history checks accurately. It does not read a host context or
+assert publication readiness. `--closes` is refused with exit 2 before API reads;
+use the default `Refs` body. It preserves exclusive creation and the returned
+`sha256` hashes the exact UTF-8 body bytes. Review/merge required template text
+before fixing the exact draft-payload strings. Rendering publishes nothing.
+
+These variants belong to active output schema **3**; frozen output/1 and output/2
+resources are unchanged. Export with `tipjar schema authorization-request`,
+`tipjar schema drift` and `tipjar schema pr-body`. See [the giver journey](tipping.md)
+for human stops and [external tips](external-tips.md) for binding requirements.
 
 ## Offline session planning
 
@@ -1500,5 +1572,5 @@ complete batch is never a global census. Search omits many repositories,
 especially forks; indexing may lag. No adoption is established and there is no
 curated fallback list. Until indexed jars exist, explicitly name projects for
 existing assessment commands; absence grants nothing. Direct `tipjar jar
-owner/repo` works without indexing. The outside-contributor upstream-route gap
-remains separate work.
+owner/repo` works without indexing. A selected outside contribution continues
+through the reviewed task 0.3 [external-tip route](external-tips.md).

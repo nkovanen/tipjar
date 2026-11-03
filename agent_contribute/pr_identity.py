@@ -334,3 +334,91 @@ def check_updated_publication(binding, publication_claim, from_head, expected_he
     except ProtocolError as exc:
         result['errors'].append(str(exc))
         return result, live
+
+
+_EXTERNAL_BINDING_KEYS = {'source_repository', 'source_repository_id', 'source_owner_id',
+                          'head_repository', 'head_repository_id', 'head_owner_id', 'credential_actor_id',
+                          'head_ref', 'base_ref', 'contract_sha256', 'publication_authorization_sha256',
+                          'issued_at', 'expires_at'}
+
+
+def external_history(binding, client):
+    """Complete all-state/all-base history in both repositories; never reused by old routes."""
+    _require(isinstance(binding, dict) and set(binding) == _EXTERNAL_BINDING_KEYS, 'Invalid external binding shape')
+    for key in ('source_repository_id', 'source_owner_id', 'head_repository_id', 'head_owner_id', 'credential_actor_id'):
+        _require(_positive_id(binding[key]), 'External binding requires positive numeric identities')
+    for key in ('source_repository', 'head_repository'):
+        parse_repository(binding[key])
+    _require(binding['source_repository_id'] != binding['head_repository_id'] and
+             binding['source_repository'] != binding['head_repository'] and
+             binding['head_owner_id'] == binding['credential_actor_id'], 'Invalid external personal fork binding')
+    _require(_ref(binding['head_ref']) and _ref(binding['base_ref']), 'Invalid external refs')
+    _require(all(_hex(binding[k], 64) for k in ('contract_sha256', 'publication_authorization_sha256')),
+             'Invalid external binding hashes')
+    issued, expires = _timestamp(binding['issued_at']), _timestamp(binding['expires_at'])
+    _require(dt.timedelta(0) < expires-issued <= dt.timedelta(hours=24), 'Invalid external authorization interval')
+    result = {'source': [], 'fork': [], 'errors': [], 'provenance': {}}
+    for side, repo, rid in [('source', binding['source_repository'], binding['source_repository_id']),
+                            ('fork', binding['head_repository'], binding['head_repository_id'])]:
+        endpoint = (f'repos/{repo}/pulls?state=all&head='
+                    + quote(binding['head_repository'].split('/')[0] + ':' + binding['head_ref'], safe='')
+                    + '&sort=created&direction=asc')
+        scan = paginate(client, endpoint)
+        result['provenance'][side] = dict(endpoint=endpoint, **{k: v for k, v in scan.items() if k != 'items'})
+        result['errors'] += scan['errors']
+        if not scan['complete']:
+            result['errors'].append(side + ' exact-head history incomplete')
+        ids, numbers = set(), set()
+        for item in scan['items']:
+            f = _pr_facts(item)
+            _require((f['base_repository'], f['base_repository_id'], f['head_repository'],
+                      f['head_repository_id'], f['head_ref'], f['url']) ==
+                     (repo, rid, binding['head_repository'], binding['head_repository_id'], binding['head_ref'],
+                      f"https://github.com/{repo}/pull/{f['number']}"), 'External history returned another route')
+            _require(f['id'] not in ids and f['number'] not in numbers, 'External history repeated PR identity')
+            ids.add(f['id']); numbers.add(f['number'])
+            result[side].append(f)
+    return result
+
+
+def check_external_publication(binding, publication_claim, expected_head, client):
+    """Observe a new external draft, never infer authority or permit updates."""
+    result = dict(status='unknown', verified=False, creation_clear=False, own_pr=None,
+                  detail=None, errors=[], provenance={})
+    try:
+        history = external_history(binding, client)
+        result.update(provenance=history['provenance'])
+        result['errors'] += history['errors']
+        if result['errors']:
+            return result
+        _require(expected_head is None or _hex(expected_head, 40), 'Invalid external expected head')
+        if publication_claim is None:
+            _require(not history['source'] and not history['fork'], 'Existing open or closed external history blocks creation')
+            result.update(status='absent', creation_clear=True)
+            return result
+        claim = publication_claim
+        keys = {'repository_id', 'pr_number', 'pr_id', 'head_sha', 'contract_sha256', 'publication_authorization_sha256'}
+        _require(isinstance(claim, dict) and set(claim) == keys, 'Invalid external publication claim shape')
+        _require(all(_positive_id(claim[k]) for k in ('repository_id', 'pr_number', 'pr_id')), 'Invalid external claim numeric identity')
+        _require(claim['repository_id'] == binding['source_repository_id'] and
+                 all(claim[k] == binding[k] for k in ('contract_sha256', 'publication_authorization_sha256')) and
+                 expected_head is not None and claim['head_sha'] == expected_head, 'External publication claim binding differs')
+        _require(not history['fork'] and len(history['source']) == 1, 'External recognition needs one upstream draft and empty fork history')
+        listed = history['source'][0]
+        _require((listed['number'], listed['id']) == (claim['pr_number'], claim['pr_id']), 'External history identity differs from claim')
+        detail = client.request(f"repos/{binding['source_repository']}/pulls/{claim['pr_number']}")
+        current = _pr_facts(detail, detail=True)
+        _require(current == listed, 'External list/detail race')
+        _require(current['base_ref'] == binding['base_ref'] and current['head_sha'] == expected_head and
+                 current['author_id'] == binding['credential_actor_id'] and current['state'] == 'open' and
+                 current['draft'] is True and detail['merged'] is False and current['merged_at'] is None,
+                 'External publication is not the bound exact-head open draft')
+        created = _timestamp(current['created_at'])
+        _require(_timestamp(binding['issued_at']) <= created < _timestamp(binding['expires_at']) and
+                 created <= dt.datetime.now(dt.timezone.utc), 'External draft creation is outside authorized interval or future')
+        _require(_hex(detail['base'].get('sha'), 40), 'External PR base SHA is unresolved')
+        result.update(status='own_draft', verified=True, detail=detail, own_pr=dict(
+            repository=binding['source_repository'], repository_id=binding['source_repository_id'], **current))
+    except ProtocolError as exc:
+        result['errors'].append(str(exc))
+    return result

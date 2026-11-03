@@ -1,6 +1,6 @@
 ---
 name: agent-contribute
-description: Use when asked to help an open-source GitHub repository, select contribution work, or prepare an agent contribution handoff.
+description: Use when asked to use Tipjar, tip an open-source project with agent work, give back to projects you use, gift a contribution, help an open-source GitHub repository, select contribution work, or prepare an agent contribution handoff.
 ---
 
 First run `agent-contrib --format text instructions` and read the workflow it

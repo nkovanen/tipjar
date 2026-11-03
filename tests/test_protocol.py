@@ -756,7 +756,7 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(status, 0)
         result = json.loads(output)
         self.assertEqual(result['cli_version'], '0.3.0')
-        self.assertEqual(result['supported_schema_versions'], ['0.1', '0.2'])
+        self.assertEqual(result['supported_schema_versions'], ['0.1', '0.2', '0.3'])
         self.assertGreater(len(result['workflow_markdown']), 100)
 
     def test_skill_export_is_portable_and_never_overwrites(self):
@@ -781,7 +781,7 @@ class AdapterTests(unittest.TestCase):
             result = subprocess.run([os.sys.executable, '-m', 'agent_contribute', 'instructions'],
                                     cwd=tmp, env=env, capture_output=True, text=True, timeout=15)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertEqual(json.loads(result.stdout)['supported_schema_versions'], ['0.1', '0.2'])
+            self.assertEqual(json.loads(result.stdout)['supported_schema_versions'], ['0.1', '0.2', '0.3'])
             exported = pathlib.Path(tmp, 'SKILL.md')
             result = subprocess.run([os.sys.executable, '-m', 'agent_contribute', 'skill', '--output', str(exported)],
                                     cwd=tmp, env=env, capture_output=True, text=True, timeout=15)

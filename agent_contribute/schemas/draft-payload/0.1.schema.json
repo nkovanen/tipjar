@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "title",
+    "body",
+    "draft",
+    "maintainer_can_modify"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "body": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60000
+    },
+    "draft": {
+      "const": true
+    },
+    "maintainer_can_modify": {
+      "const": false
+    }
+  }
+}

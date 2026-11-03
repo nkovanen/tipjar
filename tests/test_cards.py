@@ -34,8 +34,10 @@ class CardTests(unittest.TestCase):
         return invoke('card', str(path or self.save()), '--output', str(self.root / name))
 
     def test_card_response_contract_starts_at_output2(self):
-        self.assertEqual(outputs.output_schema('card')['$id'], 'urn:agent-contrib:output:2:card')
+        self.assertEqual(outputs.output_schema('card')['$id'], 'urn:agent-contrib:output:3:card')
         resources = importlib.resources.files('agent_contribute')
+        frozen = json.loads(resources.joinpath('schemas/output/2/card.schema.json').read_text('utf-8'))
+        self.assertEqual(frozen['$id'], 'urn:agent-contrib:output:2:card')
         self.assertFalse(resources.joinpath('schemas/output/1/card.schema.json').is_file())
 
     def test_card_is_offline_exclusive_and_digest_matches_artifact(self):
