@@ -21,6 +21,7 @@ import venv
 
 RESOURCE_PATHS = (
     "task.schema.json",
+    "tipjar.schema.json",
     "evidence.schema.json",
     "schemas/0.2/task.schema.json",
     "schemas/0.2/evidence.schema.json",
@@ -35,6 +36,7 @@ RESOURCE_PATHS = (
     "schemas/output/1/feedback.schema.json",
     "schemas/output/1/inspect.schema.json",
     "schemas/output/1/instructions.schema.json",
+    "schemas/output/1/jar.schema.json",
     "schemas/output/1/lint.schema.json",
     "schemas/output/1/ownership.schema.json",
     "schemas/output/1/pr-body.schema.json",
@@ -42,6 +44,23 @@ RESOURCE_PATHS = (
     "schemas/output/1/scope-check.schema.json",
     "schemas/output/1/skill.schema.json",
     "schemas/output/1/verify.schema.json",
+    "schemas/output/2/audit.schema.json",
+    "schemas/output/2/authorization-request.schema.json",
+    "schemas/output/2/discover.schema.json",
+    "schemas/output/2/drift.schema.json",
+    "schemas/output/2/error.schema.json",
+    "schemas/output/2/evidence-init.schema.json",
+    "schemas/output/2/feedback.schema.json",
+    "schemas/output/2/inspect.schema.json",
+    "schemas/output/2/instructions.schema.json",
+    "schemas/output/2/jar.schema.json",
+    "schemas/output/2/lint.schema.json",
+    "schemas/output/2/ownership.schema.json",
+    "schemas/output/2/pr-body.schema.json",
+    "schemas/output/2/prepare.schema.json",
+    "schemas/output/2/scope-check.schema.json",
+    "schemas/output/2/skill.schema.json",
+    "schemas/output/2/verify.schema.json",
     "instructions.md",
     "adapters/agent-contribute/SKILL.md",
 )
@@ -122,9 +141,20 @@ def installed_check(source):
     assert instructions["supported_schema_versions"] == ["0.1", "0.2"]
     assert instructions["supported_host_context_versions"] == ["0.1", "0.2"]
     assert instructions["automatic_updates"] is False
-    assert instructions["output_schema_version"] == "1"
-    assert json.loads(cli("schema", "verify"))["$id"] == "urn:agent-contrib:output:1:verify"
+    assert instructions["output_schema_version"] == "2"
+    assert json.loads(cli("schema", "verify"))["$id"] == "urn:agent-contrib:output:2:verify"
     assert instructions["workflow_markdown"] == resources.joinpath("instructions.md").read_text("utf-8")
+    manifest_schema = json.loads(resources.joinpath("tipjar.schema.json").read_text("utf-8"))
+    assert manifest_schema["properties"]["schema_version"]["const"] == "0.1"
+    assert not core.schema_errors({"schema_version": "0.1", "status": "welcome"}, manifest_schema)
+    assert core.schema_errors({"schema_version": "999", "status": "welcome"}, manifest_schema)
+    jar_schema = json.loads(cli("schema", "jar"))
+    assert jar_schema["$id"] == "urn:agent-contrib:output:2:jar"
+    assert "inspection only" in " ".join(cli("jar", "--help").split())
+    failed_jar = json.loads(cli("jar", "acme/project", expected=1))
+    assert failed_jar["state"] == "unknown" and failed_jar["complete"] is False
+    assert failed_jar["manifest"] is None and failed_jar["commit"] is None
+    assert not core.schema_errors(failed_jar, jar_schema)
 
     # The additive alias must use the same workflow and fail-closed gates.
     assert run([tipjar, "--version"], cwd=Path.cwd(), env=env).strip() == "0.3.0"

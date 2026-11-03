@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 from . import (audit, authrequest, budget, cache, ci, core, drift, feedback, multi, outputs, ownership, policy,
-               prbody, remote, signals, signatures, textfmt, workspace, __version__)
+               prbody, remote, signals, signatures, textfmt, tipjar, workspace, __version__)
 
 
 HOST_INPUT_TIMEOUT = 5.0
@@ -118,6 +118,11 @@ def prevalidate(args):
         core.parse_issue(args.reference)
         if args.command == 'feedback' and args.expected_head is not None and not remote.SHA.fullmatch(args.expected_head):
             raise core.ProtocolError('invalid_head', 'Expected head must be a full 40-character commit SHA')
+    elif args.command == 'jar':
+        try:
+            core.parse_repository(args.repository)
+        except core.ProtocolError as exc:
+            raise core.ProtocolError('usage', str(exc)) from None
     elif args.command == 'audit':
         core.parse_repository(args.repository)
     elif args.command == 'authorization-request':
@@ -168,6 +173,8 @@ def main(argv=None):
             sub.add_argument('--limit', metavar='N',
                              help='Display at most N ranked candidates (1-1000, globally across repositories); '
                                   'all scans still run')
+            sub.add_argument('--welcomed-only', action='store_true',
+                             help='Select only declared welcomes among named repositories; all scans still run')
             sub.add_argument('--signals', action='store_true',
                              help='Add report-only code-location, clarity, activity and maintainer signals')
             sub.add_argument('--responsiveness', action='store_true',
@@ -190,6 +197,9 @@ def main(argv=None):
             sub.add_argument('--output', required=True, help='New file for the draft contract; never overwritten')
             sub.add_argument('--schema-version', choices=('0.1', '0.2'), default='0.1',
                              help='Task schema (default 0.1; 0.2 is the same-repository candidate route)')
+    sub = commands.add_parser('jar', help='Inspect the pinned root Tipjar invitation; inspection only, grants no authority',
+                              description='Pinned root invitation inspection only; grants no approval or authority.')
+    sub.add_argument('repository', help='GitHub owner/repo to inspect directly, without parent tracker resolution')
     commands.add_parser('instructions', help='Print the installed workflow, CLI version and supported schemas')
     sub = commands.add_parser('schema', help="Print the JSON Schema of a command's JSON output")
     sub.add_argument('name', choices=outputs.SCHEMAS, metavar='COMMAND',
@@ -264,7 +274,7 @@ def main(argv=None):
             for flag, given in (('--report-budget', args.report_budget), ('--cache', args.cache)):
                 if given:
                     raise core.ProtocolError('usage', flag + ' applies only to commands that read GitHub')
-        cache.configure(args.cache)
+        cache.configure(args.cache and args.command != 'jar')
         if getattr(args, 'ai_policy', False):
             notice()
         prevalidate(args)
@@ -323,6 +333,9 @@ def main(argv=None):
         elif args.command == 'authorization-request':
             result = authrequest.build(args.task)
             code = 0 if result.get('ready_for_issuance') is True else 1
+        elif args.command == 'jar':
+            result = tipjar.read_jar(args.repository)
+            code = 0 if result['complete'] else 1
         elif args.command == 'audit':
             result = audit.audit(args.repository, print_policy=args.print_policy)
             code = 0 if result['complete'] else 1
@@ -337,6 +350,8 @@ def main(argv=None):
             code = 0 if result['complete'] else 1
         elif args.command == 'discover':
             options = {key: True for key in ('signals', 'responsiveness') if getattr(args, key)}
+            if args.welcomed_only:
+                options['welcomed_only'] = True
             names, client = args.names, core.GitHub()
             if args.limit is not None:
                 options['limit'] = args.limit
@@ -355,7 +370,7 @@ def main(argv=None):
             for single in result.get('repositories', [result]):
                 if 'commit' in single:  # report only: never part of completeness or the exit code
                     single['repository_policy'] = policy.report(single['repository'], single['commit'],
-                                                                single['instructions'], client)
+                                                                single['instructions'], client, tipjar_report=single.get('tipjar'))
             if args.responsiveness:  # Like --ownership: an incomplete opted-in report is a nonzero exit.
                 reports = [r.get('repository_signals', {}).get('responsiveness') for r in result.get('repositories', [result])]
                 code = code or (0 if all(r and r['complete'] for r in reports) else 1)
@@ -377,7 +392,8 @@ def main(argv=None):
                 context = {k: result[k] for k in ('requested_repository', 'issue_source_repository',
                                                   'proposed_target_repository', 'resolution_provenance', 'reference')}
                 result = {**context, 'output': str(args.output), 'complete': result['complete'], 'contract': task,
-                          'warning': 'Draft saved; inspect and review before execution', 'repository_policy': report}
+                          'warning': 'Draft saved; inspect and review before execution', 'repository_policy': report,
+                          'tipjar': result['tipjar']}
         else:
             task, evidence = args.task, args.evidence_data
             version = task.get('schema_version') if isinstance(task, dict) else None
