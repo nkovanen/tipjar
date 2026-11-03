@@ -285,6 +285,51 @@ class DeployTests(unittest.TestCase):
             with patch.object(self.tool, 'datetime', Clock), patch('sys.stderr', io.StringIO()):
                 self.assertEqual(self.tool.main(['--board', str(path), '--source-commit', SHA]), 1)
 
+    def assert_predeploy_status_refusal(self, status, suffix):
+        repo = dict(id=1444643470, full_name='nkovanen/tipjar', private=False,
+                    visibility='public', default_branch='main')
+        ref = dict(ref='refs/heads/main', object=dict(type='commit', sha=SHA))
+        good_repo = (200, json.dumps(repo).encode())
+        good_ref = (200, json.dumps(ref).encode())
+        hostile_body = b'\x1b[31mprivate identity https://secret.invalid token=secret\n'
+        failure = (status, hostile_body)
+        for message, responses in [
+            ('controller metadata unreadable', [failure]),
+            ('default branch unreadable', [good_repo, failure]),
+            ('served board unreadable; redirects are not followed', [good_repo, good_ref, failure]),
+        ]:
+            with self.subTest(stage=message), \
+                 patch.object(self.tool, 'fetch', side_effect=responses), \
+                 patch.object(self.tool, 'read_artifact', return_value=b'unused'), \
+                 patch('sys.stdout', new_callable=io.StringIO) as stdout, \
+                 patch('sys.stderr', new_callable=io.StringIO) as stderr:
+                self.assertEqual(self.tool.main(['--artifact', 'unused.tar',
+                                                '--source-commit', SHA, '--bootstrap']), 1)
+                self.assertEqual(stdout.getvalue(), '')
+                self.assertEqual(stderr.getvalue(), 'Predeploy refused: ' + message + suffix + '\n')
+
+    def test_http_refusals_report_only_bounded_numeric_status(self):
+        for status in [100, 199, 201, 301, 403, 429, 500, 503, 599]:
+            with self.subTest(status=status):
+                self.assert_predeploy_status_refusal(status, f' (HTTP {status})')
+
+    def test_malformed_http_status_keeps_generic_refusal(self):
+        class HostileStatus:
+            def __str__(self):
+                raise AssertionError('untrusted status must not be rendered')
+        class HostileInt(int):
+            def __str__(self):
+                raise AssertionError('integer subclass must not be rendered')
+        for status in [None, True, False, 99, 600, -1, 10 ** 100,
+                       403.0, '403', '429\x1b[31msecret', b'503', [], {},
+                       HostileStatus(), HostileInt(403)]:
+            self.assert_predeploy_status_refusal(status, '')
+
+    def test_served_200_returns_body_unchanged(self):
+        data = json.dumps(snapshot()).encode()
+        with patch.object(self.tool, 'fetch', return_value=(200, data)):
+            self.assertEqual(self.tool.served_board(), data)
+
     def test_unreadable_current_state_and_redirect_fail_even_with_bootstrap(self):
         for status in [301, 403, 429, 500]:
             with self.subTest(status=status), patch.object(self.tool, 'fetch', return_value=(status, b'')):
