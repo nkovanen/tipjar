@@ -10,14 +10,15 @@
 
 ## Inspected source and review gate
 
-Reader worktree branch `tipjar/readme-invitations`, HEAD `17a9258`, was dirty when inspected; HEAD alone does not identify the new implementation.
-Exact inspected SHA-256 bytes (2026-11-03; source filenames relative to repository root):
-- `agent_contribute/tipjar.py`: `baff578c7eb15bc9912cc2a933098f5b7a90168f26c47a075c63041c3d95c2b0`.
+Reader checkpoint is immutable `85f51abcd3aaba27a4a6cd0e9df2e4b7ab1fa8ad` on `tipjar/readme-invitations` (2026-11-03); reader implementation review remains parent-owned.
+Verified checkpoint SHA-256 bytes (source filenames relative to repository root):
+- `agent_contribute/tipjar.py`: `bcd282ba27be0f3bb30ddf63d19304048e6aeb75eacb18e9d7224200395f196c`.
 - `agent_contribute/find.py`: `c6685dfa1c283c08d74509cd96b9b08aa92d66d78129d935f272b7df04e0e29f`.
 - `agent_contribute/readme_invitation.py`: `e01638a87a0744925d8929c84d45698228f4a3af9504f057ec5c4344d28fe861`.
 - `agent_contribute/schemas/output/4/jar.schema.json`: `0002ca985c747029c3cd3d1df1e58b9bc88ca349e65aa1336beb551d3350447b`.
 - `agent_contribute/schemas/output/4/find.schema.json`: `2a23bde107dc0432d3dccdd27e429082cbc7324fb3185d9bf39b3ffbf4d95b40`.
-Before coding, parent pins the reviewed immutable reader checkpoint, compares these interfaces, and resolves any difference in this plan. This gate applies to board2 only; the sibling reader lane continues its own authorized work.
+Compared with the initially inspected dirty `17a9258` state: finder, badge parser and both schemas are byte-identical; the only reader difference is compact JSON separators when revalidating manifest bytes in `_complete_report`. Public interfaces are unchanged.
+Before coding, parent completes reader/design review and starts from integrated reader + main (including the Python 3.10 compatibility fix); no implementation or workflow activation is authorized by this amendment.
 
 ## Exact public interface
 
@@ -84,4 +85,4 @@ Closed/invalid/unreadable/unsupported manifests cannot be rescued by a README. C
 | Two-search coverage | Either search can supply one deduplicated public repo; direct README read affects minimum/expiry | First/second search failure, private/null hits, contradictory IDs, truncation and budget exhaustion stay partial with privacy scrubbing — collector |
 | Preserved trust/time | Same eligible tip set yields identical scores for `/1|/2`; old served `/1` can be replaced by fresh `/2` | Edited consent/self-merge/private/future checks, crossed expiry, stale generation/source SHA remain blocked; expired data has no scores/CTA — all owners |
 
-Self-review: no schema/scoring/enrollment migration, no independent badge parser, exact interfaces and owners assigned; only reader checkpoint pin remains a pre-implementation dependency. Fresh Terra design review is parent-owned.
+Self-review: no schema/scoring/enrollment migration, no independent badge parser, exact interfaces and owners assigned; immutable reader checkpoint is pinned; parent-owned reader and fresh Terra design reviews remain pre-implementation dependencies.
