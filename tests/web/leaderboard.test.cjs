@@ -404,3 +404,149 @@ test("board2 refuses extra fields, unsafe integers, recursive duplicates and inv
   };
   assert.throws(() => parse(plain));
 });
+test("share_route_rejects_ambiguous_or_hostile_selectors", () => {
+  const plain = { period: "month", target: null, invalid: false };
+  assert.deepEqual(m.parseBoardRoute(""), plain);
+  assert.deepEqual(
+    m.parseBoardRoute("?repository_id=%31%30%31&period=all&ignored=%3Cimg%3E"),
+    { period: "all", target: { kind: "repository", id: 101 }, invalid: false },
+  );
+  assert.deepEqual(m.parseBoardRoute("?author_id=301&period=30days"), {
+    period: "30days",
+    target: { kind: "author", id: 301 },
+    invalid: false,
+  });
+  for (const query of [
+    "?repository_id=101&author_id=301",
+    "?repository_id=101&repository_id=101",
+    "?author_id=301&author_id=302",
+    "?period=month&period=all",
+    "?period=",
+    "?period=other",
+    "?author_id=0",
+    "?author_id=01",
+    "?author_id=-1",
+    "?author_id=1.0",
+    "?author_id=1e2",
+    "?author_id=9007199254740992",
+    "?author_id=",
+    "?author_id=%2531",
+    "?author_id=%ZZ",
+    "?author_id=%3Cimg%20src=x%3E",
+    "?repository_id=101%0a",
+    "?repository_id=+101",
+    "?" + Array.from({ length: 17 }, (_, i) => "x" + i + "=1").join("&"),
+    "?x=" + "a".repeat(2048),
+  ])
+    assert.deepEqual(
+      m.parseBoardRoute(query),
+      { ...plain, invalid: true },
+      query,
+    );
+  assert.deepEqual(m.parseBoardRoute("?unknown=1&unknown=2"), plain);
+});
+test("share_url_is_canonical_and_subpath_safe", () => {
+  for (const period of ["month", "30days", "all"]) {
+    const route = {
+      period,
+      target: { kind: "repository", id: 101 },
+      invalid: false,
+    };
+    assert.equal(
+      m.boardViewURL(
+        "https://nkovanen.github.io/tipjar/leaderboard.html?hostile=1#projects",
+        route,
+      ),
+      `https://nkovanen.github.io/tipjar/leaderboard.html?repository_id=101&period=${period}`,
+    );
+  }
+  assert.equal(
+    m.boardViewURL(
+      "http://localhost:8888/web/leaderboard.html",
+      m.parseBoardRoute("?author_id=%33%30%31"),
+    ),
+    "http://localhost:8888/web/leaderboard.html?author_id=301&period=month",
+  );
+  for (const route of [
+    { period: "other", target: null, invalid: false },
+    {
+      period: "month",
+      target: { kind: "repository", id: "101" },
+      invalid: false,
+    },
+    { period: "month", target: { kind: "anything", id: 101 }, invalid: false },
+    { period: "month", target: { kind: "author", id: 1e20 }, invalid: false },
+    { period: "month", target: null, invalid: true },
+    {
+      period: "month",
+      target: { kind: "author", id: 301, extra: 1 },
+      invalid: false,
+    },
+  ])
+    assert.throws(() =>
+      m.boardViewURL("https://example.com/tipjar/leaderboard.html", route),
+    );
+});
+test("share_lookup_uses_current_snapshot_only", () => {
+  for (const b of [parse(fixture()), parse(board2Fixture("readme-welcome"))]) {
+    const original = JSON.stringify(b);
+    assert.deepEqual(
+      m.resolveBoardTarget(b, { kind: "repository", id: 101 }, now),
+      { kind: "repository", id: 101, label: "fictional-demo/welcoming-jar" },
+    );
+    assert.deepEqual(
+      m.resolveBoardTarget(b, { kind: "author", id: 301 }, now),
+      { kind: "author", id: 301, label: "fictional-giver" },
+    );
+    for (const target of [
+      null,
+      { kind: "repository", id: 999 },
+      { kind: "author", id: 999 },
+      { kind: "author", id: "301" },
+      { kind: "unknown", id: 101 },
+    ])
+      assert.equal(m.resolveBoardTarget(b, target, now), null);
+    assert.equal(
+      m.resolveBoardTarget(
+        b,
+        { kind: "author", id: 301 },
+        new Date(b.expires_at),
+      ),
+      null,
+    );
+    assert.equal(JSON.stringify(b), original);
+    const outside = structuredClone(b);
+    outside.tips[0].merged_at = "2026-10-01T00:00:00Z";
+    assert.equal(m.rankBoard(outside, "month", now).people.length, 0);
+    assert.equal(
+      m.resolveBoardTarget(outside, { kind: "author", id: 301 }, now).label,
+      "fictional-giver",
+    );
+    outside.tips = [];
+    assert.equal(
+      m.resolveBoardTarget(outside, { kind: "author", id: 301 }, now),
+      null,
+    );
+    assert.equal(
+      m.resolveBoardTarget(outside, { kind: "repository", id: 101 }, now).label,
+      "fictional-demo/welcoming-jar",
+    );
+    outside.repositories = [];
+    outside.directory.observations = [];
+    assert.equal(
+      m.resolveBoardTarget(outside, { kind: "repository", id: 101 }, now),
+      null,
+    );
+    const renamed = structuredClone(b);
+    renamed.repositories[0].repository = "fictional-demo/current-name";
+    renamed.tips[0].author_login = "current-giver";
+    assert.equal(
+      m.resolveBoardTarget(renamed, { kind: "repository", id: 101 }, now).label,
+      "fictional-demo/current-name",
+    );
+    assert.equal(
+      m.resolveBoardTarget(renamed, { kind: "author", id: 301 }, now).label,
+      "current-giver",
+    );
+  }
+});
