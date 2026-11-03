@@ -500,10 +500,12 @@ def main(argv=None):
             code = 0
         elif args.command in ('inspect', 'prepare'):
             client = core.GitHub()
-            result = core.inspect_issue(args.reference, client)
+            legacy_prepare = args.command == 'prepare'
+            result = core.inspect_issue(args.reference, client,
+                                        invitation_protocol=tipjar.LEGACY if legacy_prepare else tipjar.CURRENT)
             code = 0 if result['complete'] else 1
             # Default-on, report only: the policy report never changes the result, the contract or the exit code.
-            report = policy.for_inspected(result, client) if 'source' in result else None
+            report = policy.for_inspected(result, client, inventory_format=3 if legacy_prepare else None) if 'source' in result else None
             if args.command == 'inspect' and 'source' in result:
                 if args.ownership:
                     result['ownership_signals'] = ownership.ownership_signals(

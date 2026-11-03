@@ -106,3 +106,49 @@ class ReadmeWorkflowTests(unittest.TestCase):
         for key in ('jar_source_kind','jar_path','jar_blob_sha','jar_manifest_present'):
             old['source_review'].pop(key)
         self.assertTrue(any('reprepare' in e for e in core.validate_contract(old)))
+
+class LegacyPreparationCliReviewTests(unittest.TestCase):
+    def setUp(self):
+        self.route=route.ExternalTipEndToEndTests();self.route.setUp();self.addCleanup(self.route.doCleanups)
+        self.client=ReadmeRouteGitHub(self.route.base)
+
+    def prepare(self,version,client=None):
+        from agent_contribute import cli
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory)/'task.json';stdout=io.StringIO()
+            argv=['prepare','acme/photos#12','--schema-version',version,'--output',str(output)]
+            if version=='0.3':argv += ['--fork','human/photos','--head-ref','tip-12']
+            with patch.object(core,'GitHub',return_value=client or self.client),contextlib.redirect_stdout(stdout):
+                code=cli.main(argv)
+            return code,json.loads(stdout.getvalue()),output.exists()
+
+    def test_legacy_cli_preparation_ignores_copied_readme_intent_without_new_reads(self):
+        self.client.contents['README.md']=readme_invitation.snippet('other/photos').encode()
+        for version in ('0.1','0.2'):
+            with self.subTest(version=version):
+                self.client.calls.clear()
+                code,result,written=self.prepare(version)
+                self.assertEqual(code,0,result)
+                self.assertTrue(written)
+                self.assertEqual(result['tipjar']['state'],'undeclared')
+                self.assertNotIn('source_kind',result['tipjar'])
+                self.assertEqual(result['repository_policy']['inventory_format'],3)
+                self.assertEqual(sum('/contents/README.md?' in x for x in self.client.calls),1)
+                self.assertEqual(result['contract']['execution']['mode'],'pending')
+
+    def test_legacy_and_current_positive_controls_and_current_copy_refusal(self):
+        for version in ('0.1','0.2','0.3'):
+            with self.subTest(version=version):
+                code,result,written=self.prepare(version)
+                self.assertEqual(code,0,result);self.assertTrue(written)
+                if version=='0.3':self.assertEqual(result['contract']['source_review']['jar_source_kind'],'readme')
+                else:self.assertEqual(result['tipjar']['state'],'undeclared')
+        self.client.contents['README.md']=readme_invitation.snippet('other/photos').encode()
+        code,result,written=self.prepare('0.3')
+        self.assertEqual(code,1);self.assertFalse(written)
+
+    def test_legacy_cli_still_blocks_closed_manifest(self):
+        self.client.contents['.tipjar.json']=b'{"schema_version":"0.1","status":"closed"}'
+        for version in ('0.1','0.2'):
+            code,result,written=self.prepare(version)
+            self.assertEqual(code,1);self.assertFalse(written)
