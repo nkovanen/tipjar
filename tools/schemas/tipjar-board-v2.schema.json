@@ -1,0 +1,1171 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "generated_at",
+    "expires_at",
+    "rules_version",
+    "source_commit",
+    "coverage",
+    "tips",
+    "repositories",
+    "directory"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "tipjar-board/2"
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 27,
+      "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+    },
+    "expires_at": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 27,
+      "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+    },
+    "rules_version": {
+      "type": "integer",
+      "const": 1,
+      "maximum": 9007199254740991
+    },
+    "source_commit": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40,
+      "pattern": "^(?:[0-9a-f]{40})$"
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exhaustive",
+        "partial",
+        "unknown_tips",
+        "unknown_repositories",
+        "excluded_tips",
+        "excluded_repositories",
+        "omitted_tips",
+        "omitted_repositories",
+        "omitted_directory_observations"
+      ],
+      "properties": {
+        "exhaustive": {
+          "type": "boolean",
+          "const": false
+        },
+        "partial": {
+          "type": "boolean"
+        },
+        "unknown_tips": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unknown_repositories": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "excluded_tips": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "excluded_repositories": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "omitted_tips": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "omitted_repositories": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "omitted_directory_observations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "tips": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repository_id",
+          "pull_request_id",
+          "number",
+          "url",
+          "author_id",
+          "author_login",
+          "merged_at",
+          "checks",
+          "verified_at",
+          "submission_url",
+          "agent_assistance",
+          "size"
+        ],
+        "properties": {
+          "repository_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pull_request_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "author_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "author_login": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 39,
+            "pattern": "^(?:[A-Za-z0-9][A-Za-z0-9-]{0,38})$"
+          },
+          "merged_at": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 27,
+            "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+          },
+          "checks": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "consent",
+              "controller",
+              "repository",
+              "pull_request"
+            ],
+            "properties": {
+              "consent": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 27,
+                "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+              },
+              "controller": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 27,
+                "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+              },
+              "repository": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 27,
+                "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+              },
+              "pull_request": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 27,
+                "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+              }
+            }
+          },
+          "verified_at": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 27,
+            "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+          },
+          "submission_url": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "^(?:https://github\\.com/nkovanen/tipjar/issues/[1-9][0-9]{0,15})$"
+          },
+          "agent_assistance": {
+            "type": "string",
+            "const": "self-declared"
+          },
+          "size": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "additions",
+              "deletions",
+              "changed_files"
+            ],
+            "properties": {
+              "additions": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "deletions": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "changed_files": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "maxItems": 500
+    },
+    "repositories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repository_id",
+          "repository",
+          "primary_language",
+          "verified_at"
+        ],
+        "properties": {
+          "repository_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "repository": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^(?:[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99})$"
+          },
+          "primary_language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verified_at": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 27,
+            "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+          }
+        }
+      },
+      "maxItems": 200
+    },
+    "directory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete",
+        "search_failed",
+        "server_incomplete",
+        "truncated",
+        "observations"
+      ],
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "search_failed": {
+          "type": "boolean"
+        },
+        "server_incomplete": {
+          "type": "boolean"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "repository_id",
+              "repository",
+              "disposition",
+              "verified_at",
+              "checks",
+              "jar",
+              "source"
+            ],
+            "properties": {
+              "repository_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "repository": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^(?:[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99})$"
+              },
+              "disposition": {
+                "type": "string",
+                "enum": [
+                  "welcome",
+                  "closed",
+                  "undeclared",
+                  "unknown",
+                  "excluded"
+                ]
+              },
+              "verified_at": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 27,
+                "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+              },
+              "checks": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 27,
+                  "pattern": "^(?:[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?Z)$"
+                },
+                "maxItems": 32,
+                "minItems": 2
+              },
+              "jar": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/jar_result"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "source": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "manifest"
+                      },
+                      "path": {
+                        "const": ".tipjar.json"
+                      },
+                      "commit": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                        "minLength": 40,
+                        "maxLength": 40
+                      },
+                      "tree_sha": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                        "minLength": 40,
+                        "maxLength": 40
+                      },
+                      "blob_sha": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                        "minLength": 40,
+                        "maxLength": 40
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+                        "minLength": 64,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "path",
+                      "commit",
+                      "tree_sha",
+                      "blob_sha",
+                      "sha256"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "readme"
+                      },
+                      "path": {
+                        "const": "README.md"
+                      },
+                      "commit": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                        "minLength": 40,
+                        "maxLength": 40
+                      },
+                      "tree_sha": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                        "minLength": 40,
+                        "maxLength": 40
+                      },
+                      "blob_sha": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                        "minLength": 40,
+                        "maxLength": 40
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+                        "minLength": 64,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "path",
+                      "commit",
+                      "tree_sha",
+                      "blob_sha",
+                      "sha256"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "absent"
+                      },
+                      "path": {
+                        "const": null
+                      },
+                      "commit": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                        "minLength": 40,
+                        "maxLength": 40
+                      },
+                      "tree_sha": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{40}(?![\\s\\S])",
+                        "minLength": 40,
+                        "maxLength": 40
+                      },
+                      "blob_sha": {
+                        "const": null
+                      },
+                      "sha256": {
+                        "const": null
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "path",
+                      "commit",
+                      "tree_sha",
+                      "blob_sha",
+                      "sha256"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "maxItems": 200
+        }
+      }
+    }
+  },
+  "$defs": {
+    "tipjar_manifest": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "0.1"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "welcome",
+            "closed"
+          ]
+        },
+        "wanted": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          }
+        },
+        "boundaries": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "jar_result": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": ".tipjar.json"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "welcome"
+            },
+            "complete": {
+              "const": true
+            },
+            "manifest": {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "type": "string",
+                  "const": "0.1"
+                },
+                "status": {
+                  "const": "welcome"
+                },
+                "wanted": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 1
+                  }
+                },
+                "boundaries": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "schema_version",
+                "status"
+              ],
+              "additionalProperties": false
+            },
+            "errors": {
+              "const": []
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": true
+            },
+            "source_kind": {
+              "const": "manifest"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": ".tipjar.json"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "closed"
+            },
+            "complete": {
+              "const": true
+            },
+            "manifest": {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "type": "string",
+                  "const": "0.1"
+                },
+                "status": {
+                  "const": "closed"
+                },
+                "wanted": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 1
+                  }
+                },
+                "boundaries": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "schema_version",
+                "status"
+              ],
+              "additionalProperties": false
+            },
+            "errors": {
+              "const": []
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": true
+            },
+            "source_kind": {
+              "const": "manifest"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": "README.md"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "welcome"
+            },
+            "complete": {
+              "const": true
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "const": []
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": false
+            },
+            "source_kind": {
+              "const": "readme"
+            },
+            "badge": {
+              "type": "object",
+              "properties": {
+                "protocol": {
+                  "const": "readme-welcome/1"
+                },
+                "repository": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "protocol",
+                "repository"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": "README.md"
+            },
+            "blob_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "sha256": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 64,
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])",
+              "description": "Exact decoded-byte digest, even when validation fails; not by itself trusted provenance"
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "undeclared"
+            },
+            "complete": {
+              "const": true
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "const": []
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": false
+            },
+            "source_kind": {
+              "const": "readme"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Actual repository inspected; no parent or owner inheritance"
+            },
+            "default_branch": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 1024
+            },
+            "commit": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "path": {
+              "const": null
+            },
+            "blob_sha": {
+              "const": null
+            },
+            "sha256": {
+              "const": null
+            },
+            "fetched_at": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "state": {
+              "const": "undeclared"
+            },
+            "complete": {
+              "const": true
+            },
+            "manifest": {
+              "const": null
+            },
+            "errors": {
+              "const": []
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "repository_id": {
+              "type": [
+                "integer"
+              ],
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "tree_sha": {
+              "type": [
+                "string"
+              ],
+              "maxLength": 40,
+              "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
+            },
+            "manifest_present": {
+              "const": false
+            },
+            "source_kind": {
+              "const": "absent"
+            },
+            "badge": {
+              "const": null
+            }
+          },
+          "required": [
+            "repository",
+            "default_branch",
+            "commit",
+            "path",
+            "blob_sha",
+            "sha256",
+            "fetched_at",
+            "state",
+            "complete",
+            "manifest",
+            "errors",
+            "notice",
+            "repository_id",
+            "tree_sha",
+            "manifest_present",
+            "source_kind",
+            "badge"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tipjar:tipjar-board:2",
+  "description": "Closed source-only board2 contract. Complete invitation2 manifest/readme/absent reports require exact derived source pins. Unknown/excluded observations require null jar/source. Cross-field identity/time/source relations, lexical integers and byte caps require semantic validation. Board1 remains independently frozen."
+}
