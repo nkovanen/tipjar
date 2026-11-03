@@ -3,7 +3,7 @@
 The root landing page introduces Tipjar. `leaderboard.html` joins people giving
 back, most tipped projects and currently welcoming jars. `directory.html`
 preserves the local-first snapshot directory and invitation editor. Tips are
-agent work, not money. The six initial projects are fictional samples: no real invitations,
+agent work, not money. The six local directory demo projects are fictional samples: no real invitations,
 endorsements, contribution counts or claims of maintainer consent.
 
 From a source checkout (or extracted source distribution):
@@ -104,7 +104,13 @@ The Pages artifact is the contents of `web/` plus a freshly generated
 `board.json` beside `index.html`; no frontend build is needed. Relative links
 preserve project subpaths. Never copy test fixtures into a production artifact.
 See [board operations](../docs/leaderboard.md) for collection, opt-in, moderation
-and deployment. The controller owns activation and publication.
+and deployment. The controller owns activation and publication. The collector and predeploy checker
+are source-only tools, included with their schemas and disabled workflow examples
+in the source distribution; they are absent from installed wheels. The board's
+source header links to `nkovanen/tipjar`; its status reports generation, expiry and
+the source commit. These are untrusted observations, not proof of achievements,
+maintainer endorsement or execution/publication authority. An empty public board
+is expected until reviewed opt-ins exist; local demo/import data never fills it.
 
 Clipboard copy uses the browser's secure-context API; if unavailable, it selects
 the command for manual copying. Browsers may prompt before downloading JSON.

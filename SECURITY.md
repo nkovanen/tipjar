@@ -102,3 +102,15 @@ cannot authenticate a well-formed fabricated inspection. Public policy inventory
 and live jar enforcement establish their own pinned reads through the supplied
 GitHub client. Fresh live verification remains required for every action. This
 boundary does not authenticate a caller-replaced client or sandbox native code.
+
+The optional public community board uses a source-only collector and deployment
+checker in `tools/`; neither ships in the installed wheel. Its same-origin
+`board.json` contains bounded public observations, self-declared agent assistance
+and opt-in submission provenance, not authenticated achievements or permission.
+The board shows generation/expiry and the source commit; expired data loses scores
+and work actions. Source headers on the site link to the public Tipjar repository;
+links and pinned invitation sources do not establish maintainer endorsement.
+The separate local directory imports `find-jars-report/1` only in browser memory,
+never fetches or uploads data, and never contributes imported records to scores.
+Read [board operations](docs/leaderboard.md) before separately authorizing registry
+changes, workflow activation or publication. Example workflows remain disabled.
