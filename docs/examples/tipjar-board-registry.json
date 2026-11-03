@@ -1,6 +1,8 @@
 {
   "format": "tipjar-board-registry/1",
   "tips": [],
-  "repositories": [],
+  "repositories": [
+    {"repository_id": 1444643470, "repository": "nkovanen/tipjar"}
+  ],
   "exclusions": []
 }

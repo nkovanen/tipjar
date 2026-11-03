@@ -1,0 +1,150 @@
+{
+  "now": "2026-11-03T12:00:00Z",
+  "cases": [
+    {
+      "file": "manifest-welcome.json",
+      "valid": true,
+      "fresh": true
+    },
+    {
+      "file": "manifest-closed.json",
+      "valid": true,
+      "fresh": true
+    },
+    {
+      "file": "readme-welcome.json",
+      "valid": true,
+      "fresh": true
+    },
+    {
+      "file": "readme-undeclared.json",
+      "valid": true,
+      "fresh": true
+    },
+    {
+      "file": "absent.json",
+      "valid": true,
+      "fresh": true
+    },
+    {
+      "file": "empty.json",
+      "valid": true,
+      "fresh": true
+    },
+    {
+      "file": "partial.json",
+      "valid": true,
+      "fresh": true
+    },
+    {
+      "file": "unknown.json",
+      "valid": true,
+      "fresh": true
+    },
+    {
+      "file": "expired.json",
+      "valid": true,
+      "fresh": false
+    },
+    {
+      "file": "invalid-source-null.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-source-path.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-source-tree.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-source-digest.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-source-kind.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-absent-link.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-badge-repository.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-badge-version.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-jar-repository-id.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-manifest-presence.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-unknown-version.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-mixed-version.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-extra-field.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-incomplete-jar.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-raw-errors.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-future-check.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-expiry.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-self-assistance-claim.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-float-identity.json",
+      "valid": false,
+      "fresh": false
+    },
+    {
+      "file": "invalid-unsafe-identity.json",
+      "valid": false,
+      "fresh": false
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "format": "tipjar-board/2",
+  "generated_at": "2026-11-03T12:00:00Z",
+  "expires_at": "2026-11-05T12:00:00Z",
+  "rules_version": 1,
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "coverage": {
+    "exhaustive": false,
+    "partial": false,
+    "unknown_tips": 0,
+    "unknown_repositories": 0,
+    "excluded_tips": 0,
+    "excluded_repositories": 0,
+    "omitted_tips": 0,
+    "omitted_repositories": 0,
+    "omitted_directory_observations": 0
+  },
+  "tips": [],
+  "repositories": [],
+  "directory": {
+    "complete": true,
+    "search_failed": false,
+    "server_incomplete": false,
+    "truncated": false,
+    "observations": []
+  }
+}

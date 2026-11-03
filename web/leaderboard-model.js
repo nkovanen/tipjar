@@ -119,7 +119,7 @@
             /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/,
           );
         need(match);
-        // Board1 has no floating fields; preserve Python's strict integer token boundary.
+        // Supported board versions have no floating fields; preserve Python's strict integer token boundary.
         need(!/^-?[0-9]/.test(match[0]) || !/[.eE]/.test(match[0]));
         i += match[0].length;
       }
@@ -140,6 +140,104 @@
     unicode(result);
     return result;
   }
+  function validateBoard2Observation(o, generated) {
+    const j = o.jar;
+    keys(j, [
+      "repository",
+      "repository_id",
+      "default_branch",
+      "commit",
+      "tree_sha",
+      "manifest_present",
+      "source_kind",
+      "path",
+      "blob_sha",
+      "sha256",
+      "fetched_at",
+      "state",
+      "complete",
+      "manifest",
+      "badge",
+      "errors",
+      "notice",
+    ]);
+    need(
+      j.repository === o.repository &&
+        j.repository_id === o.repository_id &&
+        j.state === o.disposition &&
+        j.complete === true &&
+        hex(j.commit, 40) &&
+        hex(j.tree_sha, 40) &&
+        text(j.default_branch, 1024) &&
+        nonblank(j.default_branch) &&
+        nonblank(j.notice) &&
+        [...j.notice].length <= 500 &&
+        Array.isArray(j.errors) &&
+        j.errors.length === 0,
+    );
+    need(typeof j.fetched_at === "string" && j.fetched_at.length <= 100);
+    need(time(j.fetched_at.replace(/\+00:00$/, "Z")) <= generated);
+    if (j.source_kind === "manifest") {
+      need(
+        j.manifest_present === true &&
+          j.path === ".tipjar.json" &&
+          ["welcome", "closed"].includes(j.state) &&
+          j.badge === null &&
+          hex(j.blob_sha, 40) &&
+          hex(j.sha256, 64),
+      );
+      // Manifest validation is unchanged; the canonical reader alone recognizes README invitations.
+      local.parseSnapshot(
+        JSON.stringify({
+          format: "find-jars-report/1",
+          complete: true,
+          observations: [
+            { repository: o.repository, disposition: o.disposition, jar: j },
+          ],
+        }),
+      );
+    } else if (j.source_kind === "readme") {
+      need(
+        j.manifest_present === false &&
+          j.path === "README.md" &&
+          j.manifest === null &&
+          hex(j.blob_sha, 40) &&
+          hex(j.sha256, 64),
+      );
+      if (j.state === "welcome") {
+        keys(j.badge, ["protocol", "repository"]);
+        need(
+          j.badge.protocol === "readme-welcome/1" &&
+            j.badge.repository === j.repository.toLowerCase(),
+        );
+      } else need(j.state === "undeclared" && j.badge === null);
+    } else {
+      need(
+        j.source_kind === "absent" &&
+          j.manifest_present === false &&
+          j.state === "undeclared" &&
+          j.manifest === null &&
+          j.badge === null &&
+          j.path === null &&
+          j.blob_sha === null &&
+          j.sha256 === null,
+      );
+    }
+    keys(o.source, [
+      "kind",
+      "path",
+      "commit",
+      "tree_sha",
+      "blob_sha",
+      "sha256",
+    ]);
+    need(
+      o.source.kind === j.source_kind &&
+        ["path", "commit", "tree_sha", "blob_sha", "sha256"].every(
+          (k) => o.source[k] === j[k],
+        ),
+    );
+  }
   function parseBoard(s, now = new Date()) {
     need(typeof s === "string" && bytes(s) <= MAX_BYTES);
     const b = strictJSON(s);
@@ -155,7 +253,7 @@
       "directory",
     ]);
     need(
-      b.format === "tipjar-board/1" &&
+      ["tipjar-board/1", "tipjar-board/2"].includes(b.format) &&
         b.rules_version === 1 &&
         hex(b.source_commit, 40),
     );
@@ -311,6 +409,8 @@
       need(time(o.verified_at) === minimum(checks));
       if (["unknown", "excluded"].includes(o.disposition))
         need(o.jar === null && o.source === null);
+      else if (b.format === "tipjar-board/2")
+        validateBoard2Observation(o, generated);
       else {
         const j = o.jar;
         keys(j, [
@@ -482,7 +582,7 @@
     return [...rows.slice(offset), ...rows.slice(0, offset)].slice(0, 3);
   }
   const sourceURL = (o) =>
-    o.source
+    o.source && ["manifest", "readme"].includes(o.source.kind)
       ? `https://github.com/${o.repository}/blob/${o.source.commit}/${o.source.path}`
       : null;
   const api = {

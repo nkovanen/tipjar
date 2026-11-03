@@ -26,6 +26,16 @@ CONTROLLER = 'nkovanen/tipjar'
 REGISTRY_LIMIT = 1024 * 1024
 BOARD_LIMIT = 4 * 1024 * 1024
 DIRECTORY_LIMIT = 1024 * 1024
+MANIFEST_LIMIT = 16384
+MANIFEST_WHITE_SPACE = frozenset(map(chr, (*range(9, 14), 0x20, 0x85, 0xa0, 0x1680,
+    *range(0x2000, 0x200b), 0x2028, 0x2029, 0x202f, 0x205f, 0x3000)))
+BOARD1 = 'tipjar-board/1'
+BOARD2 = 'tipjar-board/2'
+INVITATION_PROTOCOL = 'tipjar-invitation/2'
+LEGACY_SEARCH = 'search/code?q=filename%3A.tipjar.json+path%3A%2F&per_page=10&page=1'
+MANIFEST_SEARCH = 'search/code?q=filename%3A.tipjar.json+path%3A%2F&per_page=5&page=1'
+README_SEARCH = 'search/code?q=%22tipjar%3Awelcome%3Av1%22+filename%3AREADME.md+path%3A%2F&per_page=5&page=1'
+SEARCH_ROUTES = (LEGACY_SEARCH, MANIFEST_SEARCH, README_SEARCH)
 COUNT_KEYS = ('unknown_tips', 'unknown_repositories', 'excluded_tips',
               'excluded_repositories', 'omitted_tips', 'omitted_repositories',
               'omitted_directory_observations')
@@ -117,7 +127,9 @@ def validate_board(data, *, now=None) -> dict:
     served snapshot remains possible. Neither function authenticates supplied data.
     """
     value = _bounded(data, BOARD_LIMIT)
-    _shape(value, 'tipjar-board')
+    require(isinstance(value, dict) and value.get('format') in (BOARD1, BOARD2))
+    version = value['format']
+    _shape(value, 'tipjar-board' if version == BOARD1 else 'tipjar-board-v2')
     now = now or utcnow()
     generated = timestamp(value['generated_at'])
     require(generated <= now)
@@ -158,14 +170,16 @@ def validate_board(data, *, now=None) -> dict:
             require(jar is None and source is None)
         else:
             require(jar is not None)
-            # Python 3.10 needs an ISO offset; preserve the original board data.
-            require(tipjar._complete_report(dict(jar, fetched_at=jar['fetched_at'].replace('Z', '+00:00'))))
+            _validate_jar(jar, version)
             require(jar['repository'] == obs['repository'] and jar['state'] == state)
             require(timestamp(_canonical_time(jar['fetched_at'])) <= generated)
-            if state == 'undeclared':
-                require(source is None)
-            elif source is not None:
-                require(source == {'kind':'manifest', 'path':'.tipjar.json', 'commit':jar['commit'], 'sha256':jar['sha256']})
+            if version == BOARD1:
+                if state == 'undeclared':
+                    require(source is None)
+                elif source is not None:
+                    require(source == {'kind':'manifest', 'path':'.tipjar.json', 'commit':jar['commit'], 'sha256':jar['sha256']})
+            else:
+                require(jar['repository_id'] == rid and source == _source(jar))
     require(all(c <= generated for c in all_checks))
     require(timestamp(value['expires_at']) == (min(all_checks) if all_checks else generated) + dt.timedelta(hours=48))
     cov = value['coverage']
@@ -175,6 +189,41 @@ def validate_board(data, *, now=None) -> dict:
     require(not directory['complete'] or not (directory['search_failed'] or directory['server_incomplete'] or
                                              directory['truncated'] or any(o['disposition']=='unknown' for o in directory['observations'])))
     return value
+
+
+def _validate_jar(jar, version):
+    """Use frozen board-version contracts, never the mutable reader default."""
+    name = 'tipjar-board' if version == BOARD1 else 'tipjar-board-v2'
+    schema = json.loads((Path(__file__).parent / 'schemas' / (name + '.schema.json')).read_text('utf-8'))
+    require(not core.schema_errors(jar, {'$ref':'#/$defs/jar_result', '$defs':schema['$defs']}))
+    require(jar['complete'] is True and not jar['errors'] and jar['notice'].strip())
+    branch = jar['default_branch']
+    require(isinstance(branch,str) and branch.strip() and not any(ord(c)<32 or ord(c)==127 for c in branch))
+    if version == BOARD2:
+        require(receipts.TIME.fullmatch(jar['fetched_at'].replace('+00:00', 'Z')))
+    _canonical_time(jar['fetched_at'])
+    if version == BOARD1:
+        require(isinstance(jar['commit'], str) and core.SHA.fullmatch(jar['commit']))
+        if jar['state'] == 'undeclared':
+            require(jar['manifest'] is None and jar['sha256'] is None and jar['blob_sha'] is None)
+            return
+        require(jar['state'] in ('welcome','closed') and jar['sha256'] is not None and jar['blob_sha'] is not None)
+    elif jar['source_kind'] == 'readme' and jar['state'] == 'welcome':
+        require(jar['badge'] == {'protocol':'readme-welcome/1','repository':jar['repository'].lower()})
+    if version == BOARD1 or jar['source_kind'] == 'manifest':
+        manifest = jar['manifest']
+        require(len(encode(manifest)) <= MANIFEST_LIMIT)
+        require(not core.schema_errors(manifest, schema['$defs']['tipjar_manifest']))
+        for field in ('wanted', 'boundaries'):
+            texts = manifest.get(field, [])
+            require(len(texts) == len(set(texts)))
+            require(all(not any(ord(c) < 32 or ord(c) == 127 for c in text) and
+                        any(c not in MANIFEST_WHITE_SPACE for c in text) for text in texts))
+        require(manifest['status'] == jar['state'])
+
+
+def _source(jar):
+    return {'kind':jar['source_kind'], **{key:jar[key] for key in ('path','commit','tree_sha','blob_sha','sha256')}}
 
 
 def _canonical_time(value):
@@ -189,7 +238,7 @@ def _canonical_time(value):
 
 def require_fresh(value, *, now=None):
     now = now or utcnow()
-    validate_board(value, now=now)
+    value = validate_board(value, now=now)
     require(now < timestamp(value['expires_at']))
     return value
 
@@ -250,9 +299,8 @@ class BudgetClient:
     def request_once(self, endpoint):
         name = r'[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}'
         route = (r'repos/' + name + r'(?:/(?:issues|pulls)/[1-9][0-9]{0,15}|/commits/(?:[A-Za-z0-9_.-]|%[0-9A-Fa-f]{2}){1,3072}'
-                 r'|/git/trees/[0-9a-f]{40}\?recursive=1|/contents/\.tipjar\.json\?ref=[0-9a-f]{40})?')
-        search = 'search/code?q=filename%3A.tipjar.json+path%3A%2F&per_page=10&page=1'
-        require(isinstance(endpoint,str) and (endpoint == search or re.fullmatch(route, endpoint)))
+                 r'|/git/trees/[0-9a-f]{40}\?recursive=1|/contents/(?:\.tipjar\.json|README\.md)\?ref=[0-9a-f]{40})?')
+        require(isinstance(endpoint,str) and (endpoint in SEARCH_ROUTES or re.fullmatch(route, endpoint)))
         if len(self.events) >= self.limit:
             raise core.ProtocolError('board_budget', 'Board GET invocation budget exhausted')
         self.events.append((endpoint, iso(self.clock())))
@@ -271,7 +319,7 @@ class BudgetClient:
         if isinstance(value, dict):
             base = value.get('base')
             if isinstance(base, dict): remember(base.get('repo'), route_name)
-            if endpoint == search and isinstance(value.get('items'), list):
+            if endpoint in SEARCH_ROUTES and isinstance(value.get('items'), list):
                 for hit in value['items'][:10]:
                     if isinstance(hit, dict): remember(hit.get('repository'))
         if re.fullmatch(r'repos/' + name, endpoint):
@@ -363,12 +411,16 @@ def _directory(reads, candidate):
     if meta['archived'] or meta['disabled']:
         state='excluded'
     else:
-        jar=tipjar.read_jar(name,reads,metadata=meta,invitation_protocol=tipjar.LEGACY)
+        jar=tipjar.read_jar(name,reads,metadata=meta,invitation_protocol=INVITATION_PROTOCOL)
         # Refuse future reader contracts rather than guessing their provenance.
-        if set(jar) != {'repository','default_branch','commit','path','blob_sha','sha256','fetched_at','state','complete','manifest','errors','notice'}:
-            raise core.ProtocolError('unsupported_board_reader','Unsupported canonical reader contract for board/1')
-        state=jar['state'] if tipjar._complete_report(jar) else 'unknown'
-        if state=='unknown':jar=None
+        if set(jar) != {'repository','repository_id','default_branch','commit','tree_sha','manifest_present','source_kind','path','blob_sha','sha256','fetched_at','state','complete','manifest','badge','errors','notice'}:
+            raise core.ProtocolError('unsupported_board_reader','Unsupported canonical reader contract for board/2')
+        if jar['complete'] is True:
+            _validate_jar(jar, BOARD2)
+            require(jar['repository_id'] == rid and jar['repository'] == name)
+            state=jar['state']
+        else:
+            state='unknown';jar=None
     final=reads.request_once(endpoint)
     require(_public_meta(final,rid,name)==identity)
     require(final.get('default_branch')==branch and type(final.get('archived')) is bool and type(final.get('disabled')) is bool)
@@ -376,8 +428,8 @@ def _directory(reads, candidate):
         state='excluded';jar=None
     checks=[event[1] for event in reads.events[start:]]
     source=None
-    if jar is not None and state in ('welcome','closed'):
-        source={'kind':'manifest','path':jar['path'],'commit':jar['commit'],'sha256':jar['sha256']}
+    if jar is not None:
+        source=_source(jar)
     obs={'repository_id':rid,'repository':name,'disposition':state,'verified_at':min(checks,key=timestamp),
          'checks':checks,'jar':jar,'source':source}
     repo={'repository_id':rid,'repository':name,'primary_language':final.get('language'),'verified_at':checks[0]}
@@ -455,11 +507,13 @@ def collect(registry: dict, client=None, *, now=None, source_commit, controller_
             except core.ProtocolError:
                 continue
         if key not in tips:coverage['unknown_tips']+=1
-    report=find.find_jars(reads,invitation_protocol=tipjar.LEGACY)
-    require(report.get('format')=='find-jars-report/1')
-    directory={'complete':bool(report['complete']),'search_failed':'search_failed' in report['errors'],
-               'server_incomplete':bool(report['search'].get('incomplete_results')),
-               'truncated':bool(report['search'].get('truncated') or report['search'].get('short_page')),'observations':[]}
+    report=find.find_jars(reads,invitation_protocol=INVITATION_PROTOCOL)
+    require(report.get('format')=='find-jars-report/2')
+    searches=report['searches']
+    require(len(searches)==2)
+    directory={'complete':bool(report['complete']),'search_failed':any('search_failed' in search['errors'] for search in searches),
+               'server_incomplete':any(search['incomplete_results'] is True for search in searches),
+               'truncated':any(search['truncated'] is True or search['short_page'] is True for search in searches),'observations':[]}
     # Validate conflicts before admitting any search candidate. Identity-free hits
     # remain aggregate unknown/excluded counts, never public rows.
     names={c['repository'].casefold():rid for rid,c in candidates.items()}
@@ -510,7 +564,7 @@ def collect(registry: dict, client=None, *, now=None, source_commit, controller_
     times=[timestamp(r['verified_at']) for r in selected_repos]
     times.extend(timestamp(c) for t in selected_tips for c in t['checks'].values())
     times.extend(timestamp(c) for o in selected_obs for c in o['checks'])
-    result={'format':'tipjar-board/1','generated_at':iso(generated),
+    result={'format':BOARD2,'generated_at':iso(generated),
             'expires_at':iso((min(times) if times else generated)+dt.timedelta(hours=48)),
             'rules_version':1,'source_commit':source_commit,'coverage':coverage,
             'tips':selected_tips,'repositories':selected_repos,'directory':directory}

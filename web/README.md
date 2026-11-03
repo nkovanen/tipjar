@@ -89,8 +89,11 @@ same-origin connections; the landing and local directory retain `connect-src
 4 MiB streamed byte cap, fatal UTF-8 decoding, a timeout and redirect refusal.
 The parser rejects unknown formats/fields, recursive duplicate keys, identity
 conflicts, unsupported invitation sources and inconsistent checks/expiry.
-It supports the manifest-only `tipjar-board/1` contract; future reader or board
-shapes require explicit review. Imported local snapshots never become scores.
+It accepts the frozen manifest-only `tipjar-board/1` contract and explicit
+`tipjar-board/2` invitation observations. Board2 preserves pinned manifest,
+README or absent provenance from the canonical invitation2 reader; only a complete
+welcome supplies work actions. Plain README and absent observations do not.
+Imported local snapshots never become scores.
 
 Rankings are derived from the same eligible tip set: one point per merge, tied
 ranks, UTC calendar month/rolling 30 days/all time. Proof dialogs link to the

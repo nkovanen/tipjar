@@ -301,3 +301,106 @@ test("integer tokens reject decimal and exponent spellings before JSON.parse", (
   ];
   assert.ok(parse(b));
 });
+test("explicit board2 dispatch accepts the unchanged empty envelope without relabeling board1", () => {
+  const empty = JSON.parse(
+    fs.readFileSync("tests/fixtures/tipjar-board/empty.json", "utf8"),
+  );
+  const original = JSON.stringify(empty);
+  assert.equal(parse(empty).format, "tipjar-board/1");
+  empty.format = "tipjar-board/2";
+  assert.equal(parse(empty).format, "tipjar-board/2");
+  assert.equal(JSON.parse(original).format, "tipjar-board/1");
+  empty.format = "tipjar-board/3";
+  assert.throws(() => parse(empty));
+});
+const board2Fixture = (name) =>
+  JSON.parse(
+    fs.readFileSync(`tests/fixtures/tipjar-board/v2/${name}.json`, "utf8"),
+  );
+const sharedCorpus = JSON.parse(
+  fs.readFileSync("tests/fixtures/tipjar-board/v2/corpus.json", "utf8"),
+);
+for (const item of sharedCorpus.cases)
+  test("shared Python/JS board2 corpus: " + item.file, () => {
+    const raw = fs.readFileSync(
+      "tests/fixtures/tipjar-board/v2/" + item.file,
+      "utf8",
+    );
+    let parsed;
+    try {
+      parsed = m.parseBoard(raw, new Date(sharedCorpus.now));
+    } catch (error) {
+      if (item.valid) throw error;
+    }
+    assert.equal(Boolean(parsed), item.valid);
+    assert.equal(
+      parsed ? m.fresh(parsed, new Date(sharedCorpus.now)) : false,
+      item.fresh,
+    );
+  });
+test("board2 sources keep real README pins and absent never produces a file link", () => {
+  for (const [name, path] of [
+    ["readme-welcome", "README.md"],
+    ["readme-undeclared", "README.md"],
+    ["manifest-welcome", ".tipjar.json"],
+    ["absent", null],
+  ]) {
+    const b = parse(board2Fixture(name)),
+      o = b.directory.observations[0];
+    assert.equal(
+      m.sourceURL(o),
+      path
+        ? `https://github.com/${o.repository}/blob/${o.source.commit}/${path}`
+        : null,
+    );
+    assert.equal(m.welcoming(b, now).length, name.endsWith("-welcome") ? 1 : 0);
+    assert.deepEqual(
+      m.rankBoard(b, "all", now),
+      m.rankBoard(parse(fixture()), "all", now),
+    );
+  }
+});
+test("version isolation rejects new reader keys in board1 and old sources in board2", () => {
+  const old = fixture();
+  old.format = "tipjar-board/2";
+  assert.throws(() => parse(old));
+  const newer = board2Fixture("readme-welcome");
+  newer.format = "tipjar-board/1";
+  assert.throws(() => parse(newer));
+});
+test("board2 refuses extra fields, unsafe integers, recursive duplicates and invalid source alternatives", () => {
+  for (const mutate of [
+    (b) => (b.directory.observations[0].jar.api_budget = {}),
+    (b) => (b.directory.observations[0].source.extra = true),
+    (b) => (b.directory.observations[0].jar.badge.extra = true),
+    (b) => (b.directory.observations[0].jar.repository_id = true),
+    (b) => (b.directory.observations[0].jar.source_kind = "future"),
+    (b) => (b.directory.observations[0].jar.manifest = {}),
+    (b) =>
+      (b.directory.observations[0].jar.fetched_at = "2026-11-04T00:00:00Z"),
+  ]) {
+    const b = board2Fixture("readme-welcome");
+    mutate(b);
+    assert.throws(() => parse(b));
+  }
+  const raw = JSON.stringify(board2Fixture("readme-welcome"));
+  assert.throws(() =>
+    parse(raw.replace('"kind":"readme"', '"kind":"manifest","kind":"readme"')),
+  );
+  for (const token of ["101.0", "1.01e2"])
+    assert.throws(() =>
+      parse(raw.replace('"repository_id":101', '"repository_id":' + token)),
+    );
+  const absent = board2Fixture("absent");
+  absent.directory.observations[0].jar.badge = {
+    protocol: "readme-welcome/1",
+    repository: "fictional-demo/welcoming-jar",
+  };
+  assert.throws(() => parse(absent));
+  const plain = board2Fixture("readme-undeclared");
+  plain.directory.observations[0].jar.badge = {
+    protocol: "readme-welcome/1",
+    repository: "fictional-demo/welcoming-jar",
+  };
+  assert.throws(() => parse(plain));
+});
