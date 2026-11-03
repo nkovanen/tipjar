@@ -891,3 +891,16 @@ dialog h2{font-size:27px}
 .represented-projects{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;overflow-wrap:anywhere}
 .share-link{width:100%;margin-top:12px;padding:10px;background:#fffdf6;border:1px solid var(--line)}
 #board-detail .period{margin-bottom:14px}
+
+/* Local preparation keeps both invitation paths in the existing maintainer panel. */
+.maintainer-panel{scroll-margin-top:24px}
+.maintainer-panel h3{font-size:16px;margin:24px 0 12px}
+.maintainer-panel input{display:block;width:100%;margin-top:6px;padding:10px;border:1px solid #bcbfb0;background:#fffdf7}
+.maintainer-panel #manifest-options{border:1px solid var(--line);border-radius:5px;padding:16px;margin:24px 0}
+.maintainer-panel #manifest-options>summary{font-size:13px;line-height:1.5}
+.maintainer-panel #publish-invitation{border-top:1px solid var(--line);margin-top:24px}
+.maintainer-panel a{overflow-wrap:anywhere}
+@media(max-width:650px){
+  .localsetup .header{height:auto;min-height:95px;flex-wrap:wrap;padding-top:20px;padding-bottom:20px}
+  .localsetup .header nav{flex-basis:100%;justify-content:space-between;gap:12px}
+}
