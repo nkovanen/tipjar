@@ -558,7 +558,7 @@ facts and blockers remain in JSON. Usage errors exit 2; unresolved/input/API err
 exit 1. Schema 0.1 retains its original completion-based exit behavior.
 
 Use a reviewed immutable candidate commit until a release is published. Install
-from `nkovanen/agent-contrib`; do not assume a v0.3.0 tag exists. Refresh the Skill
+from `nkovanen/tipjar`; do not assume a v0.3.0 tag exists. Refresh the Skill
 explicitly from the chosen installed version. The package contains workflow,
 schemas and one canonical adapter, with no Python runtime dependencies, hosted
 backend or mandatory model provider. Git and gh are separate prerequisites. The

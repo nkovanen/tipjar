@@ -14,7 +14,7 @@ Message-only changes never change a decision.
 ## Before you start
 
 1. Install the candidate in its own environment (see the
-   [README](../README.md#install) and
+   [README](../README.md#install-from-source) and
    [installation](installation.md#testing-the-unreleased-v030-candidate)), and
    check that `agent-contrib --version` prints `0.3.0` in the environment your
    agent uses.
@@ -29,17 +29,18 @@ A candidate containing the Tipjar identity change installs both `tipjar` and
 `agent-contrib` for the same CLI. After installing that reviewed commit, check
 `tipjar --version` alongside `agent-contrib --version`; both print `0.3.0`.
 The published v0.2.0 has no alias. Existing scripts can keep `agent-contrib` or
-`python -m agent_contribute`; the distribution, repository URLs, output
+`python -m agent_contribute`; the distribution, output
 identifiers and canonical `agent-contribute` Skill keep their names. No file or
-schema migration is needed for the alias. See [installation](installation.md#tipjar-command-compatibility).
+schema migration is needed for the alias. Current repository and installation
+URLs now point to `nkovanen/tipjar`; historical release links remain Agent Contrib. See [installation](installation.md#tipjar-command-compatibility).
 
 ## Versions and schemas
 
 | Change | What to do |
 | --- | --- |
-| The CLI supports task and evidence schemas 0.1 and 0.2, and host-context 0.1 and 0.2. Unknown versions fail closed. | Nothing for 0.1 contracts. Use `prepare --schema-version 0.2` only for the new owner/maintainer route; never edit a 0.1 contract into 0.2. |
+| The CLI supports task schemas 0.1/0.2/0.3, evidence 0.1/0.2, host-context 0.1/0.2 and external-context 0.1. Unknown versions fail closed. | Nothing for 0.1 contracts. Use `prepare --schema-version 0.2` only for the new owner/maintainer route; never edit a 0.1 contract into 0.2. |
 | `prepare` still defaults to schema 0.1. | Nothing. |
-| Lifecycle options (`--stage`, `--host-context-stdin`) are refused for 0.1 contracts. | Use them only with a newly prepared schema 0.2 contract. |
+| Lifecycle options (`--stage`, `--host-context-stdin`) are refused for 0.1 contracts. | Use them only with a newly prepared schema 0.2 or 0.3 contract. |
 
 ## New contracts need a policy review
 
@@ -112,7 +113,8 @@ commands, report-only options and `--format text` are new. None of them changes 
 [command reference](cli.md).
 
 
-The Tipjar integration uses output schema 2, preserving packaged output/1.
+The integrated candidate uses output schema 3, preserving packaged output/1
+and output/2. Cards start at output/2; there is no output/1 card schema.
 Policy inventory format 3 includes pinned jar declarations; an old inventory
 hash remains historical and requires a fresh policy review. Existing task and
 evidence contracts retain their formats. Current live checks can block an old

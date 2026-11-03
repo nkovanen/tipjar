@@ -24,9 +24,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nkovanen/agent-contrib"
-Repository = "https://github.com/nkovanen/agent-contrib"
-Issues = "https://github.com/nkovanen/agent-contrib/issues"
+Homepage = "https://github.com/nkovanen/tipjar"
+Repository = "https://github.com/nkovanen/tipjar"
+Issues = "https://github.com/nkovanen/tipjar/issues"
 
 [project.scripts]
 agent-contrib = "agent_contribute.cli:main"

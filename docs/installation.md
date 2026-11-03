@@ -15,7 +15,24 @@ Scope and containment decisions use the literal POSIX paths Git reports on
 every OS. Backslashes, drive letters and case are never normalized, so a path
 that would match only after normalization is out of scope.
 
-## Pinned GitHub install
+## Current Tipjar source install
+
+Current development is in `nkovanen/tipjar`. Install the unreleased candidate:
+
+```sh
+pipx install 'git+https://github.com/nkovanen/tipjar.git@main'
+tipjar --version
+agent-contrib --version
+```
+
+`main` is a moving source target. Replace it with a reviewed full commit SHA for
+a reproducible install. This is not a published 0.3.0 release. Authenticate GitHub
+reads separately with `gh auth login`.
+
+## Historical Agent Contrib release install
+
+The following commands select the original Agent Contrib v0.2.0 release, which
+has no `tipjar` command. They are retained for compatibility and rollback.
 
 After installing [pipx](https://pipx.pypa.io/latest/how-to/install-pipx.html), Git
 and [GitHub CLI](https://cli.github.com/):
@@ -66,9 +83,8 @@ For example, `tipjar instructions` reads the same workflow as
 The distribution is still `agent-contrib` and the module is still
 `agent_contribute` (`python -m agent_contribute`). Help and output identifiers
 keep the canonical name. Both commands export the same `agent-contribute` Skill;
-keep its existing directory and invocation. Repository jars are planned, not
-implemented; see the [README](../README.md) for current targeting and authority
-boundaries.
+keep its existing directory and invocation. Repository invitations, `jar` inspection and bounded `find` discovery are implemented
+in this candidate; see the [README](../README.md) for their authority boundaries.
 
 ## Install the Skill
 
@@ -119,8 +135,11 @@ and `Scripts` on PATH.
 
 The published CLI **0.2.0** bundles task and evidence schemas **0.1**, workflow guidance and
 the thin adapter together. `agent-contrib instructions` reports this support set.
-The unreleased CLI **0.3.0** also bundles explicit task/evidence schema **0.2**
-and host-context schemas **0.1** and **0.2**; default contracts remain 0.1. Unknown versions fail closed. The Skill intentionally has no independent copy
+The unreleased CLI **0.3.0** also bundles task/evidence schema **0.2**, explicit
+external-tip task schema **0.3**, host-context schemas **0.1** and **0.2**, and
+external-context schema **0.1**. Default contracts remain 0.1; external tips use
+evidence 0.2. Active output schemas are **3**, preserving packaged output/1 and
+output/2 (cards start at output/2). Unknown versions fail closed. The Skill intentionally has no independent copy
 of the protocol: it asks the installed CLI for instructions every time.
 
 Updates are explicit. Read the target release notes (for 0.2 to 0.3, see
@@ -152,7 +171,7 @@ review; it must already be pushed to GitHub:
 ```sh
 python3 -m venv "$HOME/.local/share/agent-contrib-candidate"
 "$HOME/.local/share/agent-contrib-candidate/bin/python" -m pip install \
-  'git+https://github.com/nkovanen/agent-contrib.git@PUSHED_FULL_COMMIT_SHA'
+  'git+https://github.com/nkovanen/tipjar.git@PUSHED_FULL_COMMIT_SHA'
 export PATH="$HOME/.local/share/agent-contrib-candidate/bin:$PATH"
 agent-contrib --version   # must print 0.3.0, not 0.2.0
 ```

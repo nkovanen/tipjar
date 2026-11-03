@@ -8,7 +8,7 @@ from tests.test_cli_help import built_parser
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DOCS = [ROOT / 'README.md', ROOT / 'CHANGELOG.md', ROOT / 'CONTRIBUTING.md', ROOT / 'SECURITY.md',
-        *sorted((ROOT / 'docs').glob('*.md'))]
+        *sorted((ROOT / 'docs').rglob('*.md'))]
 
 
 def commands():
@@ -34,20 +34,30 @@ class DocsConsistencyTests(unittest.TestCase):
         for path in DOCS:
             with self.subTest(path=path.name):
                 self.assertNotRegex(path.read_text('utf-8'), r'@v0\.3\.0')
-        self.assertIn('agent-contrib.git@v0.2.0', (ROOT / 'README.md').read_text('utf-8'))
+        self.assertIn('agent-contrib/releases/tag/v0.2.0', (ROOT / 'README.md').read_text('utf-8'))
 
-    def test_candidate_install_selects_the_candidate_before_the_skill_is_exported(self):
-        path_entry = 'export PATH="$HOME/.local/share/agent-contrib-candidate/bin:$PATH"'
+    def test_candidate_install_and_compatibility_are_explicit(self):
         for name in ('README.md', 'docs/installation.md'):
             with self.subTest(doc=name):
                 text = (ROOT / name).read_text('utf-8')
-                self.assertIn(path_entry, text)
-                after = text[text.index(path_entry):]
-                self.assertIn('agent-contrib --version', after)
-                self.assertIn('PUSHED_FULL_COMMIT_SHA', text)
-                self.assertNotIn('/tmp/agent-contrib-candidate', text)
+                self.assertIn('tipjar.git@main', text)
+                self.assertIn('agent-contrib --version', text)
+                self.assertIn('tipjar --version', text)
+                self.assertIn('unreleased candidate', text)
         readme = (ROOT / 'README.md').read_text('utf-8')
-        self.assertLess(readme.index(path_entry), readme.index('agent-contrib skill --output'))
+        self.assertLess(readme.index('pipx install'), readme.index('agent-contrib skill --output'))
+        self.assertIn('not live yet', readme)
+        self.assertIn('https://nkovanen.github.io/tipjar/', readme)
+        self.assertIn('distribution remains `agent-contrib`', readme)
+        self.assertIn('Python module remains', readme)
+
+    def test_pinned_candidate_selects_the_agent_environment(self):
+        text = (ROOT / 'docs/installation.md').read_text('utf-8')
+        entry = 'export PATH="$HOME/.local/share/agent-contrib-candidate/bin:$PATH"'
+        self.assertIn(entry, text)
+        self.assertIn('agent-contrib --version', text[text.index(entry):])
+        self.assertIn('tipjar.git@PUSHED_FULL_COMMIT_SHA', text)
+        self.assertNotIn('/tmp/agent-contrib-candidate', text)
 
     def test_ranking_and_compatibility_claims_are_qualified(self):
         readme = (ROOT / 'README.md').read_text('utf-8')
@@ -102,11 +112,24 @@ class DocsConsistencyTests(unittest.TestCase):
         self.assertNotIn('Missing: output JSON Schemas', text)
         self.assertNotIn('G1 output schemas', text)
 
-    def test_product_map_covers_every_tracked_issue(self):
-        text = (ROOT / 'docs' / 'product-map.md').read_text('utf-8')
-        for number in [n for n in range(1, 29) if n != 2]:  # #2 is a pull request, not an issue
-            with self.subTest(issue=number):
-                self.assertRegex(text, rf'issues/{number}\)')
+    def test_product_status_preserves_history_and_current_boundaries(self):
+        text = (ROOT / 'docs/product-map.md').read_text('utf-8')
+        self.assertIn('agent-contrib/blob/ae206ce0ef079cd369dda0803a4374ca177516bd/docs/product-map.md', text)
+        for phrase in ('`discover --limit`', 'machine-readable opt-out', 'no native human/host mandate issuer',
+                       'unreleased candidate', 'read-only', 'not live yet'):
+            self.assertIn(phrase, text)
+
+    def test_current_status_includes_integrated_external_tips_and_cards(self):
+        for name in ('README.md', 'docs/product-map.md'):
+            with self.subTest(doc=name):
+                text = (ROOT / name).read_text('utf-8')
+                self.assertIn('external-tips.md', text)
+                self.assertIn('0.3', text)
+                self.assertRegex(text, r'`(?:tipjar )?card\b')
+        installation = (ROOT / 'docs/installation.md').read_text('utf-8')
+        self.assertIn('external-tip task schema **0.3**', installation)
+        self.assertIn('Active output schemas are **3**', installation)
+        self.assertNotIn('upstream-route gap still applies', (ROOT / 'docs/getting-started.md').read_text('utf-8'))
 
     def test_product_map_does_not_list_shipped_output_schemas_as_missing(self):
         # F45: G1 kept saying "Missing: output JSON Schemas" after schemas/output/1 and `schema` shipped.

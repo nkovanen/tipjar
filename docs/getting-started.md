@@ -17,7 +17,7 @@ the text form is a summary. Commands exit 0 when their gate passes, 1 when it
 does not or a read is incomplete, and 2 for usage errors. An exit code is never
 permission.
 
-You need the CLI and the Skill installed (see the [README](../README.md#install))
+You need the CLI and the Skill installed (see the [README](../README.md#install-from-source))
 and an authenticated `gh`. The CLI only reads GitHub. Locally it reads the
 checkout and writes only files you name (the `prepare` contract, the `evidence
 init` skeleton, a `pr-body` description, the exported Skill) and, with `--cache`,
@@ -247,8 +247,8 @@ not exhaustive, indexing may lag, and no adoption or curated fallback is
 established. “No verified welcoming repositories in this batch” leaves explicit
 repository targeting available. `tipjar jar owner/repo` checks directly.
 Continue with discovery and policy review above; welcome is no issue approval,
-execution mandate or publication authority. The current outside-contributor
-upstream-route gap still applies.
+execution mandate or publication authority. For an outside contribution, continue with the explicit
+[task 0.3 external-tip route](external-tips.md).
 
 To find declared welcomes among repositories you name, run
 `tipjar discover acme/one acme/two --welcomed-only`. Names may come from projects

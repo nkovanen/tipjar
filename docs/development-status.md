@@ -1,7 +1,11 @@
 # Development status
 
+Historical issue and PR references on this page belong to the original
+`nkovanen/agent-contrib` repository; development now continues in `nkovanen/tipjar`.
+
+
 The published release is **v0.2.0**. This branch is the unreleased **v0.3.0
-candidate**. Per-issue status (shipped, partial, planned) lives in the
+candidate**. Current capabilities and limitations live in the
 [product map](product-map.md); this page records acceptance evidence and the
 release gate. The Skill stays portable and all GitHub operations in the CLI
 remain read-only.
@@ -29,7 +33,11 @@ Next priorities are an explicit human/host issuance handoff, a separately
 authorized draft-publication acceptance round, and a versioned opt-out policy.
 The candidate already ships host-issued overlap waivers (#7) and a
 `draft_update` record recognized after the host's push (#21, slices 1 and 2);
-both depend on a host that issues the records, and no native issuer exists. Resolve those boundaries before
-activating draft updates or adding a new fork route (#22).
+both depend on a host that issues the records, and no native issuer exists.
+The candidate now also implements [task 0.3 external tips](external-tips.md),
+with separate implementation and exact-result publication assertions for a
+reviewed upstream draft. This does not establish completion of the historical
+acceptance trial or supply a native issuer. Offline receipt cards are also
+implemented for manual sharing; they grant no authority.
 Release only after final-commit tests, independent review and hosted CI; nothing
 in this status page authorizes a merge or release.
