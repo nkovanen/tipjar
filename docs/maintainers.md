@@ -1,12 +1,96 @@
 # Maintainer integration
 
-Discovery works without installing anything in your repository. Agent Contrib
-reads Issues, open PRs, root contribution policies, nested AGENTS.md/CLAUDE.md
-and specification/architecture indexes from the observed default-branch commit.
-Agents must also read relevant specification contents and obey your actual
-contribution rules. Existing labels alone do not authorize AI-generated work.
+Welcome useful agent work with a README badge or a root `.tipjar.json` on your
+default branch. An invitation helps contributors find your project; it does not
+approve an issue, authorize local execution or grant permission to publish a PR.
+Keep your actual contribution rules explicit in CONTRIBUTING.md.
 
-## Explicit opt-in policy
+Use a reviewed [0.3.0 candidate](installation.md); it is unreleased. The published
+v0.2.0 has no `tipjar` alias or invitation commands.
+
+## Welcome tips with your README
+
+Generate the repository-scoped snippet offline:
+
+```sh
+tipjar --format text badge owner/repo
+```
+
+Copy the three-line snippet at the start of the output, including its blank
+third line, to byte zero of root README.md. Leave the following notice out of
+your README. The default JSON output carries the same snippet in `snippet`.
+See [README invitations](readme-invitations.md) for the supported prefix, source binding and copied-fork handling. If you prefer your project title first,
+use the manifest below. `.tipjar.json` always takes precedence, including a
+closed or invalid manifest; a README welcome cannot override it.
+
+## Repository jars
+
+A root `.tipjar.json` declares `welcome` or `closed` for useful **agent work**.
+It does not accept money or execute commands. Wanted work is a preference;
+boundaries are untrusted policy-review data, never executable instructions.
+A missing invitation is undeclared, not refusal or approval.
+
+### Two-minute setup (offline)
+
+No GitHub authentication is needed to create and check a local manifest. Choose
+a state explicitly:
+
+```sh
+# Welcome useful agent work; creates a new file, never overwrites one.
+tipjar init --status welcome --output .tipjar.json
+# Edit wanted and boundaries to match your actual policies before publishing.
+tipjar jar-check .tipjar.json
+```
+
+Replace the template's `EDIT before publishing` wanted entry with concrete work,
+such as a broken documentation example or a small bug with a regression. Review
+every boundary, require your contribution guide, and preserve separate human
+authorization for local execution and publication. Validation checks structure,
+not whether the text expresses your intended policy or approves a task.
+
+To decline agent contributions, choose a closed template instead:
+
+```sh
+# Alternative to the welcome command, in a directory without .tipjar.json:
+tipjar init --status closed --output .tipjar.json
+tipjar jar-check .tipjar.json
+```
+
+Existing files and symlinks are refused. Edit an existing file deliberately and
+check it again, or use a staging path with `--output`. Neither command reads
+GitHub, publishes a file or grants authority. See
+[offline manifest commands](cli.md#offline-manifest-setup-and-validation) for
+validation limits and the [manifest schema](../agent_contribute/tipjar.schema.json)
+for fields.
+
+### Check the published invitation with a fresh read
+
+After you deliberately commit the reviewed README or `.tipjar.json` to your
+default branch, inspect what contributors will see:
+
+```sh
+tipjar jar owner/repo
+tipjar find --owner owner
+```
+
+`jar` reads the named repository directly at a pinned default-branch commit and
+reports the source path, state and verified blob/digest. It stays fresh even
+with `--cache`. `find` verifies one bounded batch of at most ten indexed public
+candidates across manifest and README searches; indexing may lag or omit your
+project. Neither command registers a project or grants authority. See
+[jar inspection](cli.md#jar-inspection) and [find limits](cli.md#find).
+
+Current discovery, preparation and live gates enforce applicable closed/unknown
+invitations on the actual issue source, including when resolving a tracker fork.
+A fork's welcome or issue approval cannot override a source refusal. Current
+public reads and task 0.3 recognize README invitations; published task schemas
+0.1/0.2 retain manifest-only resolution and historical inventories. Older CLI
+releases do not enforce jars at all, so keep refusals in ordinary contribution
+docs as well. Welcome never waives contradictory policies or supplies execution
+or publication authority. Outside contributors should follow the separately
+reviewed [task 0.3 external-tip route](external-tips.md).
+
+## Optional issue approval through labels
 
 If your project accepts this authority model, commit `.agent-contrib.json` on
 your default branch:
@@ -50,7 +134,13 @@ contributor's local execution, open a PR, replace human review or promise
 acceptance. User authorization must independently cover the implementation and
 publication target. Resolving a fork's parent never grants either permission.
 
-## See what an agent sees
+## See your contribution rules as an agent does
+
+Discovery works without adding configuration to your repository. Tipjar reads
+issues, open PRs, root contribution policies, nested AGENTS.md/CLAUDE.md and
+specification/architecture indexes from the observed default-branch commit.
+Agents must read relevant specification contents and obey your actual rules.
+Existing labels alone do not authorize agent-generated work.
 
 `agent-contrib audit owner/repo` is a read-only report that uses exactly the
 reads `discover` makes. It shows the policy state and why a policy is invalid
@@ -92,8 +182,9 @@ the PR.
 
 Plain, explicit sentences in a Markdown, reStructuredText or text file in the
 repository are easiest to find. Policies only on a website, wiki, image or PDF
-are listed as not assessed. A machine-readable opt-out in `.agent-contrib.json`
-is not supported yet; until it is, state refusals clearly in CONTRIBUTING.md.
+are listed as not assessed. The legacy label policy `.agent-contrib.json` has no
+opt-out field. Use a closed `.tipjar.json` for current invitation enforcement
+and state refusals clearly in CONTRIBUTING.md for all clients.
 
 ## Practical guidance
 
@@ -120,109 +211,3 @@ Review the scope and retain your actual approval event and mandate hash outside
 the worker. Do not let the worker fill an approval field on your behalf. Pending
 final human sign-off need not prevent an authorized tested draft; it always
 prevents final completion. See [the host handoff](host-authorization.md).
-
-
-## Repository jars (candidate, inspection only)
-
-A root `.tipjar.json` can declare an invitation for useful **agent work**.
-It does not accept money, approve issues, execute commands or grant publication
-authority. The candidate's `agent-contrib jar owner/repo` inspects this file;
-discovery, preparation and live gates enforce closed/unknown declarations on the
-actual issue source, with no fork or approval override. Welcome is only an
-invitation; wanted/boundaries remain policy-review data. Old clients do not
-enforce it: state refusals plainly in ordinary contribution documentation.
-
-### Two-minute setup (offline)
-
-Use a reviewed v0.3.0 candidate containing these commands; the published v0.2.0
-has no `tipjar` alias or jar commands. No GitHub authentication is needed to
-create and check a local file. Choose a state explicitly:
-
-```sh
-# Welcome useful agent work; creates a new file, never overwrites one.
-tipjar init --status welcome --output .tipjar.json
-# Edit wanted and boundaries to match your actual policies before publishing.
-tipjar jar-check .tipjar.json
-```
-
-The welcome template marks its wanted-work entry `EDIT before publishing`.
-Replace it with concrete work you want, such as a broken documentation example
-or a small bug with a regression. Review each boundary: keep the scope bounded,
-require your contribution guide, and preserve separate human authorization for
-local execution and publication. Validation checks structure, not whether these
-statements accurately express your policy. It never approves an issue or task.
-
-To decline agent contributions, start with an explicit closed template instead:
-
-```sh
-# Alternative to the welcome command, in a directory without .tipjar.json:
-tipjar init --status closed --output .tipjar.json
-tipjar jar-check .tipjar.json
-```
-
-An existing file or symlink is refused; edit your existing file deliberately,
-then check it again. You may use a staging path with `--output` and place the
-reviewed file at the repository root as `.tipjar.json` later. Init reports the
-chosen state, exact byte SHA-256, path and next steps. Check reports the edited
-file's state and exact byte SHA-256 without printing its contents. Neither command
-reads GitHub, changes remote policy, publishes a file or grants authority.
-See [offline manifest commands](cli.md#offline-manifest-setup-and-validation).
-Keep refusals in CONTRIBUTING.md as well: older clients do not read or enforce
-jars, and this branch's remote jar behavior is inspection only.
-
-Copyable welcome example (replace the preferences with your own):
-
-```json
-{
-  "schema_version": "0.1",
-  "status": "welcome",
-  "wanted": ["Documentation examples", "Small fixes with regressions"],
-  "boundaries": ["Read CONTRIBUTING.md before choosing work"]
-}
-```
-
-Copyable closed example:
-
-```json
-{
-  "schema_version": "0.1",
-  "status": "closed",
-  "boundaries": ["Agent-generated contributions are not accepted; read CONTRIBUTING.md"]
-}
-```
-
-Both optional arrays may be omitted. Only the four illustrated fields are allowed. Each array
-has at most 16 distinct, nonblank strings of 1–500 Unicode code points without
-C0 or DEL controls. Nonblank uses the explicit Unicode White_Space set in the
-[manifest contract](superpowers/specs/2026-11-03-tipjar-design.md#manifest-01),
-shared by parser and schema; U+0085 alone is blank and U+FEFF is nonblank.
-The entire file is at most 16,384 bytes of strict UTF-8 JSON;
-duplicate keys, nonfinite numbers and unsupported schemas fail closed.
-
-There are no includes, hooks, executable configuration or owner inheritance.
-The source root alone declares its invitation. A missing file is undeclared,
-not a refusal or approval. A welcome cannot waive any repository or applicable
-owner policy. Wanted text is a preference, never an eligibility score; boundaries
-must be reviewed with the existing source-linked requirements ledger. Links and
-commands in text remain data and are never automatically followed or executed.
-See [jar inspection](cli.md#jar-inspection-candidate-inspection-only) for states,
-provenance, fresh-read limits and current no-jar route limitations.
-
-
-### Let the bounded finder observe your jar
-
-Add the supported `.tipjar.json` to the repository root on its default branch,
-alongside ordinary contribution policies. A minimal invitation is:
-
-```json
-{"schema_version":"0.1","status":"welcome"}
-```
-
-Optionally include `wanted` and `boundaries` arrays as described above. Verify
-with `tipjar jar owner/repo`; direct inspection does not wait for indexing.
-`tipjar find --owner owner` verifies at most ten indexed hits from public active
-repositories. It does not register a project or promise index coverage.
-Indexing may lag, especially for forks. No adoption or external invitation is
-established by this implementation. Older clients do not enforce jars, so state
-refusals in ordinary contribution docs too. An invitation never waives
-contradictory policy or grants execution/publication authority.

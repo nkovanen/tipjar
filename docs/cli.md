@@ -44,7 +44,7 @@ sections are grouped by task.
   - [Content cache (opt-in)](#content-cache-opt-in)
   - [Text output (unreleased)](#text-output-unreleased)
 - [Offline manifest setup and validation](#offline-manifest-setup-and-validation)
-- [Jar inspection (candidate, inspection only)](#jar-inspection-candidate-inspection-only)
+- [Jar inspection](#jar-inspection)
 - [Find public invitations](#find)
 - [Command index](#command-index)
 
@@ -1326,7 +1326,7 @@ The `agent-contrib` alias exposes the same commands. See the
 [maintainer two-minute setup](maintainers.md#two-minute-setup-offline) for adoption
 and old-client limitations. No file is published automatically.
 
-## Jar inspection (candidate, inspection only)
+## Jar inspection
 
 ```sh
 agent-contrib jar acme/project
@@ -1401,10 +1401,12 @@ closed/unknown raw findings are diagnostic and excluded from combined candidates
 Selection means “declared welcome; policy review required.” No score, approval
 or overlap gate changes. There is no global jar index or owner-jar inheritance.
 
-Policy inventories use format 3 and include a reserved `tipjar` entry with full
-validated wanted/boundaries and pinned declaration state/digest, independent of
-prose-file limits. Ordinary source and owner prose remain binding; unresolved
-links and refusals cannot be waived by a welcome. Historical inventory 1/2 hashes
+Current public policy inventories and task 0.3 use format 4, including a reserved
+`tipjar` entry with the pinned invitation source kind, path, blob and digest,
+manifest-presence binding, and validated manifest wanted/boundaries when present.
+These bindings are independent of prose-file limits. Published task 0.1/0.2 retain
+manifest-only format-3 inventory semantics. Ordinary source and owner prose
+remain binding; unresolved links and refusals cannot be waived by a welcome. Historical inventory 1/2 hashes
 remain recognizable in drift reports, but do not attest jar review. Standalone `jar` ignores `--cache`. Integrated jar reads use
 single-attempt requests and live tree checks; an opt-in cached content response
 is accepted only after its bytes match that pinned tree blob. Policy reads retain
