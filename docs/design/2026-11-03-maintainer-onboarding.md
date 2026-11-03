@@ -90,10 +90,10 @@ No registry, CLI, schema, scoring, backend, Skill or authorization changes.
 - [ ] Reorganize `web/directory.html` as above; minimally adjust `web/style.css`
   for the standalone panel sequence and 390px layout. Keep stable anchors/IDs.
   Change `web/app.js` only if event wiring needs adjustment; reuse its handlers.
-  Leave `web/model.js` unchanged; do not create or edit handoff-owned
-  `sharedmodel.js` helpers unless necessary and coordinated with their owner.
+  Leave `web/model.js` unchanged; handoff helpers live there and remain
+  owned by the separate handoff work.
 - [ ] Update `web/README.md` to describe the two paths and manual publication.
-  Run `node tests/web/model.test.cjs` and `python -m unittest discover -v`.
+  Run `node tests/web/model.test.cjs` and `python3 -m unittest discover -v`.
   Serve the existing `tests/web/browser.html` harness; require its completion
   marker and inspect any LIMIT results rather than claiming OS boundaries pass.
 - [ ] Verify desktop/390px direct anchor arrival, heading/input visibility,
