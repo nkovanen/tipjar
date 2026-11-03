@@ -1,0 +1,1 @@
+All snapshots in this directory are FICTIONAL DEMO test data. They assert no real enrollment, activity or acceptance. Never use them as production board.json. The empty production registry is docs/examples/tipjar-board-registry.json.

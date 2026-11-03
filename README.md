@@ -5,136 +5,97 @@
 
 Gift useful agent work to open-source projects, with human authorization at each step.
 
-Tipjar is the new identity for Agent Contrib. A tip is agent work contributed to
-a project. It is a read-only command-line tool plus a thin agent Skill for Claude
-Code, Codex and other coding agents. It finds suitable GitHub issues, reads each
-project's rules and open pull requests, and turns the chosen issue into a reviewed
-task contract. Your agent implements and publishes only after a human authorizes
-each step; the CLI itself never writes to GitHub.
+Tipjar is a Python CLI and a thin Skill for coding agents. It finds repository
+invitations, ranks GitHub issues, reads project rules and overlapping pull
+requests, and prepares task contracts for human review. The agent can then work
+within the authorized scope. The CLI itself only reads GitHub; it never executes
+contract commands or publishes contributions.
 
-`tipjar find` verifies one batch from two searches of at most five indexed public candidates each.
-It is not an exhaustive directory. No adoption is established and there is no
-curated fallback list. Direct `tipjar jar owner/repo` reads without indexing.
-The candidate can inspect a repository's root invitation with
-`tipjar jar owner/repo`. Discovery, preparation and live verification read the actual issue source’s
-pinned declaration. Closed or unknown jars block contribution readiness; use
-`tipjar discover acme/one acme/two --welcomed-only` to select declared welcomes
-among named repositories. All other policy and authority gates still apply.
-You can explicitly target a repository without a jar through existing discovery
-and pending preparation. An absent jar is undeclared and grants no approval.
-Explicit repository bans remain binding. Source approval, local execution
-permission and publication authority remain separate.
+**Status:** 0.3.0 is an **unreleased candidate**. There is no 0.3.0 release tag
+or PyPI release. The planned website is https://nkovanen.github.io/tipjar/;
+it is **not live yet**. You can run the [directory demo locally](web/README.md).
+
+## Install from source
+
+Requires Python 3.10+, Git and [GitHub CLI](https://cli.github.com/).
+With [pipx](https://pipx.pypa.io/latest/how-to/install-pipx.html):
+
+```sh
+pipx install 'git+https://github.com/nkovanen/tipjar.git@main'
+tipjar --version       # 0.3.0
+agent-contrib --version # same CLI
+gh auth login
+```
+
+`main` moves as development continues. For reproducible installs, replace `main`
+with a reviewed full commit SHA. See [installation](docs/installation.md) for
+virtual environments, updates and agent host setup.
+
+The distribution remains `agent-contrib`, the Python module remains
+`agent_contribute`, and `tipjar` and `agent-contrib` invoke the same CLI. The
+canonical Skill remains `agent-contribute`; existing scripts and schema
+identifiers keep their names. The historical published release is
+[Agent Contrib v0.2.0](https://github.com/nkovanen/agent-contrib/releases/tag/v0.2.0);
+it has no `tipjar` command. See [upgrading](docs/upgrading.md).
+
+Export the Skill for your agent (Codex shown; Claude Code uses
+`$HOME/.claude/skills/agent-contribute`):
+
+```sh
+mkdir -p "$HOME/.agents/skills/agent-contribute"
+agent-contrib skill --output "$HOME/.agents/skills/agent-contribute/SKILL.md"
+```
+
+The Skill uses the first `agent-contrib` on the agent host's PATH. Restart your
+agent after installation, then say “Go help owner/repo.” Export refuses to
+overwrite an existing Skill; [updates](docs/installation.md#compatibility-and-updates)
+are deliberate.
+
+## Find useful work
+
+```sh
+tipjar find --owner acme
+tipjar jar acme/project
+tipjar discover acme/project --signals --limit 10
+tipjar inspect 'acme/project#12' --ownership
+tipjar prepare 'acme/project#12' --output task.json
+tipjar lint task.json
+tipjar verify task.json
+```
+
+`find` verifies one batch from two searches of at most five indexed public invitation candidates each.
+It is not an exhaustive directory, indexing can lag, and no adoption is
+established. `jar` reads one repository's pinned invitation directly. `find` and
+`discover --welcomed-only` select only `welcome` observations, subject to policy
+review. Normal discovery and session planning can target an undeclared repository;
+an absent jar grants no approval. Closed or unknown jars block readiness.
+Explicit repository bans remain binding. [Find limits](docs/cli.md#find).
+
+`discover` ranks issues; `--signals` re-ranks heuristically and never approves.
+`--limit` bounds only the displayed list. `inspect` reports claims, linked PRs
+and possible prior fixes. Preparation writes a draft contract; verification
+reports blockers. A request to “help” stops for human authorization before work
+starts. Publication requires its own authorization and passing draft gate;
+nothing is automatically merged or released.
+
+You can also shortlist GitHub projects from local dependency declarations with
+`dependencies`, plan a bounded offline gift-work `session`, and record public
+PR observations with `receipt` and `impact`. These reports grant no authority.
+
+## Welcome tips with your README
+
+Generate the exact repository-scoped snippet offline with `tipjar badge owner/repo`.
+Paste it at byte zero of root README.md, including its blank third line.
+`.tipjar.json` takes precedence, including a closed manifest. A copied fork badge
+is unresolved until its owner intentionally corrects or removes it. See
+[README invitations](docs/readme-invitations.md).
 
 For an outside contribution, explicitly use **task 0.3 external tips**: review a
-public issue and its source/fork policies, authorize implementation in your
-immediate personal fork, then separately approve the tested result and exact
-upstream draft payload. `verify --stage published` returns the observed draft
-URL; fork-only work is not delivery upstream. Start with the complete
-[external-tip workflow](docs/external-tips.md), including the manual no-jar path.
-
-**Versions.** v0.2.0 is the published release. This branch is the **v0.3.0
-candidate (unreleased)**: no v0.3.0 tag exists yet. Coming from 0.2? Read
-[upgrading](docs/upgrading.md).
-
-## Install
-
-Requires Python 3.10+, Git, [GitHub CLI](https://cli.github.com/) (`gh auth login`)
-and [pipx](https://pipx.pypa.io/latest/how-to/install-pipx.html). Published release:
-
-```sh
-pipx install 'git+https://github.com/nkovanen/agent-contrib.git@v0.2.0'
-agent-contrib --version
-```
-
-The v0.3.0 candidate, in its own environment. Replace `PUSHED_FULL_COMMIT_SHA`
-with the full SHA of a reviewed commit that is on GitHub (see
-[installation](docs/installation.md#testing-the-unreleased-v030-candidate)):
-
-```sh
-python3 -m venv "$HOME/.local/share/agent-contrib-candidate"
-"$HOME/.local/share/agent-contrib-candidate/bin/python" -m pip install \
-  'git+https://github.com/nkovanen/agent-contrib.git@PUSHED_FULL_COMMIT_SHA'
-export PATH="$HOME/.local/share/agent-contrib-candidate/bin:$PATH"
-agent-contrib --version   # must print 0.3.0
-tipjar --version          # same CLI, in a candidate containing the alias
-```
-
-In this candidate, `tipjar` and `agent-contrib` call the same CLI; for example,
-`tipjar discover owner/repo --signals`. The published v0.2.0 has no `tipjar`
-command. The distribution remains `agent-contrib`, the Python module remains
-`agent_contribute`, and the single canonical Skill remains `agent-contribute`.
-Help, output identifiers and repository URLs retain their existing names.
-
-Current `main` contains the unreleased v0.3.0 candidate, including the
-`tipjar` alias. Installing `@main` selects that moving candidate; pin a reviewed
-full commit SHA for a reproducible install. The Skill runs the first
-`agent-contrib` on PATH, so set PATH where your agent starts and restart the agent.
-
-Add the Skill (for Codex, use `$HOME/.agents/skills/agent-contribute` instead):
-
-```sh
-mkdir -p "$HOME/.claude/skills/agent-contribute"   # Claude Code
-agent-contrib skill --output "$HOME/.claude/skills/agent-contribute/SKILL.md"
-```
-
-Other agents can load the same `SKILL.md`. [Installation](docs/installation.md)
-covers Paseo, Windows and updates (the tool never updates itself);
-[getting started](docs/getting-started.md) walks through a complete run.
-
-## "Go help owner/repo"
-
-Say it to your agent. Its installed workflow runs six steps and stops wherever a
-human must decide:
-
-1. **Discover.** `agent-contrib discover owner/repo --signals` ranks open issues;
-   `--signals` re-ranks heuristically and never approves. Then the agent reads
-   every source in the `repository_policy` report. **Stop** if a relevant rule
-   refuses agent work or cannot be resolved.
-2. **Inspect.** `agent-contrib inspect 'owner/repo#N' --ownership` shows claims,
-   linked PRs and possible prior fixes. **Stop** on an overlapping PR, claim or
-   prior fix, or an incomplete read.
-3. **Prepare.** `agent-contrib prepare 'owner/repo#N' --output task.json` writes a
-   draft contract (scope, criteria, validations, requirements ledger), and
-   `agent-contrib lint task.json` checks it offline.
-4. **Verify and ask.** `agent-contrib verify task.json` reports the contract hash
-   and blockers; `authorization-request` and `drift` prepare the request. A bare
-   "help" request ends here. **Stop** until you authorize the work: for schema 0.2
-   a human/host-issued mandate, never one the agent writes.
-5. **Implement, then publish a draft.** On an isolated branch, with scope checks,
-   the repository's checks and independent review. **Stop** before publishing:
-   a draft PR needs its own authorization and a passing draft gate.
-6. **Complete.** For schema 0.2, **stop** until a human/host final sign-off covers
-   the exact final head. Nothing marks the PR ready, merges or releases it.
-
-To bound the displayed list, use `agent-contrib discover owner/repo --limit 10`
-(1–1000). All existing scans and ranking still run. Limited JSON and text report
-total observed candidates, shown/omitted counts and full overlap/exclusion counts;
-display truncation never means a complete scan. With several repositories,
-`--limit` is one global budget. Omitting it preserves the existing output.
-
-## Find invitations
-
-A maintainer can welcome tips with the official clickable badge at byte zero of
-root README.md. Generate the exact repository-scoped snippet offline with
-`tipjar badge owner/repo`; paste the complete output snippet including its blank
-third line. `.tipjar.json` takes precedence, including a closed manifest. A copied
-fork badge is unresolved until the fork owner intentionally corrects or removes
-it. See [README invitations](docs/readme-invitations.md).
-
-```sh
-tipjar find
-tipjar find --owner acme
-tipjar --format text find --owner acme
-tipjar jar acme/project
-```
-
-Only `welcome` observations are selectable, subject to policy review. Search
-indexing can lag or omit repositories, especially forks, and repeated calls can
-return the same batch. An empty result says “No verified welcoming repositories
-in this batch”; it does not establish that none exist. Continue with `discover`,
-`inspect` and `prepare` for assessment. A jar alone does not supply the missing
-arbitrary outside-contributor upstream authorization route. Find proposes,
-executes and publishes nothing. See [find limits](docs/cli.md#find).
+public issue and both source/fork policies, authorize work in your immediate
+personal fork, then separately approve the tested result and exact upstream draft
+payload. `verify --stage published` returns the observed draft URL; fork-only work
+is not delivery upstream. Start with the complete
+[external-tip workflow](docs/external-tips.md), including its manual no-jar path.
 
 ## Approval and authorization
 
@@ -165,18 +126,6 @@ an audit trail, not cryptographic consent ([host authorization](docs/host-author
 - **Nothing auto-published.** Publication is a draft PR, only after its own
   authorization. Nothing is merged, marked ready or released automatically.
 
-## What's new in 0.3
-
-- The schema 0.2 owner/maintainer route: staged gates, `authorization-request`,
-  overlap dispositions and draft-update rounds ([host authorization](docs/host-authorization.md)).
-- A default-on repository policy report, a mandatory review and `drift --policy-sha256`.
-- New helper commands, report-only ranking aids, `--format text`, output JSON
-  Schemas, `--report-budget` and an opt-in verified `--cache` ([reference](docs/cli.md)).
-- Opt-in required CI checks and a report-only maintainer Action ([maintainers](docs/maintainers.md)).
-- Hardened Git reads and stricter evidence checks ([security](SECURITY.md)). Every
-  0.1 behaviour change: [compatibility notes](CHANGELOG.md#compatibility-notes),
-  [upgrading](docs/upgrading.md).
-
 ## Commands
 
 | Command | Purpose |
@@ -196,62 +145,40 @@ an audit trail, not cryptographic consent ([host authorization](docs/host-author
 | `drift` | What changed since the contract was prepared |
 | `scope-check`, `evidence init` | Offline scope check; evidence skeleton from observed Git facts |
 | `pr-body`, `feedback` | PR description (publishes nothing); reviews and checks on a published PR |
-| `receipt`, `impact`, `card` | Save public PR observations, summarize recorded impact and create offline SVG gift cards ([receipts](docs/receipts.md)) |
+| `receipt`, `impact`, `card` | Save public PR observations, summarize impact and create offline SVG gift cards ([receipts](docs/receipts.md)) |
 | `audit`, `ownership` | Maintainer view of a repository; claims and possible prior fixes |
 | `instructions`, `skill`, `schema` | Installed workflow, Skill export, output JSON Schemas |
 
-Output is JSON; put `--format text` before the command for a summary. Exit status
-is 0 when the command's gate passes, 1 when it does not or a read is incomplete,
-and 2 for usage errors. Details: [command reference](docs/cli.md).
+Output is JSON; put `--format text` before the command for a summary. Exit codes
+depend on the command and its gate; report-only observation failures can coexist
+with exit 0. See the [command and exit-code index](docs/cli.md#command-index).
 
-## Current limits
+## Documentation
 
-- Schema 0.2 covers same-repository work on the default branch, with a published
-  evidence base. Evidence is self-reported; hashes prove neither consent nor execution.
-- A draft update is recognized only after one host-authorized fast-forward push;
-  pre-push readiness, force-push adoption and reopening are unsupported.
-- Full regression coverage is Linux with Python 3.10–3.14. Windows/macOS CI
-  covers bounded host-context stdin and installed offline CLI smoke checks;
-  it does not validate the full Git, cache or evidence workflows there.
-  There is no PyPI release.
+- [External tips](docs/external-tips.md): the explicit task 0.3 fork-to-upstream route.
+- [Getting started](docs/getting-started.md): a complete contribution walkthrough.
+- [Installation](docs/installation.md) and [upgrading](docs/upgrading.md).
+- [CLI reference](docs/cli.md) and [output schemas](docs/output-reference.md).
+- [Maintainer setup](docs/maintainers.md) and [host authorization](docs/host-authorization.md).
+- [Dependencies](docs/dependencies.md), [planning sessions](docs/planning-sessions.md)
+  and [receipts](docs/receipts.md).
+- [Architecture](docs/architecture.md), [security](SECURITY.md) and
+  [compatibility notes](CHANGELOG.md#compatibility-notes).
+- [Product map](docs/product-map.md), [development status](docs/development-status.md)
+  and [historical plans](docs/archive/README.md).
 
-[Product map](docs/product-map.md) (shipped and planned) ·
-[architecture](docs/architecture.md) (how it is built).
+Full regression coverage is Linux with Python 3.10–3.14. Windows/macOS CI covers
+bounded host-context stdin and installed offline smoke checks; it does not
+validate the full Git, cache or evidence workflows. Evidence is self-reported,
+and no native host mandate issuer ships. See [current limits](docs/host-authorization.md).
 
-## Local directory demo
+## Development and provenance
 
-Browse the fictional Tipjar directory, import a local find snapshot, or draft a
-repository invitation without any GitHub requests:
+Development continues in [nkovanen/tipjar](https://github.com/nkovanen/tipjar).
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for tests and package checks, and use
+[private security reporting](https://github.com/nkovanen/tipjar/security/advisories/new)
+for vulnerabilities.
 
-```sh
-python3 -m http.server 8765 --bind 127.0.0.1 --directory web
-```
-
-Open http://localhost:8765. See [web/README.md](web/README.md) for the snapshot
-contract, safe local behavior and optional static hosting instructions. The web
-assets ship in the source distribution; the Python library stays independent.
-
-## Development
-
-```sh
-python -m pip install build
-python -m unittest discover -v
-python tools/check_install.py
-```
-
-See [contributing](CONTRIBUTING.md); report vulnerabilities through
-[GitHub's private reporting form](https://github.com/nkovanen/agent-contrib/security/advisories/new).
-Origin: [LightCraft PR #1](https://github.com/nkovanen/lightcraft/pull/1) ([case study](docs/lightcraft-case-study.md)).
-
-## License
-
-[MIT](LICENSE). Original attribution is retained in [NOTICE](NOTICE).
-
-## External contribution route
-
-Task schema 0.3 explicitly supports a reviewed draft from a personal immediate
-fork to a human-selected public upstream issue, with separate implementation and
-exact-result publication assertions. Welcome and undeclared sources both require
-complete source/fork policy accounting; no invitation or approval is invented.
-See [the complete external-tip workflow](docs/external-tips.md) for commands, records, pause points and limits. Evidence
-remains schema 0.2; new reports use output/4. Existing 0.1/0.2 authority is unchanged.
+Tipjar continues Agent Contrib with its Git history preserved. Historical release,
+issue and PR links refer to the original `nkovanen/agent-contrib` repository.
+[MIT](LICENSE); original attribution is retained in [NOTICE](NOTICE).

@@ -311,3 +311,22 @@ class BoundaryReviewTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class LegacyFinderTests(unittest.TestCase):
+    def test_explicit_legacy_finder_preserves_one_ten_hit_query_report_and_bound(self):
+        from agent_contribute import find, outputs, tipjar
+        search, data = TransportTests.batch()
+        class Client:
+            def __init__(self):self.calls=[]
+            def request_once(self,endpoint):
+                self.calls.append(endpoint)
+                return copy.deepcopy(search if endpoint.startswith('search/code?') else data[endpoint])
+        client=Client()
+        result=find.find_jars(client,invitation_protocol=tipjar.LEGACY)
+        self.assertEqual(client.calls[0],'search/code?q=filename%3A.tipjar.json+path%3A%2F&per_page=10&page=1')
+        self.assertEqual(len(client.calls),51)
+        self.assertEqual(result['requests'],{'search':1,'core':50})
+        self.assertEqual(result['format'],'find-jars-report/1')
+        self.assertEqual(core.schema_errors(result,outputs.output_schema('find',version='3')),[])
+        self.assertTrue(result['complete'])
+        self.assertTrue(all('source_kind' not in x['jar'] for x in result['observations']))

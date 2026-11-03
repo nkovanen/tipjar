@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Community board — Tipjar</title>
+    <link rel="icon" href="brand/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="model.js" defer></script>
+    <script src="leaderboard-model.js" defer></script>
+    <script src="leaderboard.js" defer></script>
+  </head>
+  <body class="board-page">
+    <a class="skip" href="#people">Skip to community board</a>
+    <header class="shell header">
+      <a class="brand" href="index.html"
+        ><img src="brand/icon.svg" width="42" height="42" alt="" />tipjar</a
+      >
+      <nav aria-label="Main">
+        <a href="leaderboard.html" aria-current="page">Community board</a
+        ><a href="#welcoming">Find a jar</a
+        ><a href="directory.html#maintainers">Put out your jar ↗</a>
+      </nav>
+      <a class="source-link" href="https://github.com/nkovanen/tipjar">GitHub ↗</a>
+    </header>
+    <main class="shell">
+      <section class="board-hero">
+        <div>
+          <p class="eyebrow">A LITTLE WORK. A LOT OF GOOD.</p>
+          <h1>Good things <em>add up.</em></h1>
+          <p class="intro">
+            Meet the people giving back and the projects receiving a little extra. Every tip is a
+            merged contribution, shared with permission.
+          </p>
+        </div>
+        <img class="board-jar" src="brand/icon.svg" width="130" height="130" alt="" />
+      </section>
+      <nav class="board-tabs" aria-label="Board views">
+        <a href="#people">People giving back ↓</a><a href="#projects">Most tipped projects ↓</a
+        ><a href="#welcoming">Welcoming jars ↓</a>
+      </nav>
+      <div class="board-toolbar">
+        <div class="period" role="group" aria-label="Ranking period">
+          <button type="button" data-period="month" aria-pressed="true">This UTC month</button
+          ><button type="button" data-period="30days" aria-pressed="false">Last 30 days</button
+          ><button type="button" data-period="all" aria-pressed="false">All time</button>
+        </div>
+        <p id="freshness" class="board-freshness">Checking the latest snapshot…</p>
+      </div>
+      <div id="board-status" class="board-status" role="status">
+        <strong>Filling the board…</strong>
+        <p>Loading the public snapshot.</p>
+      </div>
+      <noscript
+        ><p>
+          The public board needs JavaScript to check snapshot freshness and derive its rankings. You
+          can still <a href="directory.html#maintainers">put out a jar</a> or
+          <a href="https://github.com/nkovanen/tipjar">read about Tipjar</a>.
+        </p></noscript
+      >
+      <p class="board-rules">
+        Curated opt-ins only · partial coverage · one point per eligible merge, not value or
+        verified AI use. <a href="#board-rules">How counting works ↓</a>
+      </p>
+      <section id="people" class="board-section" aria-labelledby="people-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">THOUGHTFUL PEOPLE. USEFUL LITTLE GIFTS.</p>
+            <h2 id="people-title">People giving back.</h2>
+          </div>
+          <p id="people-summary"></p>
+        </div>
+        <div id="people-content"></div>
+        <p id="newcomers" class="newcomers"></p>
+      </section>
+      <section id="projects" class="board-section" aria-labelledby="projects-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">THE GOOD FINDS A HOME.</p>
+            <h2 id="projects-title">Most tipped projects.</h2>
+          </div>
+          <p>Accepted work, never an endorsement.</p>
+        </div>
+        <div id="projects-content"></div>
+      </section>
+      <section
+        id="welcoming"
+        class="board-section board-directory"
+        aria-labelledby="welcoming-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">YOUR NEXT LITTLE CONTRIBUTION.</p>
+            <h2 id="welcoming-title">Find a welcoming jar.</h2>
+          </div>
+          <a class="text-link" href="directory.html">Local directory tools ↗</a>
+        </div>
+        <div id="explore" class="welcome-strip" hidden>
+          <h3>A little off the beaten path.</h3>
+          <p>Daily rotation of up to three observed welcomes, independent of points.</p>
+          <div id="explore-links" class="explore-links"></div>
+        </div>
+        <div class="filters">
+          <label class="search"
+            ><span aria-hidden="true">⌕</span
+            ><span class="sr-only">Search welcoming projects and wanted work</span
+            ><input
+              id="board-search"
+              type="search"
+              placeholder="Search projects, docs, tests…"
+              maxlength="500"
+          /></label>
+        </div>
+        <p id="directory-summary" class="micro"></p>
+        <div id="welcome-content" class="cards"></div>
+        <div id="welcome-empty"></div>
+        <p class="authority-note">
+          A welcome invites exploration. Read project policies and get human authorization for
+          implementation and publication. Closed or unknown jars offer no new-work actions.
+        </p>
+      </section>
+      <section class="board-bottom">
+        <div>
+          <p class="eyebrow">BE PART OF THE FIRST POUR.</p>
+          <h2>A little generosity belongs here.</h2>
+          <p>
+            Maintaining a project? Put out your jar. Already gave something useful? Submit your own
+            merged, agent-assisted tip for curator review.
+          </p>
+        </div>
+        <div class="board-actions">
+          <a class="button" href="directory.html#maintainers">Put out a jar ↗</a
+          ><a
+            class="button dark"
+            href="https://github.com/nkovanen/tipjar/issues/new?template=submit-tip.yml"
+            >Submit a merged tip ↗</a
+          >
+        </div>
+      </section>
+      <details id="board-rules" class="board-details">
+        <summary>Counting, coverage &amp; removal</summary>
+        <p>
+          One point per distinct eligible merged pull request. Tiny fixes and documentation count
+          equally. Size is context, never a score. Equal totals share rank. People and projects use
+          the same selected merge set, with the current UTC calendar month selected by default.
+          Historical acceptance can remain when a jar closes; it never supplies a current welcome.
+        </p>
+        <p>
+          Opt-in submissions are curated and assistance is self-declared. These observations prove
+          neither AI use nor protocol compliance. Public metadata cannot establish organizational
+          independence or detect all collusion. This bounded pilot is not an exhaustive directory or
+          a measure of human worth or code quality.
+        </p>
+        <p>
+          Withdrawals apply on successful refresh; failures can delay removal until displayed
+          expiry. Historical copies may remain. After expiry, scores and welcome actions are hidden.
+          <a href="https://github.com/nkovanen/tipjar/issues/new"
+            >Request removal or report a concern ↗</a
+          >.
+        </p>
+        <p id="coverage-detail"></p>
+      </details>
+    </main>
+    <footer class="shell footer">
+      <a class="brand" href="index.html"
+        ><img src="brand/icon.svg" width="34" height="34" alt="" />tipjar</a
+      >
+      <p>A little work goes a long way.</p>
+      <a href="https://github.com/nkovanen/tipjar">Source &amp; CLI ↗</a>
+    </footer>
+    <dialog id="board-detail" aria-labelledby="board-detail-title">
+      <div class="dialog-top">
+        <span class="eyebrow">THE LITTLE THINGS, IN DETAIL</span
+        ><button
+          id="close-board-detail"
+          class="close"
+          aria-label="Close board details"
+          type="button"
+        >
+          ×
+        </button>
+      </div>
+      <div id="board-detail-content"></div>
+    </dialog>
+    <div id="board-toast" class="toast" role="status"></div>
+  </body>
+</html>

@@ -207,11 +207,12 @@ not depend on the labelling choice.
 - Positives are rare: 30 among 2123 test issues under registered labels, and 9
   of 16 test snapshots have none. Every interval reflects that.
 
-### Unresolved limitation: PR history hidden by renames (review BM-02)
+### Original corpus limitation: PR history hidden by renames (review BM-02)
 
-The collector reads a PR's events only when its **current** title overlaps a
-kept issue. For those PRs it drops any that were closed at T and reverses later
-renames. The other candidates keep their current titles, unverified. In this
+The collector used for the results above read a PR's events only when its
+**current** title overlapped a kept issue. For those PRs it dropped any that
+were closed at T and reversed later renames. The other candidates kept their
+current titles, unverified. In this
 corpus that is 636 of 1066 test candidates and 88 of 178 tuning candidates. A
 PR that overlapped an issue at T but was renamed afterwards to an unrelated
 title was never selected, so its old title is not reconstructed. Fixing this
@@ -236,6 +237,64 @@ What this can and cannot change:
   incidence is unknown, because the skipped event histories were not read, so
   either sign could move a variant towards or away from qualifying. It is
   recorded as an open limitation, not a resolved one.
+
+The collector is now repaired: every searched candidate history is reconstructed
+before title overlap selection. Malformed, unreadable or capped histories remain
+explicitly unverified and make new snapshots unscoreable. Verification also
+checks current state/close-time anchors, consistent transitions and unambiguous
+event order. Legacy or mixed scoring reports carry the reconstruction caveat
+in text and JSON. This source repair
+does not retroactively repair the corpus or establish complete search coverage.
+Stored format 2 snapshots without the new `pr_history_complete` marker remain
+readable for reproducing the historical tables, with the limitation above.
+Enrichment results, when available, are reported separately; the registered
+labels, sensitivity schemes and qualification threshold remain unchanged.
+
+### Bounded strict history audit (2026-11-03)
+
+The follow-up fetched fresh title/state/close-time anchors and bounded event
+histories for all 528 distinct PRs behind the 724 originally unverified records.
+It reused histories across cutoffs and preserved the original snapshots, issue
+populations and collection timestamps. Enrichment time is recorded separately.
+The read-only run used **1449 `gh` invocations**, including rate checks; the final
+shared core balance was 4013, above the 1000 reserve. Shared-token balance changes
+are not this worker's exact usage.
+
+Strict revalidation does not trust the earlier verified flags. Coverage of the
+original candidate records is:
+
+| Split | Candidate records | Strictly resolved | Unresolved |
+| --- | --- | --- | --- |
+| Tuning | 178 | 82 | 96 |
+| Test | 1066 | 630 | 436 |
+| Total | 1244 | 712 | 532 |
+
+Of the 712 resolved records, 701 were originally unverified and 11 shared a
+fetched identity with an originally verified record. One resolved PR was closed
+at T and was removed; 711 were retained. Twelve titles were corrected. Among
+these resolved histories, no newly hidden title-overlap edges were found; that
+observation does not cover the unresolved histories.
+
+The 532 unresolved records comprise 508 without a strict state-anchor audit
+and 24 with conflicting close timestamps (19 distinct PRs, each `closed_at`
+one second before its final close event). No timestamp tolerance was invented.
+Fully re-auditing the remaining identities cannot fit the remaining local
+1500-invocation budget. Every enriched snapshot remains explicitly incomplete
+and is rejected by scoring. The evidence is kept in the validation run's
+`benchmark-history/strict-audited-partial-snapshots/`, with `strict-coverage.json`
+and an invocation ledger; no raw evidence is added to this checkout.
+
+**Collector repaired; corpus reconstruction remains partial.** No new
+whole-corpus score or qualification decision is claimed. Registered, weak-reason
+and raw definitions, thresholds and runtime ranking defaults are unchanged.
+
+A separate check of the untouched legacy snapshots on this branch reproduced
+the registered populations and primary precision/interval/null/qualification
+fields, but found eight differences in secondary signals upper-bound/coverage
+fields against the stored report. Those are not attributed to this history
+repair: no runtime ranking file changed. The historical tables above are
+preserved; this check is recorded as a reproducibility limitation, not a new
+reconstructed-corpus result.
 
 ## Reproduce
 

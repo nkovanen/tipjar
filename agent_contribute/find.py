@@ -50,32 +50,46 @@ def _observation(disposition='unknown', reason='invalid_hit', candidate=None):
             'disposition': disposition, 'reason': reason, 'verified_at': None, 'jar': None}
 
 
-def _search_candidates(client, owner):
+def _search_candidates(client, owner, invitation_protocol):
     report = dict(format='find-jars-report/2', fetched_at=_now(), owner=owner, searches=[],
                   coverage={'exhaustive': False, 'limitations': list(LIMITATIONS)}, observations=[],
                   complete=False, errors=[], requests={'search': 0, 'core': 0}, notice=NOTICE)
+    legacy = invitation_protocol == tipjar.LEGACY
+    per_page = 10 if legacy else 5
+    queries = [(QUERY, tipjar.PATH)]
+    if not legacy:
+        queries.append(('"tipjar:welcome:v1" filename:README.md path:/', 'README.md'))
+    if legacy:
+        report['format'] = 'find-jars-report/1'
+        report.pop('searches')
+        report['coverage']['limitations'][0] = 'One page of at most ten indexed hits; not a global census or fair rotation.'
     combined = []
-    for query, expected_path in ((QUERY, tipjar.PATH), ('"tipjar:welcome:v1" filename:README.md path:/', 'README.md')):
+    for query, expected_path in queries:
         query += ' user:' + owner if owner is not None else ''
-        search = dict(query=query, page=1, per_page=5, total_count=None, incomplete_results=None,
+        search = dict(query=query, page=1, per_page=per_page, total_count=None, incomplete_results=None,
                       returned_count=None, truncated=None, short_page=None, errors=[])
-        report['searches'].append(search)
+        if legacy:
+            report['search'] = search
+        else:
+            report['searches'].append(search)
         try:
             data = core.require(client.request_once('search/code?' + urlencode(
-                {'q': query, 'per_page': 5, 'page': 1})), dict, 'search response')
+                {'q': query, 'per_page': per_page, 'page': 1})), dict, 'search response')
             total, incomplete, items = data.get('total_count'), data.get('incomplete_results'), data.get('items')
             if (type(total) is not int or total < 0 or type(incomplete) is not bool or
-                    not isinstance(items, list) or len(items) > 5 or total < len(items)):
+                    not isinstance(items, list) or len(items) > per_page or total < len(items)):
                 raise core.ProtocolError('api_shape', 'Invalid search envelope')
         except core.ProtocolError:
-            search['errors'].append('search_failed')
+            if not legacy: search['errors'].append('search_failed')
+            else: search.pop('errors')
             report['errors'].append('search_failed')
             continue
         search.update(total_count=total, incomplete_results=incomplete, returned_count=len(items),
-                      truncated=total > len(items), short_page=len(items) < min(total, 5))
+                      truncated=total > len(items), short_page=len(items) < min(total, per_page))
         if incomplete: search['errors'].append('search_incomplete')
         if search['short_page']: search['errors'].append('short_page')
         report['errors'].extend(search['errors'])
+        if legacy: search.pop('errors')
         combined.extend((hit, expected_path) for hit in items)
     records = []
     for hit, expected_path in combined:
@@ -120,7 +134,8 @@ def _search_candidates(client, owner):
                          left['partial_name'] is not None and left['partial_name'] == right['partial_name'])
             owner_conflict = a is not None and b is not None and (a[2] == b[2]) != (a[3] == b[3])
             if owner_conflict or same_repo and (a is None or b is None or a != b or
-                    (left['observation']['reason'] != 'pending_verification' or right['observation']['reason'] != 'pending_verification' or
+                    (any(left['hit'].get(key) != right['hit'].get(key) for key in ('sha','name','path')) if legacy else
+                     left['observation']['reason'] != 'pending_verification' or right['observation']['reason'] != 'pending_verification' or
                      left['hit'].get('path') == right['hit'].get('path') and left['hit'].get('sha') != right['hit'].get('sha')) or
                     left['hit']['repository'].get('private') != right['hit']['repository'].get('private')):
                 left['conflict'] = right['conflict'] = True
@@ -176,11 +191,13 @@ class _Reads:
         return self.client.request_once(endpoint)
 
 
-def find_jars(client=None, *, owner=None):
+def find_jars(client=None, *, owner=None, invitation_protocol=tipjar.CURRENT):
     """Verify a partial batch; never select unknowns or treat invitations as authority."""
     validate_owner(owner)
+    if invitation_protocol not in (tipjar.CURRENT,tipjar.LEGACY):
+        raise core.ProtocolError('unsupported_schema','Unsupported invitation protocol')
     reads = _Reads(client or core.GitHub(use_cache=False))
-    candidates, report = _search_candidates(reads, owner)
+    candidates, report = _search_candidates(reads, owner, invitation_protocol)
     for candidate in candidates:
         obs = report['observations'][candidate['index']]
         endpoint = 'repos/' + obs['repository']
@@ -193,7 +210,7 @@ def find_jars(client=None, *, owner=None):
                 if exclusion == 'private':
                     obs.update(repository=None, repository_id=None)
                 continue
-            jar = tipjar.read_jar(obs['repository'], reads, metadata=meta)
+            jar = tipjar.read_jar(obs['repository'], reads, metadata=meta, invitation_protocol=invitation_protocol)
             if jar['complete'] and jar['state'] == 'welcome':
                 final = reads.request_once(endpoint)
                 exclusion = _metadata(final, candidate, meta['default_branch'])

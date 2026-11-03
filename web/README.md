@@ -1,7 +1,9 @@
-# Tipjar directory
+# Tipjar site
 
-A local-first static directory and manifest editor. Tips are agent work, not
-money. The six initial projects are fictional samples: no real invitations,
+The root landing page introduces Tipjar. `leaderboard.html` joins people giving
+back, most tipped projects and currently welcoming jars. `directory.html`
+preserves the local-first snapshot directory and invitation editor. Tips are
+agent work, not money. The six local directory demo projects are fictional samples: no real invitations,
 endorsements, contribution counts or claims of maintainer consent.
 
 From a source checkout (or extracted source distribution):
@@ -10,9 +12,10 @@ From a source checkout (or extracted source distribution):
 python3 -m http.server 8765 --bind 127.0.0.1 --directory web
 ```
 
-Open http://localhost:8765. No frontend installation, build, credentials, remote
-fonts, telemetry, or GitHub requests are needed. The page does not save imported
-data; reloading restores the demo. The Python package/wheel is independent of
+Open http://localhost:8765 for the landing page, or
+http://localhost:8765/directory.html for local tools. No frontend installation,
+build, credentials, remote fonts, telemetry, or browser GitHub requests are needed.
+The local directory does not save imported data; reloading restores its demo. The Python package/wheel is independent of
 the site. Node is optional for development: `node tests/web/model.test.cjs` tests
 the data boundaries; unittest runs it when Node is available.
 
@@ -24,10 +27,10 @@ In this unreleased preview, export a bounded public search batch with the candid
 tipjar find > jars.json
 ```
 
-Choose or drop `jars.json` below. Search coverage is partial and indexing may lag;
+Choose or drop `jars.json` in `directory.html` beneath the local directory. Search coverage is partial and indexing may lag;
 no adoption or exhaustive directory is established. A failed/incomplete batch may
 still retain observations; inspect its diagnostics before using it.
-This importer requires format `find-jars-report/1`, at most 1 MiB and 200
+This importer accepts format `find-jars-report/1` or `/2`, at most 1 MiB and 200
 observations. It ignores extra bounded metadata, rejects unknown formats,
 invalid identities, conflicting dispositions, duplicate repositories, invalid
 UTF-8 and unsupported manifest schemas. Example **fictional** snapshot:
@@ -78,17 +81,39 @@ input memory cap exceeds every schema-valid per-field value (at most 16015 units
 including line breaks); the schema still counts Unicode codepoints. Review the downloaded `.tipjar.json`, then add it to your repository
 yourself. Downloading changes no repository. A closed manifest expresses refusal.
 
-## Optional static hosting
+## Public community board
 
-The `web/` contents are ready for GitHub Pages or another static host, including
-project subpaths: all assets use relative URLs. In a separately authorized hosting
-change, copy the contents of `web/` to the selected Pages publication root (or
-upload it as a Pages artifact), and configure Pages through repository settings.
-Do not select the repository root: this page is in `web/`. No deployment workflow
-or Pages configuration is enabled by this contribution. Hosted copies retain the
-same local-file import behavior and never query GitHub automatically. Clipboard
-copy uses the browser's secure-context API; if unavailable, it selects the command
-for manual copying. Browsers may prompt before downloading JSON.
+`leaderboard.html` fetches only relative, same-origin `board.json`. Its CSP allows
+same-origin connections; the landing and local directory retain `connect-src
+'none'`. No browser token or GitHub API call is used. Snapshot loading has a
+4 MiB streamed byte cap, fatal UTF-8 decoding, a timeout and redirect refusal.
+The parser rejects unknown formats/fields, recursive duplicate keys, identity
+conflicts, unsupported invitation sources and inconsistent checks/expiry.
+It supports the manifest-only `tipjar-board/1` contract; future reader or board
+shapes require explicit review. Imported local snapshots never become scores.
+
+Rankings are derived from the same eligible tip set: one point per merge, tied
+ranks, UTC calendar month/rolling 30 days/all time. Proof dialogs link to the
+merged PR and public opt-in submission. Welcome details show wanted work,
+boundaries, pinned provenance when provided and a copyable discovery command.
+Closed/unknown jars have no new-work action. At expiry, both scores and welcome
+actions disappear, including any open detail dialog. Missing/invalid snapshots
+show an honest unavailable state; there is no production demo fallback.
+
+The Pages artifact is the contents of `web/` plus a freshly generated
+`board.json` beside `index.html`; no frontend build is needed. Relative links
+preserve project subpaths. Never copy test fixtures into a production artifact.
+See [board operations](../docs/leaderboard.md) for collection, opt-in, moderation
+and deployment. The controller owns activation and publication. The collector and predeploy checker
+are source-only tools, included with their schemas and disabled workflow examples
+in the source distribution; they are absent from installed wheels. The board's
+source header links to `nkovanen/tipjar`; its status reports generation, expiry and
+the source commit. These are untrusted observations, not proof of achievements,
+maintainer endorsement or execution/publication authority. An empty public board
+is expected until reviewed opt-ins exist; local demo/import data never fills it.
+
+Clipboard copy uses the browser's secure-context API; if unavailable, it selects
+the command for manual copying. Browsers may prompt before downloading JSON.
 
 ## Browser checks
 
@@ -106,8 +131,31 @@ replaced to inspect exact values; native keyboard actions and the OS clipboard /
 save dialog still require manual testing. A background browser may defer the
 native close event; the page reports this as a LIMIT rather than a passed check.
 
-README onboarding validates owner/repo locally and generates the exact official
-prefix. `?repo=` only pre-fills the editor. No save, clipboard write or GitHub
-call occurs on page load. Optional JSON preferences take precedence. Imports
+
+Public model regressions: `node tests/web/leaderboard.test.cjs` (also run by
+`python3 -m unittest tests.test_web_leaderboard -v`). They cover the closed
+contract, source pins, identity joins, UTC periods/ties, milestones, conservative
+expiry and removal of actions for closed/unknown/expired jars.
+
+Optional real Chromium checks use an already installed Playwright module:
+
+```sh
+TIPJAR_PLAYWRIGHT=/absolute/path/to/playwright node tests/web/leaderboard.browser.cjs
+```
+
+This starts a temporary local server and intercepts the board request with
+clearly fictional fixtures. It verifies desktop/390px/subpath navigation,
+proof URLs, native keyboard/Escape/focus return, hostile text, search, missing and
+invalid JSON, empty/partial states, live expiry, closed-jar restrictions and the
+existing local import harness's final completion marker. Screenshots and the
+local harness report go outside the checkout to `/tmp/tipjar-board-browser`
+(or `TIPJAR_BROWSER_EVIDENCE`). Native OS clipboard/save dialogs remain manual
+checks; the local harness replaces those boundaries and reports any LIMIT lines.
+
+README onboarding in `directory.html` validates owner/repo locally and generates
+the exact official prefix. The landing `?repo=` parameter only pre-fills that
+editor through a locally validated link. No save, clipboard write or GitHub call
+occurs on page load. Optional JSON preferences take precedence. Local imports
 accept explicit find-jars-report/1 (manifest only) and /2 (versioned invitation
-provenance); both remain untrusted observations.
+provenance); both remain untrusted observations. The public board retains its
+separate, frozen manifest-only board1 contract.

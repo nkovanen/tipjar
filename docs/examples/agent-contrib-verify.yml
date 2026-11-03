@@ -29,6 +29,6 @@ jobs:
           persist-credentials: false
           submodules: false
           lfs: false
-      - uses: nkovanen/agent-contrib/actions/verify@0000000000000000000000000000000000000000 # replace with a reviewed release commit
+      - uses: nkovanen/tipjar/actions/verify@0000000000000000000000000000000000000000 # replace with a reviewed release commit
         with:
           checkout-path: pr-head
