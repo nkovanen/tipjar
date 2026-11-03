@@ -99,6 +99,40 @@ class DeployTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.tool.read_artifact(path)
 
+    def test_artifact_aliases_links_and_path_collisions_are_rejected(self):
+        data = json.dumps(snapshot()).encode()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'artifact.tar'
+            for name, kind in [('././board.json', tarfile.REGTYPE),
+                               ('assets/../board.json', tarfile.REGTYPE),
+                               ('/board.json', tarfile.REGTYPE),
+                               ('board.json/', tarfile.DIRTYPE),
+                               ('assets/link', tarfile.SYMTYPE),
+                               ('alias.json', tarfile.LNKTYPE)]:
+                with tarfile.open(path, 'w') as archive:
+                    good = tarfile.TarInfo('./board.json')
+                    good.size = len(data)
+                    archive.addfile(good, io.BytesIO(data))
+                    alias = tarfile.TarInfo(name)
+                    alias.type = kind
+                    alias.linkname = './board.json'
+                    if kind == tarfile.REGTYPE:
+                        alias.size = len(data)
+                        archive.addfile(alias, io.BytesIO(data))
+                    else:
+                        archive.addfile(alias)
+                with self.subTest(name=name), self.assertRaises(ValueError):
+                    self.tool.read_artifact(path)
+            for paths in [('assets', 'assets/file.css'), ('assets/file.css', 'assets')]:
+                with tarfile.open(path, 'w') as archive:
+                    good = tarfile.TarInfo('./board.json')
+                    good.size = len(data)
+                    archive.addfile(good, io.BytesIO(data))
+                    for name in paths:
+                        archive.addfile(tarfile.TarInfo(name))
+                with self.subTest(paths=paths), self.assertRaises(ValueError):
+                    self.tool.read_artifact(path)
+
     def test_default_branch_identity_is_checked_before_using_ref(self):
         repo = dict(id=1444643470, full_name='nkovanen/tipjar', private=False,
                     visibility='public', default_branch='main')

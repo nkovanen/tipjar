@@ -142,11 +142,30 @@ def read_artifact(path):
         raise ValueError('invalid Pages artifact file')
     try:
         found = None
+        paths = {}
         with tarfile.open(path, mode='r:') as archive:
             for count, member in enumerate(archive):
                 if count >= 1000:
                     raise ValueError('too many Pages artifact members')
-                if member.name in ('board.json', './board.json'):
+                # GNU tar's normal ./ prefix is allowed; extraction-equivalent aliases are not.
+                name = member.name
+                if name.startswith('./'):
+                    name = name[2:]
+                if member.isdir() and name.endswith('/'):
+                    name = name[:-1]
+                if name in ('', '.') and member.isdir():
+                    name = '.'
+                elif ('\\' in name or any(part in ('', '.', '..') for part in name.split('/'))):
+                    raise ValueError('noncanonical Pages artifact path')
+                if not (member.isdir() or member.isfile()) or name in paths:
+                    raise ValueError('linked or colliding Pages artifact path')
+                parents = [('/'.join(name.split('/')[:i])) for i in range(1, len(name.split('/')))]
+                if any(parent in paths and not paths[parent] for parent in parents) or (
+                    not member.isdir() and any(existing.startswith(name + '/') for existing in paths)
+                ):
+                    raise ValueError('Pages artifact file/directory collision')
+                paths[name] = member.isdir()
+                if name == 'board.json':
                     if found is not None or not member.isfile() or member.size > MAX_JSON:
                         raise ValueError('invalid or duplicate board.json in artifact')
                     with archive.extractfile(member) as stream:
