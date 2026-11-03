@@ -483,8 +483,10 @@ class Board2ContractTests(unittest.TestCase):
 
     def test_both_versions_validate_without_current_reader_validation(self):
         from unittest.mock import patch
-        with patch.object(board.tipjar,'_complete_report',side_effect=AssertionError('mutable reader validator used')):
+        with patch.object(board.tipjar,'_complete_report',side_effect=AssertionError('mutable reader validator used')), \
+             patch.object(board.tipjar,'parse_manifest',side_effect=core.ProtocolError('future_parser','Current parser changed')):
             board.validate_board(fixture(),now=NOW)
+            board.validate_board(v2_fixture('manifest-welcome'),now=NOW)
             board.validate_board(v2_fixture(),now=NOW)
         self.assertEqual(board.summarize(fixture()['tips'],now=NOW,period='all'),
                          board.summarize(v2_fixture()['tips'],now=NOW,period='all'))
@@ -628,3 +630,33 @@ class Board2CollectorTests(unittest.TestCase):
         with patch.object(board.tipjar,'read_jar',return_value=jar):
             with self.assertRaises(core.ProtocolError) as raised:collect(InvitationGitHub())
         self.assertEqual(raised.exception.code,'unsupported_board_reader')
+
+
+class FrozenManifestTests(unittest.TestCase):
+    def test_frozen_manifest_unicode_uniqueness_bounds_and_status(self):
+        from unittest.mock import patch
+        # Independent expected results, including the original Unicode White_Space boundary.
+        cases = [({}, True), ({'wanted':['\ufeff']}, True), ({'wanted':['\u0085x']}, True),
+                 ({'wanted':['😀'*500]}, True), ({'wanted':['x'*500]*2}, False),
+                 ({'wanted':['\u0085']}, False), ({'boundaries':['\u2003']}, False),
+                 ({'wanted':['\x1cx']}, False), ({'wanted':['x\x7f']}, False),
+                 ({'wanted':['x'*501]}, False), ({'wanted':['']}, False),
+                 ({'wanted':['item'+str(n) for n in range(17)]}, False),
+                 ({'status':'closed'}, False), ({'schema_version':'2'}, False), ({'unexpected':True}, False),
+                 ({'wanted':['😀'*500+str(n) for n in range(16)]}, False)]
+        # Two individually valid arrays can exceed the original16384-byte manifest cap.
+        oversized = {'wanted':[('😀'*498)+str(n) for n in range(8)],
+                     'boundaries':[('😀'*498)+str(n) for n in range(8,16)]}
+        self.assertTrue(all(len(text) <= 500 for texts in oversized.values() for text in texts))
+        cases.append((oversized,False))
+        for base in (fixture(), v2_fixture('manifest-welcome')):
+            for change, expected in cases:
+                value=copy.deepcopy(base)
+                value['directory']['observations'][0]['jar']['manifest']={'schema_version':'0.1','status':'welcome',**change}
+                with self.subTest(format=value['format'],change=repr(change)[:80]), \
+                     patch.object(board.tipjar,'parse_manifest',side_effect=AssertionError('mutable parser used')), \
+                     patch.object(board.tipjar,'_complete_report',side_effect=AssertionError('mutable report validator used')):
+                    try:
+                        board.validate_board(value,now=NOW);accepted=True
+                    except core.ProtocolError:accepted=False
+                    self.assertEqual(accepted,expected)

@@ -26,6 +26,9 @@ CONTROLLER = 'nkovanen/tipjar'
 REGISTRY_LIMIT = 1024 * 1024
 BOARD_LIMIT = 4 * 1024 * 1024
 DIRECTORY_LIMIT = 1024 * 1024
+MANIFEST_LIMIT = 16384
+MANIFEST_WHITE_SPACE = frozenset(map(chr, (*range(9, 14), 0x20, 0x85, 0xa0, 0x1680,
+    *range(0x2000, 0x200b), 0x2028, 0x2029, 0x202f, 0x205f, 0x3000)))
 BOARD1 = 'tipjar-board/1'
 BOARD2 = 'tipjar-board/2'
 INVITATION_PROTOCOL = 'tipjar-invitation/2'
@@ -208,7 +211,14 @@ def _validate_jar(jar, version):
     elif jar['source_kind'] == 'readme' and jar['state'] == 'welcome':
         require(jar['badge'] == {'protocol':'readme-welcome/1','repository':jar['repository'].lower()})
     if version == BOARD1 or jar['source_kind'] == 'manifest':
-        manifest = tipjar.parse_manifest(encode(jar['manifest']))
+        manifest = jar['manifest']
+        require(len(encode(manifest)) <= MANIFEST_LIMIT)
+        require(not core.schema_errors(manifest, schema['$defs']['tipjar_manifest']))
+        for field in ('wanted', 'boundaries'):
+            texts = manifest.get(field, [])
+            require(len(texts) == len(set(texts)))
+            require(all(not any(ord(c) < 32 or ord(c) == 127 for c in text) and
+                        any(c not in MANIFEST_WHITE_SPACE for c in text) for text in texts))
         require(manifest['status'] == jar['state'])
 
 
