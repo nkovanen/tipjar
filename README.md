@@ -62,10 +62,11 @@ tipjar verify task.json
 
 `find` verifies one batch of at most ten indexed public invitation candidates.
 It is not an exhaustive directory, indexing can lag, and no adoption is
-established. `jar` reads one repository's pinned invitation directly. Only
-`welcome` observations are selectable, subject to policy review. Closed or
-unknown jars block readiness; an absent jar grants no approval. Explicit
-repository bans remain binding. [Find limits](docs/cli.md#find).
+established. `jar` reads one repository's pinned invitation directly. `find` and
+`discover --welcomed-only` select only `welcome` observations, subject to policy
+review. Normal discovery and session planning can target an undeclared repository;
+an absent jar grants no approval. Closed or unknown jars block readiness.
+Explicit repository bans remain binding. [Find limits](docs/cli.md#find).
 
 `discover` ranks issues; `--signals` re-ranks heuristically and never approves.
 `--limit` bounds only the displayed list. `inspect` reports claims, linked PRs
@@ -129,9 +130,9 @@ an audit trail, not cryptographic consent ([host authorization](docs/host-author
 | `audit`, `ownership` | Maintainer view of a repository; claims and possible prior fixes |
 | `instructions`, `skill`, `schema` | Installed workflow, Skill export, output JSON Schemas |
 
-Output is JSON; put `--format text` before the command for a summary. Exit status
-is 0 when the command's gate passes, 1 when it does not or a read is incomplete,
-and 2 for usage errors. Details: [command reference](docs/cli.md).
+Output is JSON; put `--format text` before the command for a summary. Exit codes
+depend on the command and its gate; report-only observation failures can coexist
+with exit 0. See the [command and exit-code index](docs/cli.md#command-index).
 
 ## Documentation
 

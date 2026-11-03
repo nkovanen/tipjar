@@ -112,11 +112,12 @@ class DocsConsistencyTests(unittest.TestCase):
         self.assertNotIn('Missing: output JSON Schemas', text)
         self.assertNotIn('G1 output schemas', text)
 
-    def test_product_map_covers_every_tracked_issue(self):
-        text = (ROOT / 'docs' / 'product-map.md').read_text('utf-8')
-        for number in [n for n in range(1, 29) if n != 2]:  # #2 is a pull request, not an issue
-            with self.subTest(issue=number):
-                self.assertRegex(text, rf'issues/{number}\)')
+    def test_product_status_preserves_history_and_current_boundaries(self):
+        text = (ROOT / 'docs/product-map.md').read_text('utf-8')
+        self.assertIn('agent-contrib/blob/ae206ce0ef079cd369dda0803a4374ca177516bd/docs/product-map.md', text)
+        for phrase in ('`discover --limit`', 'machine-readable opt-out', 'no native human/host mandate issuer',
+                       'unreleased candidate', 'read-only', 'not live yet'):
+            self.assertIn(phrase, text)
 
     def test_product_map_does_not_list_shipped_output_schemas_as_missing(self):
         # F45: G1 kept saying "Missing: output JSON Schemas" after schemas/output/1 and `schema` shipped.

@@ -16,7 +16,7 @@ SEQUENCE_ITEM = re.compile(r' *- [A-Za-z0-9_][A-Za-z0-9_.-]*')
 WORKFLOW_KEYS = {'top level': ['name', 'on', 'permissions', 'concurrency', 'jobs'],
                  'the verify job': ['if', 'runs-on', 'timeout-minutes', 'steps']}
 WORKFLOW_FORBIDDEN_KEYS = {'env', 'defaults', 'shell', 'container', 'services', 'working-directory'}
-STEP_ACTIONS = (re.compile(r'actions/checkout@[0-9a-f]{40}'), re.compile(r'nkovanen/agent-contrib/actions/verify@[0-9a-f]{40}'))
+STEP_ACTIONS = (re.compile(r'actions/checkout@[0-9a-f]{40}'), re.compile(r'nkovanen/tipjar/actions/verify@[0-9a-f]{40}'))
 PINNED = re.compile(r'\s*(- )?uses: [A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(/[A-Za-z0-9_./-]+)?@[0-9a-f]{40}( +#.*)?')
 RUN_COMMAND = 'python3 -I "$GITHUB_ACTION_PATH/report.py"'
 

@@ -5,7 +5,7 @@ Historical issue and PR references on this page belong to the original
 
 
 The published release is **v0.2.0**. This branch is the unreleased **v0.3.0
-candidate**. Per-issue status (shipped, partial, planned) lives in the
+candidate**. Current capabilities and limitations live in the
 [product map](product-map.md); this page records acceptance evidence and the
 release gate. The Skill stays portable and all GitHub operations in the CLI
 remain read-only.
