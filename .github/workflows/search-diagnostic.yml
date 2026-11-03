@@ -15,7 +15,7 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import json, os, urllib.request, urllib.error
+          import json, os, time, urllib.request, urllib.error
           from urllib.parse import urlencode
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -32,9 +32,11 @@ jobs:
               'Resource not accessible by personal access token': 'token_denied',
               'Validation Failed': 'validation_failed',
               'API rate limit exceeded': 'rate_limit',
+              'You have exceeded a secondary rate limit': 'secondary_rate_limit',
               'Must include at least one user, organization, or repository': 'scope_required',
           }
-          for label, query in queries:
+          for index, (label, query) in enumerate(queries):
+              if index: time.sleep(7)
               path = 'https://api.github.com/search/code?' + urlencode({'q':query,'per_page':5,'page':1})
               request = urllib.request.Request(path, headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'], 'Accept':'application/vnd.github+json', 'User-Agent':'tipjar-read-only-search-diagnostic'})
               try:
@@ -44,6 +46,11 @@ jobs:
                       response = error
                   with response:
                       status = response.status
+                      rate = {}
+                      for key in ('Retry-After','X-RateLimit-Limit','X-RateLimit-Remaining','X-RateLimit-Reset'):
+                          raw_header=response.headers.get(key,'')
+                          if raw_header.isascii() and raw_header.isdecimal() and len(raw_header)<=12:
+                              rate[key]=int(raw_header)
                       raw = response.read(8*1024*1024+1)
                   if len(raw)>8*1024*1024:
                       print(json.dumps({'query':label,'status':status,'category':'response_too_large'})); continue
@@ -54,7 +61,7 @@ jobs:
                   message=value.get('message','') if isinstance(value,dict) else ''
                   category=next((code for prefix,code in known.items() if isinstance(message,str) and message.startswith(prefix)), 'ok' if status==200 else 'other_error')
                   shape=isinstance(value,dict) and type(value.get('total_count')) is int and type(value.get('incomplete_results')) is bool and isinstance(value.get('items'),list)
-                  print(json.dumps({'query':label,'status':status,'category':category,'search_envelope':shape}))
+                  print(json.dumps({'query':label,'status':status,'category':category,'search_envelope':shape,'rate':rate}))
               except Exception:
                   print(json.dumps({'query':label,'category':'transport_or_parse_failure'}))
           PY
