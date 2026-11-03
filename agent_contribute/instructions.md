@@ -10,6 +10,43 @@ results by the field names it defines instead of guessing: overlapping PRs are
 `duplicates`, issue text is `untrusted_issue`, and per-stage blockers are
 `stage_blockers`.
 
+## Outside-contributor route (task 0.3)
+
+For a human-selected public upstream issue, use the complete [external-tip workflow](https://github.com/nkovanen/agent-contrib/blob/main/docs/external-tips.md)
+and the installed task/context/payload schemas. Prepare explicitly with
+`--schema-version 0.3 --fork PERSONAL/REPO --head-ref NEW_BRANCH`.
+Use `verify --stage implementation`, then full checks/evidence 0.2 and independent
+review, then `verify --stage draft --publication-payload PAYLOAD`, then after
+host-authorized publication `verify --stage published --publication-payload PAYLOAD`.
+Every stage needs explicit `--host-context-stdin`; contexts and payload stay outside
+the checkout. The host issues scoped implementation and separate later exact-result
+publication assertions; never write or fabricate them for the human. Pause until
+the actual human/host supplies each decision. A bare help request grants neither.
+
+Review every source/fork inventory entry with quoted evidence. Keep the raw
+inventory and hashes; known restrictions, unknown jars, hiding limits, omitted
+sources, unreadable applicable policy and unresolved rows block. An undeclared
+source requires explicit acknowledgement in both assertions, never invented
+maintainer approval. Repeat applicable policy reads with host tools at every gate;
+observations must match reviewed bytes and be at most 15 minutes old. No arbitrary
+external URL is fetched by the CLI. Review source build scripts before executing
+any contract argv with host tools. Preserve the initial approved ledger as an
+artifact; add final compliance evidence binding assessment and final head. Do not
+filter validation errors or skips. Independent review follows final validations.
+
+The exact publication payload includes disclosure/template content, draft true
+and maintainer edits false. Human approval binds its exact bytes, evidence/review,
+head/tree and fresh source tip. Only the host pushes that head and creates the
+upstream draft; rerun gates before actions and after push. No updates, waivers,
+ready/merge/release or organization forks. `publication_verified` and
+`next_action: return_draft` return the observed upstream URL without claiming
+acceptance. Fork-only completion does not deliver an upstream tip. Expiry blocks
+new actions; historical recognition grants no new action. Assertions do not prove
+human presence; evidence is self-attested, scans bounded and GETs non-atomic.
+The host must enforce single use and retain original creation head/payload.
+The helpers `authorization-request`, `pr-body`, `drift` do not support 0.3.
+The quick path below describes the separate historical 0.1/0.2 routes.
+
 ## Quick path: "Go help owner/repo"
 A summary of the sections below; it never overrides them. Global options such as
 `--report-budget`, `--format` and the optional `--cache` go before the subcommand.

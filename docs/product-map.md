@@ -136,3 +136,12 @@ Not yet issues; revisit when a real need appears.
 - "Help what you use": candidate repositories from a project's dependency graph.
 - Local-base mandates for stacked unpublished work (design preconditions in
   [docs/design](design/2026-11-02-owner-local-and-stacked-routes.md)).
+
+## External contribution route
+
+Task schema 0.3 explicitly supports a reviewed draft from a personal immediate
+fork to a human-selected public upstream issue, with separate implementation and
+exact-result publication assertions. Welcome and undeclared sources both require
+complete source/fork policy accounting; no invitation or approval is invented.
+See [the complete external-tip workflow](external-tips.md) for commands, records, pause points and limits. Evidence
+remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.

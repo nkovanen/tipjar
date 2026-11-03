@@ -22,7 +22,8 @@ from urllib.parse import quote
 from . import cache
 
 VERSION = '0.1'
-SUPPORTED_SCHEMA_VERSIONS = ('0.1', '0.2')
+SUPPORTED_SCHEMA_VERSIONS = ('0.1', '0.2', '0.3')
+EVIDENCE_SCHEMA_VERSIONS = ('0.1', '0.2')
 HOST_CONTEXT_VERSIONS = ('0.1', '0.2')
 MAX_BYTES = 8 * 1024 * 1024
 MAX_PAGES = 40
@@ -827,11 +828,19 @@ def schema_errors(value, schema, path='$', depth=0, root=None):
     return errors
 
 
+def evidence_version(task_version):
+    mapping = {'0.1': '0.1', '0.2': '0.2', '0.3': '0.2'}
+    if not isinstance(task_version, str) or task_version not in mapping:
+        raise ProtocolError('unsupported_schema', 'Unsupported task schema version')
+    return mapping[task_version]
+
+
 def bundled_schema(name, version='0.1'):
-    supported = HOST_CONTEXT_VERSIONS if name == 'host-context' else SUPPORTED_SCHEMA_VERSIONS
-    if name not in ('task', 'evidence', 'host-context') or version not in supported:
+    supported = {'task': SUPPORTED_SCHEMA_VERSIONS, 'evidence': EVIDENCE_SCHEMA_VERSIONS,
+                 'host-context': HOST_CONTEXT_VERSIONS, 'external-context': ('0.1',), 'draft-payload': ('0.1',)}
+    if not isinstance(name, str) or name not in supported or version not in supported[name]:
         raise ProtocolError('unsupported_schema', 'Unsupported schema resource or version')
-    path = (f'schemas/host-context/{version}.schema.json' if name == 'host-context' else
+    path = (f'schemas/{name}/{version}.schema.json' if name in ('host-context', 'external-context', 'draft-payload') else
             name + '.schema.json' if version == '0.1' else f'schemas/{version}/{name}.schema.json')
     return json.loads(importlib.resources.files('agent_contribute').joinpath(path).read_text('utf-8'))
 
@@ -846,7 +855,7 @@ def host_context_schema(context):
 
 def validate_contract(contract):
     version = contract.get('schema_version') if isinstance(contract, dict) else None
-    return schema_errors(contract, bundled_schema('task', '0.2' if version == '0.2' else '0.1'))
+    return schema_errors(contract, bundled_schema('task', version if version in SUPPORTED_SCHEMA_VERSIONS else '0.1'))
 
 
 def unique_ids(items):
@@ -1494,7 +1503,7 @@ def reviewed_contract_errors(task, schema_version):
         if first in ('', '.', '..') or any(char in first for char in '*?['):
             errors.append('Allowed scope requires a concrete root file or directory prefix')
     for pattern in scope['allowed_paths'] + scope['prohibited_paths']:
-        if (pattern.startswith(('/', '\\')) or (schema_version == '0.2' and '\\' in pattern) or
+        if (pattern.startswith(('/', '\\')) or (schema_version in ('0.2', '0.3') and '\\' in pattern) or
                 '..' in pattern.replace('\\', '/').split('/')):
             errors.append('Scope patterns must be repository-relative without parent traversal')
     for key in ('behavior_criteria', 'validation', 'prerequisites'):
@@ -1511,6 +1520,9 @@ def reviewed_contract_errors(task, schema_version):
     errors.extend(prerequisite_errors(task['prerequisites']))
     if schema_version == '0.2':
         errors.extend(ci_requirement_errors(task))
+    if schema_version == '0.3':
+        from .external_tip import route_errors
+        errors.extend(route_errors(task))
     return errors
 
 
@@ -1544,7 +1556,10 @@ def lint(task):
     return result
 
 
-def verify(task, evidence=None, repo_dir=None, client=None, *, host_context=None):
+def verify(task, evidence=None, repo_dir=None, client=None, *, host_context=None, payload=None):
+    if isinstance(task, dict) and task.get('schema_version') == '0.3':
+        from .external_tip import verify as verify_external
+        return verify_external(task, evidence, repo_dir, client, context=host_context, payload=payload)
     if isinstance(task, dict) and task.get('schema_version') == '0.2':
         from .lifecycle import verify as verify_v2
         return verify_v2(task, evidence, repo_dir, host_context=host_context, client=client)

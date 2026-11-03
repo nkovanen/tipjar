@@ -644,3 +644,12 @@ execution harness, actor-specific approval or PyPI publication is included.
 The 0.1.0 prototype and development of 0.2.0 occurred in
 [LightCraft PR #1](https://github.com/nkovanen/lightcraft/pull/1).
 Historical pilot logs remain there rather than in this distribution.
+
+### External tips (candidate)
+
+- Explicit task 0.3 personal-fork contribution route with separate scoped implementation
+  and exact evidence/review/payload publication decisions, plus read-only recognition
+  of one upstream draft. Welcome and manually selected undeclared repositories use
+  complete per-entry source/fork policy assessments and fresh host observations.
+- Evidence stays 0.2. Output schemas advance to 3; output/1 and output/2 remain packaged.
+  No GitHub writes, consent issuer, migration, update, ready, merge or release capability.

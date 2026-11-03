@@ -252,6 +252,9 @@ One of `inspect_result`, `issue_unresolved`.
 | `resources.host_context_schema` | string |  |
 | `resources.host_context_schema_0.2` | string |  |
 | `resources.output_schemas` | string | Package directory of these output schemas; agent-contrib schema COMMAND prints one |
+| `resources.task_schema_0.3` | string |  |
+| `resources.external_context_schema` | string |  |
+| `resources.draft_payload_schema` | string |  |
 | `output_schema_version` | string | Version of the output schemas, independent of task/evidence schema versions |
 | `automatic_updates` | false |  |
 
@@ -311,7 +314,7 @@ One of object, `issue_unresolved`.
 
 `agent-contrib schema prepare` · Draft contract written to --output, or the unresolved inspect result when no draft was written.
 
-One of `prepared`, `issue_unresolved`.
+One of `prepared`, `issue_unresolved`, object.
 
 ### `scope-check`
 
@@ -343,7 +346,7 @@ One of `prepared`, `issue_unresolved`.
 
 `agent-contrib schema verify` · Contract, live GitHub state and optional evidence checks; never runs validation argv. The shape follows the contract schema_version (0.1 or 0.2) and whether the contract validated.
 
-One of `verify_0_1`, `verify_0_1_rejected`, `verify_0_2`, `verify_0_2_rejected`.
+One of `verify_0_1`, `verify_0_1_rejected`, `verify_0_2`, `verify_0_2_rejected`, `external_tip_report`.
 
 ### Definitions
 
@@ -686,6 +689,58 @@ An open PR that references or overlaps the issue
 | `repository` | string (optional) | Repository of the PR, when it is not the issue source |
 | `observed_in` | "disposition_read" (optional) | Only in schema 0.2 verify: the match was first seen in a host-context 0.2 disposition read, not the open-PR list scan |
 
+#### `external_tip_report`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `report` | "external-tip-report/1" |  |
+| `schema_version` | "0.3" |  |
+| `schema_valid` | boolean |  |
+| `contract_sha256` | string or null |  |
+| `source_identity` | object or null |  |
+| `fork_identity` | object or null |  |
+| `credential_actor` | object or null |  |
+| `source_invitation` | object or null |  |
+| `repository_approval` | `approval` or `verify_unrefreshed_approval` |  |
+| `policy_reviews` | object |  |
+| `policy_reviews.inventories` | object[] |  |
+| `policy_reviews.inventories[].repository_id` | integer |  |
+| `policy_reviews.inventories[].repository` | string |  |
+| `policy_reviews.inventories[].inventory` | `repository_policy` |  |
+| `policy_reviews.assessment` | object or null |  |
+| `policy_reviews.observations` | object or null |  |
+| `policy_reviews.errors` | string[] |  |
+| `live_complete` | boolean |  |
+| `implementation_ready` | boolean |  |
+| `technical_evidence_valid` | boolean |  |
+| `independent_review` | object |  |
+| `independent_review.valid` | boolean |  |
+| `independent_review.status` | "pending" \| "invalid" \| "passed" |  |
+| `independent_review.errors` | string[] |  |
+| `independent_review.trust` | string (optional) |  |
+| `draft_create_ready` | boolean |  |
+| `publication_verified` | boolean |  |
+| `publication` | object |  |
+| `publication.status` | string |  |
+| `publication.own_pr` | object or null |  |
+| `publication.url` | string or null |  |
+| `publication.errors` | string[] |  |
+| `stage_blockers` | object |  |
+| `stage_blockers.implementation` | string[] |  |
+| `stage_blockers.draft` | string[] |  |
+| `stage_blockers.published` | string[] |  |
+| `errors` | string[] |  |
+| `evidence_errors` | string[] |  |
+| `provenance` | object |  |
+| `provenance.source_commit` | string (optional) |  |
+| `provenance.source_tip` | string (optional) |  |
+| `provenance.fork_tip` | string (optional) |  |
+| `next_action` | string |  |
+| `trust` | string[] |  |
+| `api_budget` | `api_budget` (optional) |  |
+| `ci_observation` | `ci_observation` (optional) |  |
+| `signature_observation` | `signature_observation` (optional) |  |
+
 #### `feedback_author`
 
 | Field | Type | Description |
@@ -1026,8 +1081,7 @@ A draft was written; it grants no authorization
 | `reference` | string |  |
 | `output` | string | Path of the new draft contract |
 | `complete` | boolean | Whether the inspect read behind the draft was complete |
-| `contract` | object | The draft task contract as written; validate it with the task schema of its schema_version |
-| `contract.schema_version` | "0.1" \| "0.2" |  |
+| `contract` | object or object |  |
 | `warning` | string |  |
 | `api_budget` | `api_budget` (optional) |  |
 | `repository_policy` | `repository_policy` (optional) | Default-on, report-only; never a verdict |

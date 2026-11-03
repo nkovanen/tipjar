@@ -61,6 +61,26 @@ RESOURCE_PATHS = (
     "schemas/output/2/scope-check.schema.json",
     "schemas/output/2/skill.schema.json",
     "schemas/output/2/verify.schema.json",
+    "schemas/0.3/task.schema.json",
+    "schemas/external-context/0.1.schema.json",
+    "schemas/draft-payload/0.1.schema.json",
+    "schemas/output/3/inspect.schema.json",
+    "schemas/output/3/ownership.schema.json",
+    "schemas/output/3/verify.schema.json",
+    "schemas/output/3/audit.schema.json",
+    "schemas/output/3/evidence-init.schema.json",
+    "schemas/output/3/error.schema.json",
+    "schemas/output/3/jar.schema.json",
+    "schemas/output/3/drift.schema.json",
+    "schemas/output/3/scope-check.schema.json",
+    "schemas/output/3/pr-body.schema.json",
+    "schemas/output/3/feedback.schema.json",
+    "schemas/output/3/prepare.schema.json",
+    "schemas/output/3/instructions.schema.json",
+    "schemas/output/3/authorization-request.schema.json",
+    "schemas/output/3/skill.schema.json",
+    "schemas/output/3/discover.schema.json",
+    "schemas/output/3/lint.schema.json",
     "instructions.md",
     "adapters/agent-contribute/SKILL.md",
 )
@@ -138,18 +158,18 @@ def installed_check(source):
                cwd=Path.cwd(), env=env).strip() == "0.3.0"
     instructions = json.loads(cli("instructions"))
     assert instructions["cli_version"] == "0.3.0"
-    assert instructions["supported_schema_versions"] == ["0.1", "0.2"]
+    assert instructions["supported_schema_versions"] == ["0.1", "0.2", "0.3"]
     assert instructions["supported_host_context_versions"] == ["0.1", "0.2"]
     assert instructions["automatic_updates"] is False
-    assert instructions["output_schema_version"] == "2"
-    assert json.loads(cli("schema", "verify"))["$id"] == "urn:agent-contrib:output:2:verify"
+    assert instructions["output_schema_version"] == "3"
+    assert json.loads(cli("schema", "verify"))["$id"] == "urn:agent-contrib:output:3:verify"
     assert instructions["workflow_markdown"] == resources.joinpath("instructions.md").read_text("utf-8")
     manifest_schema = json.loads(resources.joinpath("tipjar.schema.json").read_text("utf-8"))
     assert manifest_schema["properties"]["schema_version"]["const"] == "0.1"
     assert not core.schema_errors({"schema_version": "0.1", "status": "welcome"}, manifest_schema)
     assert core.schema_errors({"schema_version": "999", "status": "welcome"}, manifest_schema)
     jar_schema = json.loads(cli("schema", "jar"))
-    assert jar_schema["$id"] == "urn:agent-contrib:output:2:jar"
+    assert jar_schema["$id"] == "urn:agent-contrib:output:3:jar"
     assert "inspection only" in " ".join(cli("jar", "--help").split())
     failed_jar = json.loads(cli("jar", "acme/project", expected=1))
     assert failed_jar["state"] == "unknown" and failed_jar["complete"] is False
@@ -238,6 +258,18 @@ def installed_check(source):
         assert result["draft_create_ready"] is False
         assert result["publication"]["verified"] is False
         assert result["completion_ready"] is False
+    external = Path.cwd() / "external-invalid.json"
+    external.write_text('{"schema_version": "0.3"}', encoding="utf-8")
+    payload = Path.cwd() / "external-payload.json"
+    payload.write_text('{"schema_version":"0.1","title":"Fixture","body":"Fixture","draft":true,"maintainer_can_modify":false}', encoding="utf-8")
+    for stage in ("implementation", "draft", "published"):
+        args = ["verify", external, "--stage", stage]
+        if stage != "implementation":
+            args += ["--publication-payload", payload]
+        observed = json.loads(cli(*args, expected=1))
+        assert observed["report"] == "external-tip-report/1"
+        assert observed["source_identity"] is None
+        assert not observed["implementation_ready"] and not observed["publication_verified"]
     legacy = Path.cwd() / "legacy-schema-invalid.json"
     legacy.write_text('{"schema_version": "0.1"}', encoding="utf-8")
     result = json.loads(cli("verify", legacy, "--stage", "draft", expected=1))

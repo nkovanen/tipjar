@@ -1,0 +1,528 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "implementation",
+    "policy_assessment",
+    "policy_observations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "issued_at",
+        "expires_at",
+        "event_reference",
+        "event_text_sha256",
+        "contract_sha256",
+        "credential_actor_id",
+        "policy_inventory_sha256",
+        "fork_policy_inventory_sha256",
+        "policy_assessment_sha256",
+        "policy_ledger_sha256",
+        "invitation_basis",
+        "undeclared_acknowledged",
+        "actions",
+        "policy_review"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "issued_at": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "expires_at": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "event_reference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "event_text_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "contract_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "credential_actor_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "policy_inventory_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "fork_policy_inventory_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "policy_assessment_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "policy_ledger_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "invitation_basis": {
+          "type": "string",
+          "enum": [
+            "welcome",
+            "explicit-undeclared"
+          ]
+        },
+        "undeclared_acknowledged": {
+          "type": "boolean"
+        },
+        "actions": {
+          "const": [
+            "implement"
+          ]
+        },
+        "policy_review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "reviewer",
+            "notes",
+            "ledger_sha256"
+          ],
+          "properties": {
+            "status": {
+              "const": "clear"
+            },
+            "reviewer": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "notes": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "ledger_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "policy_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventories",
+        "entries"
+      ],
+      "properties": {
+        "inventories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "repository_id",
+              "inventory_format",
+              "inventory_sha256"
+            ],
+            "properties": {
+              "repository_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "inventory_format": {
+                "const": 3
+              },
+              "inventory_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "repository_id",
+              "inventory_sha256",
+              "identity_sha256",
+              "disposition",
+              "reason",
+              "evidence"
+            ],
+            "properties": {
+              "repository_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "inventory_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "identity_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "disposition": {
+                "type": "string",
+                "enum": [
+                  "false-positive",
+                  "inapplicable",
+                  "assessed-applicable",
+                  "owner-lookup-404",
+                  "unresolved",
+                  "prohibited"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "role",
+                    "uri",
+                    "revision",
+                    "content_sha256",
+                    "quote",
+                    "observed_at"
+                  ],
+                  "properties": {
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "referring-context",
+                        "applicable-target",
+                        "inventory-observation"
+                      ]
+                    },
+                    "uri": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "revision": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "content_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "quote": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4000
+                    },
+                    "observed_at": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  }
+                },
+                "maxItems": 8,
+                "minItems": 1
+              }
+            }
+          },
+          "maxItems": 512
+        }
+      }
+    },
+    "policy_observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_assessment_sha256",
+        "policy_inventory_sha256",
+        "fork_policy_inventory_sha256",
+        "implementation_sha256",
+        "publication_authorization_sha256",
+        "entries"
+      ],
+      "properties": {
+        "policy_assessment_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "policy_inventory_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "fork_policy_inventory_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "implementation_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "publication_authorization_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "uri",
+              "revision",
+              "content_sha256",
+              "status",
+              "observed_at"
+            ],
+            "properties": {
+              "uri": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "revision": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "content_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "read",
+                  "unreadable"
+                ]
+              },
+              "observed_at": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            }
+          },
+          "maxItems": 512
+        }
+      }
+    },
+    "publication_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "issued_at",
+        "expires_at",
+        "event_reference",
+        "event_text_sha256",
+        "contract_sha256",
+        "credential_actor_id",
+        "policy_inventory_sha256",
+        "fork_policy_inventory_sha256",
+        "policy_assessment_sha256",
+        "policy_ledger_sha256",
+        "invitation_basis",
+        "undeclared_acknowledged",
+        "actions",
+        "evidence_sha256",
+        "review_sha256",
+        "git_head",
+        "git_tree",
+        "base_commit",
+        "base_tip",
+        "payload_sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "issued_at": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "expires_at": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "event_reference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "event_text_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "contract_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "credential_actor_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "policy_inventory_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "fork_policy_inventory_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "policy_assessment_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "policy_ledger_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "invitation_basis": {
+          "type": "string",
+          "enum": [
+            "welcome",
+            "explicit-undeclared"
+          ]
+        },
+        "undeclared_acknowledged": {
+          "type": "boolean"
+        },
+        "actions": {
+          "const": [
+            "push_head",
+            "create_draft"
+          ]
+        },
+        "evidence_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "review_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "git_head": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "git_tree": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "base_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "base_tip": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "publication_claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository_id",
+        "pr_number",
+        "pr_id",
+        "head_sha",
+        "contract_sha256",
+        "publication_authorization_sha256"
+      ],
+      "properties": {
+        "repository_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pr_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pr_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "contract_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "publication_authorization_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

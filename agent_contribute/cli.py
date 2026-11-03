@@ -116,6 +116,14 @@ def prevalidate(args):
         core.parse_repository(args.names[0]) if len(args.names) == 1 else multi.validate(args.names)
     elif args.command in ('inspect', 'prepare', 'ownership', 'feedback'):
         core.parse_issue(args.reference)
+        if args.command == 'prepare':
+            if args.schema_version == '0.3':
+                from .authorization import valid_ref
+                if not args.fork or not valid_ref(args.head_ref):
+                    raise core.ProtocolError('usage', 'Schema 0.3 preparation requires --fork and --head-ref')
+                core.parse_repository(args.fork)
+            elif args.fork is not None or args.head_ref is not None:
+                raise core.ProtocolError('usage', '--fork and --head-ref require schema 0.3')
         if args.command == 'feedback' and args.expected_head is not None and not remote.SHA.fullmatch(args.expected_head):
             raise core.ProtocolError('invalid_head', 'Expected head must be a full 40-character commit SHA')
     elif args.command == 'jar':
@@ -136,11 +144,25 @@ def prevalidate(args):
         if args.command == 'drift' and args.policy_sha256 is not None and not re.fullmatch('[0-9a-f]{64}', args.policy_sha256):
             raise core.ProtocolError('usage', '--policy-sha256 must be a lowercase 64-character SHA-256 hex digest')
         task = args.task = core.read_json(args.contract)
+        if isinstance(task, dict) and task.get('schema_version') == '0.3' and args.command in ('drift', 'pr-body'):
+            raise core.ProtocolError('unsupported_route', 'This lifecycle helper does not support external tips')
         if args.command in ('drift', 'pr-body') and core.validate_contract(task):
             raise core.ProtocolError('invalid_contract', 'Contract does not match its bundled schema')
         if args.command == 'verify':
             version = task.get('schema_version') if isinstance(task, dict) else None
-            if version != '0.2' and (args.stage is not None or args.host_context_stdin):
+            args.payload_data = None
+            if version == '0.3':
+                if args.stage not in ('implementation', 'draft', 'published'):
+                    raise core.ProtocolError('usage', 'Schema 0.3 requires --stage implementation, draft or published')
+                if args.stage in ('draft', 'published') and not args.publication_payload:
+                    raise core.ProtocolError('usage', 'External draft/published stages require --publication-payload')
+                if args.publication_payload:
+                    args.payload_data = core.read_json(args.publication_payload)
+                    if args.repo_dir:
+                        workspace.require_outside_checkout(args.repo_dir, args.publication_payload)
+            elif args.publication_payload or args.stage == 'published':
+                raise core.ProtocolError('usage', 'External publication options require schema 0.3')
+            if version not in ('0.2', '0.3') and (args.stage is not None or args.host_context_stdin):
                 raise core.ProtocolError('schema_options', 'Lifecycle options require an explicit schema 0.2 task')
             if args.evidence:
                 args.evidence_data = core.read_json(args.evidence)
@@ -195,8 +217,10 @@ def main(argv=None):
                                   'repository_policy')
         if command == 'prepare':
             sub.add_argument('--output', required=True, help='New file for the draft contract; never overwritten')
-            sub.add_argument('--schema-version', choices=('0.1', '0.2'), default='0.1',
+            sub.add_argument('--schema-version', choices=('0.1', '0.2', '0.3'), default='0.1',
                              help='Task schema (default 0.1; 0.2 is the same-repository candidate route)')
+            sub.add_argument('--fork', help='Schema 0.3: immediate personal fork owner/repo')
+            sub.add_argument('--head-ref', help='Schema 0.3: new contribution branch')
     sub = commands.add_parser('jar', help='Inspect the pinned root Tipjar invitation; inspection only, grants no authority',
                               description='Pinned root invitation inspection only; grants no approval or authority.')
     sub.add_argument('repository', help='GitHub owner/repo to inspect directly, without parent tracker resolution')
@@ -212,11 +236,12 @@ def main(argv=None):
     sub.add_argument('contract', help='Task contract JSON file')
     sub.add_argument('--evidence', help='Evidence JSON file for this contract')
     sub.add_argument('--repo-dir', help='Local checkout the evidence describes')
-    sub.add_argument('--stage', choices=('implementation', 'draft', 'completion'),
+    sub.add_argument('--stage', choices=('implementation', 'draft', 'completion', 'published'),
                      help='Schema 0.2: stage whose gate sets the exit status (default completion)')
     sub.add_argument('--host-context-stdin', action='store_true',
                      help='Schema 0.2: read a host-issued record as JSON on stdin (8 MiB, 5 s timeout); '
                           'not proof of human consent')
+    sub.add_argument('--publication-payload', help='Schema 0.3: exact local draft-payload 0.1 JSON outside checkout')
     sub.add_argument('--observe-ci', action='store_true',
                      help='Add report-only CI results for the evidence head; exit status unchanged')
     sub.add_argument('--observe-signatures', action='store_true',
@@ -294,6 +319,9 @@ def main(argv=None):
                                     'evidence_schema_0.2': 'agent_contribute/schemas/0.2/evidence.schema.json',
                                     'host_context_schema': 'agent_contribute/schemas/host-context/0.1.schema.json',
                                     'host_context_schema_0.2': 'agent_contribute/schemas/host-context/0.2.schema.json',
+                                    'task_schema_0.3': 'agent_contribute/schemas/0.3/task.schema.json',
+                                    'external_context_schema': 'agent_contribute/schemas/external-context/0.1.schema.json',
+                                    'draft_payload_schema': 'agent_contribute/schemas/draft-payload/0.1.schema.json',
                                     'output_schemas': 'agent_contribute/' + outputs.DIRECTORY},
                       'output_schema_version': outputs.VERSION,
                       'automatic_updates': False}
@@ -319,7 +347,7 @@ def main(argv=None):
             workspace.require_outside_checkout(args.repo_dir, args.output)
             write_new_json(args.output, skeleton)
             result = {'output': str(args.output), 'evidence_valid': False,
-                      'schema_errors': len(core.schema_errors(skeleton, core.bundled_schema('evidence', task['schema_version']))),
+                      'schema_errors': len(core.schema_errors(skeleton, core.bundled_schema('evidence', core.evidence_version(task['schema_version'])))),
                       'warning': 'Skeleton only: fill every result from real runs and reviews; nothing was executed'}
             code = 0
         elif args.command == 'pr-body':
@@ -374,6 +402,13 @@ def main(argv=None):
             if args.responsiveness:  # Like --ownership: an incomplete opted-in report is a nonzero exit.
                 reports = [r.get('repository_signals', {}).get('responsiveness') for r in result.get('repositories', [result])]
                 code = code or (0 if all(r and r['complete'] for r in reports) else 1)
+        elif args.command == 'prepare' and args.schema_version == '0.3':
+            from . import external_tip
+            task = external_tip.prepare(args.reference, args.fork, args.head_ref)
+            write_new_json(args.output, task)
+            result = dict(output=str(args.output), complete=True, contract=task,
+                          warning='Pending contract only; review policies and obtain scoped host implementation authority')
+            code = 0
         elif args.command in ('inspect', 'prepare'):
             client = core.GitHub()
             result = core.inspect_issue(args.reference, client)
@@ -397,7 +432,13 @@ def main(argv=None):
         else:
             task, evidence = args.task, args.evidence_data
             version = task.get('schema_version') if isinstance(task, dict) else None
-            if version == '0.2':
+            if version == '0.3':
+                context = read_host_context_stdin() if args.host_context_stdin else None
+                result = core.verify(task, evidence, args.repo_dir, host_context=context, payload=args.payload_data)
+                gate = {'implementation': 'implementation_ready', 'draft': 'draft_create_ready', 'published': 'publication_verified'}[args.stage]
+                code = 0 if result[gate] else 1
+                stage_gate = (args.stage, code == 0)
+            elif version == '0.2':
                 context = read_host_context_stdin() if args.host_context_stdin else None
                 result = core.verify(task, evidence, args.repo_dir, host_context=context)
                 stage = args.stage or 'completion'

@@ -122,7 +122,7 @@ class SchemaCommandTests(unittest.TestCase):
         code, result = invoke('instructions')
         self.assertEqual(code, 0)
         self.assertEqual(result['output_schema_version'], outputs.VERSION)
-        self.assertEqual(result['resources']['output_schemas'], 'agent_contribute/schemas/output/2')
+        self.assertEqual(result['resources']['output_schemas'], 'agent_contribute/schemas/output/3')
         self.assertIn('agent-contrib schema', result['workflow_markdown'])
 
     def test_every_command_has_a_schema(self):
@@ -214,7 +214,11 @@ class SchemaFileTests(unittest.TestCase):
             valid = 'a' * int(length.group(1)) if length else 'usage'
             if pattern.startswith('^H-'):  # stable policy hint IDs (N12)
                 valid = 'H-' + 'a' * int(length.group(1))
-            for value, expected in ((valid, True), ('-' + valid, False), (valid + '-', False), (valid + '\n', False),
+            if '/' in pattern:
+                valid = 'acme/photos'
+            # Repository and task ID patterns admit trailing hyphens; punctuation still tests full anchoring.
+            suffix = '!' if '/' in pattern or '{0,79}' in pattern else '-'
+            for value, expected in ((valid, True), ('-' + valid, False), (valid + suffix, False), (valid + '\n', False),
                                     ('\n' + valid, False), ('!' + valid + '!', False)):
                 with self.subTest(pattern=pattern, value=value):
                     bundled = not core.schema_errors(value, {'type': 'string', **schema})

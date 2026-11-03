@@ -19,6 +19,13 @@ and pending preparation. An absent jar is undeclared and grants no approval.
 Explicit repository bans remain binding. Source approval, local execution
 permission and publication authority remain separate.
 
+For an outside contribution, explicitly use **task 0.3 external tips**: review a
+public issue and its source/fork policies, authorize implementation in your
+immediate personal fork, then separately approve the tested result and exact
+upstream draft payload. `verify --stage published` returns the observed draft
+URL; fork-only work is not delivery upstream. Start with the complete
+[external-tip workflow](docs/external-tips.md), including the manual no-jar path.
+
 **Versions.** v0.2.0 is the published release. This branch is the **v0.3.0
 candidate (unreleased)**: no v0.3.0 tag exists yet. Coming from 0.2? Read
 [upgrading](docs/upgrading.md).
@@ -147,9 +154,9 @@ an audit trail, not cryptographic consent ([host authorization](docs/host-author
 | `jar` | Inspect one pinned root invitation; inspection only, no authority |
 | `discover` | Rank issues of one repository, or 2–20 repositories |
 | `inspect` | One issue: approval, instructions, exclusions, overlapping PRs |
-| `prepare` | Write a draft contract (schema 0.1, or 0.2 when selected) |
+| `prepare` | Write a draft contract (schema 0.1, 0.2, or explicit external 0.3) |
 | `lint` | Offline check of a contract against its schema and review rules |
-| `verify` | Check a contract and evidence against live GitHub (0.2: `--stage`) |
+| `verify` | Check a contract and evidence against live GitHub (0.2/0.3: `--stage`) |
 | `authorization-request` | Schema 0.2: unsigned mandate request; grants nothing |
 | `drift` | What changed since the contract was prepared |
 | `scope-check`, `evidence init` | Offline scope check; evidence skeleton from observed Git facts |
@@ -190,3 +197,12 @@ Origin: [LightCraft PR #1](https://github.com/nkovanen/lightcraft/pull/1) ([case
 ## License
 
 [MIT](LICENSE). Original attribution is retained in [NOTICE](NOTICE).
+
+## External contribution route
+
+Task schema 0.3 explicitly supports a reviewed draft from a personal immediate
+fork to a human-selected public upstream issue, with separate implementation and
+exact-result publication assertions. Welcome and undeclared sources both require
+complete source/fork policy accounting; no invitation or approval is invented.
+See [the complete external-tip workflow](docs/external-tips.md) for commands, records, pause points and limits. Evidence
+remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.

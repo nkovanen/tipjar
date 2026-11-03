@@ -1,5 +1,10 @@
 # Command reference
 
+For an outside-contributor gift, follow [external tips (task 0.3)](external-tips.md):
+`prepare --schema-version 0.3 --fork OWNER/REPO --head-ref NEW_BRANCH`, then explicit
+`implementation`, `draft` and `published` verify stages. The historical routes
+below retain their separate approval and owner/maintainer requirements.
+
 Every `agent-contrib` command, its options, exit codes and limits. Commands print JSON
 by default (see [text output](#text-output-unreleased)); the field-by-field JSON reference is in
 [output-reference.md](output-reference.md). Start with the [command index](#command-index);
@@ -1319,3 +1324,12 @@ local execution authorization, and fork completion grants no upstream authority.
 Schema 0.2 still requires actual admin/maintain authority and host mandates.
 An arbitrary no-jar repository has no new outside-contributor upstream route
 in this slice.
+
+## External contribution route
+
+Task schema 0.3 explicitly supports a reviewed draft from a personal immediate
+fork to a human-selected public upstream issue, with separate implementation and
+exact-result publication assertions. Welcome and undeclared sources both require
+complete source/fork policy accounting; no invitation or approval is invented.
+See [the complete external-tip workflow](external-tips.md) for commands, records, pause points and limits. Evidence
+remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.

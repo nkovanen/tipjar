@@ -35,6 +35,20 @@ def _dispositions(result):
 
 
 def _verify(result, stage=None):
+    if result.get('report') == 'external-tip-report/1':
+        out = []
+        if stage is not None:
+            out.append(f'Selected stage: {line(stage[0])} (exit gate: {_flag(stage[1])})')
+        out += ['External tip gates:'] + [f'  {name}: {_flag(result[name])}' for name in
+                 ('schema_valid', 'live_complete', 'implementation_ready', 'technical_evidence_valid',
+                  'draft_create_ready', 'publication_verified')]
+        out.append('Next action: ' + line(result['next_action']))
+        if result['publication']['url']:
+            out.append('Draft: ' + line(result['publication']['url']))
+        for name, blockers in result['stage_blockers'].items():
+            if stage is None or name == stage[0]:
+                out += _list('Blockers [' + line(name) + ']', blockers)
+        return out + _list('Trust', result['trust'])
     if 'implementation_ready' in result:
         blockers = result.get('stage_blockers', {})
         out = []

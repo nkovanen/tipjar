@@ -12,6 +12,8 @@ def _sha(text):
 
 
 def drift(task, client=None, policy_sha256=None):
+    if isinstance(task, dict) and task.get('schema_version') == '0.3':
+        raise core.ProtocolError('unsupported_route', 'This helper does not support external tips')
     if core.validate_contract(task):
         raise core.ProtocolError('invalid_contract', 'Contract does not match its bundled schema')
     client = client or core.GitHub()

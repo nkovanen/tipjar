@@ -153,6 +153,8 @@ def template_pointer(task, client):
 
 
 def pr_body(task, evidence=None, repo_dir=None, client=None, **options):
+    if isinstance(task, dict) and task.get('schema_version') == '0.3':
+        raise core.ProtocolError('unsupported_route', 'This helper does not support external tips')
     """Read-only: verify gates come from a fresh verify run, never from the caller."""
     verification = core.verify(task, evidence, repo_dir, client)
     if verification.get('schema_valid') is not True:

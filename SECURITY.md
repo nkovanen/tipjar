@@ -86,3 +86,12 @@ source-linked requirements ledger and evidence at the required stages. This
 ledger is untrusted, self-attested data; it cannot override readiness gates,
 issue authority, waive skips or prove human consent. Linked repository
 instructions remain subject to the same untrusted-input boundary.
+
+## External contribution route
+
+Task schema 0.3 explicitly supports a reviewed draft from a personal immediate
+fork to a human-selected public upstream issue, with separate implementation and
+exact-result publication assertions. Welcome and undeclared sources both require
+complete source/fork policy accounting; no invitation or approval is invented.
+See [the complete external-tip workflow](docs/external-tips.md) for commands, records, pause points and limits. Evidence
+remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.
