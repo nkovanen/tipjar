@@ -411,6 +411,7 @@ def main():
         expected.update(str(file.relative_to(source)) for file in (source / "tests").rglob("*")
                         if file.is_file() and file.suffix in (".py", ".json") and "__pycache__" not in file.parts)
         expected.update("web/" + name for name in ("index.html", "style.css", "app.js", "model.js", "jar.svg", "README.md"))
+        expected.update("web/brand/" + name for name in ("icon.svg", "wordmark.svg", "agent-work-welcome.svg", "invitation-card.svg", "preview.html", "README.md"))
         expected.update("tests/web/" + name for name in ("model.test.cjs", "browser.html", "browser.test.js"))
         expected.update("agent_contribute/" + name for name in RESOURCE_PATHS)
         assert expected <= names, f"Missing sdist files: {sorted(expected - names)}"
