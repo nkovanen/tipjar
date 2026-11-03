@@ -158,7 +158,7 @@ def verify(task, evidence=None, repo_dir=None, host_context=None, client=None):
     live_duplicates = []
     scan_ids = {}
     try:
-        current = core.inspect_issue(source['repository'] + '#' + str(source['issue']), client, pr_ids=scan_ids)
+        current = core.inspect_issue(source['repository'] + '#' + str(source['issue']), client, pr_ids=scan_ids, invitation_protocol="tipjar-invitation/1")
         if 'source' not in current:
             raise core.ProtocolError('refresh_incomplete', 'Current issue/source could not be read completely')
         result.update(repository_approval=current['approval'], live_complete=current['complete'],

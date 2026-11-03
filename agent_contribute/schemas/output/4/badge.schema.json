@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-contrib:output:4:badge",
+  "description": "Offline repository-scoped official README invitation snippet; grants no authority.",
+  "type": "object",
+  "properties": {
+    "repository": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "snippet": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "notice": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    }
+  },
+  "required": [
+    "repository",
+    "snippet",
+    "notice"
+  ],
+  "additionalProperties": false
+}

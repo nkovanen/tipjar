@@ -33,7 +33,9 @@ class JarGitHub(FakeGitHub):
         if '/git/trees/' in endpoint:
             result['sha'] = endpoint.split('?')[0].rsplit('/', 1)[1]
             for entry in result['tree']:
-                entry.update(mode='100644', sha='b' * 40)
+                entry.update(mode='100644')
+                if entry['path'] != 'README.md': entry['sha'] = 'b' * 40
+                else: entry['sha'] = tipjar.cache.blob_sha(base64.b64decode(super().request('repos/acme/photos/contents/README.md')['content']))
             if data is not None:
                 result['tree'].append({'path': tipjar.PATH, 'type': 'blob', 'mode': '100644',
                                        'sha': tipjar.cache.blob_sha(data)})
@@ -103,7 +105,7 @@ class TipjarPolicyTests(unittest.TestCase):
         client = JarGitHub('welcome')
         inspected = core.inspect_issue('acme/photos#12', client)
         result = policy.for_inspected(inspected, client)
-        self.assertEqual(result['inventory_format'], 3)
+        self.assertEqual(result['inventory_format'], 4)
         self.assertTrue(tipjar.same_declaration(result['tipjar'], inspected['tipjar']))
         self.assertEqual(result['tipjar']['commit'], inspected['tipjar']['commit'])
         self.assertEqual(result['tipjar']['manifest']['status'], 'welcome')

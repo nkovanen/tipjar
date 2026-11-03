@@ -54,10 +54,10 @@ function openDetail(row,opener) {
   body.append(el('h3','Source & freshness'));
   const source = model.sourceURL(row);
   if (!isDemo) {
-    const link = el('a',source ? 'Read the pinned .tipjar.json on GitHub ↗' : 'Open repository on GitHub ↗');
+    const link = el('a',source ? (row.source_kind === 'readme' ? 'Read the pinned README invitation on GitHub ↗' : 'Read the pinned .tipjar.json on GitHub ↗') : 'Open repository on GitHub ↗');
     link.href = source || `https://github.com/${row.repository}`; link.rel = 'noreferrer noopener'; body.append(link);
   }
-  body.append(el('p',isDemo ? 'Demo data has no source commit.' : `Commit: ${row.commit || 'not supplied'}\nManifest SHA-256: ${row.sha256 || 'not supplied'}`,'provenance'));
+  body.append(el('p',isDemo ? 'Demo data has no source commit.' : `Commit: ${row.commit || 'not supplied'}\nSource SHA-256: ${row.sha256 || 'not supplied'}`,'provenance'));
   body.append(el('h3',row.state === 'closed' ? 'Respect this boundary' : 'Your next careful step'));
   if (isDemo) body.append(el('p','These commands contain fictional repository names. Import a real snapshot to choose a real project.'));
   body.append(command(`tipjar jar ${row.repository}`));
@@ -100,3 +100,17 @@ function updateManifest() {
 $('manifest-form').addEventListener('input',updateManifest);
 $('manifest-form').addEventListener('submit',event => { event.preventDefault(); updateManifest(); if (!preview) return; const url=URL.createObjectURL(new Blob([JSON.stringify(preview,null,2)+'\n'],{type:'application/json'})); const link=el('a'); link.href=url; link.download='.tipjar.json'; document.body.append(link); link.click(); link.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000); notify('Manifest downloaded. Review it before adding it to a repository.'); });
 render(); updateManifest();
+
+function updateBadge() {
+  try { $('badge-preview').textContent=model.makeBadge($('badge-repository').value); $('badge-error').textContent=''; $('copy-badge').disabled=false; }
+  catch (error) { $('badge-preview').textContent=''; $('badge-error').textContent=error.message; $('copy-badge').disabled=true; }
+}
+$('badge-repository').addEventListener('input',updateBadge);
+$('badge-form').addEventListener('submit',async event => {
+  event.preventDefault(); updateBadge(); if ($('copy-badge').disabled) return;
+  try { await navigator.clipboard.writeText($('badge-preview').textContent); notify('README invitation copied. Paste at the top and review before publishing.'); }
+  catch { notify('Copy unavailable. Select the snippet and use your browser copy shortcut.'); }
+});
+const selectedRepo = new URLSearchParams(location.search).get('repo');
+if (selectedRepo !== null) $('badge-repository').value = selectedRepo;
+updateBadge();

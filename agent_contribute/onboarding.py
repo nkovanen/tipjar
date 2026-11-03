@@ -35,6 +35,7 @@ def init_report(path, text):
     return {'output': str(path), 'state': manifest['status'], 'sha256': hashlib.sha256(data).hexdigest(),
             'notice': tipjar.NOTICE,
             'next_steps': [
+                'For a simpler welcome, tipjar badge owner/repo prints the official README prefix',
                 'Edit wanted and boundaries to match your actual contribution policy; remove placeholder text',
                 'Run tipjar jar-check on the edited file before reviewing it for publication',
                 'If adopting, place the reviewed file at the repository root as .tipjar.json',
@@ -58,3 +59,11 @@ def jar_check(path):
     manifest = tipjar.parse_manifest(data)
     return {'path': str(path), 'state': manifest['status'], 'sha256': hashlib.sha256(data).hexdigest(),
             'valid': True, 'notice': tipjar.NOTICE}
+
+
+def badge(repository):
+    from .readme_invitation import snippet
+    repository = core.parse_repository(repository).lower()
+    return dict(repository=repository, snippet=snippet(repository),
+                notice='Paste at byte zero of root README.md, including the blank third line. .tipjar.json takes precedence. '
+                       'A copied fork badge is unresolved until its owner corrects or removes it. ' + tipjar.NOTICE)

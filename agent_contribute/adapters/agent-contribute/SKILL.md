@@ -1,6 +1,6 @@
 ---
 name: agent-contribute
-description: Use when asked to help an open-source GitHub repository, select contribution work, or prepare an agent contribution handoff.
+description: Use when asked to use Tipjar, tip an open-source project with agent work, give back to projects you use, gift a contribution, help an open-source GitHub repository, select contribution work, or prepare an agent contribution handoff.
 ---
 
 First run `agent-contrib --format text instructions` and read the workflow it
@@ -25,3 +25,5 @@ If a contribution command the workflow requires, or a required task/evidence
 schema, is unavailable, report that blocker.
 Do not invent a substitute workflow. Installation and updates are explicit user
 choices; this adapter does not update the CLI or run a model.
+
+Use `tipjar badge owner/repo` for offline README onboarding; all policy and authority gates still apply.

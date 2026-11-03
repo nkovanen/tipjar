@@ -114,7 +114,11 @@ class EndToEndTests(CacheTestCase):
     def test_disabled_cache_reads_and_outputs_are_unchanged_and_nothing_is_written(self):
         plain = self.run_cli(ContentGitHub(), 'discover', 'acme/photos')
         cold = self.run_cli(ContentGitHub(), '--cache', 'discover', 'acme/photos')
-        self.assertEqual(plain[2], cold[2], 'a cold cache makes exactly the live reads')
+        expected = list(plain[2])
+        expected.reverse()
+        for _ in range(3): expected.remove(self.contents('README.md'))
+        expected.reverse()
+        self.assertEqual(expected, cold[2], 'verified README bytes already read in this command may be reused')
         self.assertEqual((plain[0], without_times(plain[1])), (cold[0], without_times(cold[1])))
         cache.configure(False)
         again = self.run_cli(ContentGitHub(), 'discover', 'acme/photos')
@@ -162,7 +166,11 @@ class EndToEndTests(CacheTestCase):
         fake.files['CLAUDE.md'] = INSTRUCTION  # the same bytes as AGENTS.md, so the same blob SHA
         plain = self.run_cli(fake, 'discover', 'acme/photos')
         cold = self.run_cli(fake, '--cache', 'discover', 'acme/photos')
-        self.assertEqual([c for c in plain[2] if '/contents/CLAUDE.md' not in c], cold[2])
+        expected = [c for c in plain[2] if '/contents/CLAUDE.md' not in c]
+        expected.reverse()
+        for _ in range(3): expected.remove(self.contents('README.md'))
+        expected.reverse()
+        self.assertEqual(expected, cold[2])
         self.assertEqual(without_times(cold[1]), without_times(plain[1]))
 
     def test_private_repository_is_never_cached(self):

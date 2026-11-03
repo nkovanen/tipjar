@@ -40,7 +40,8 @@ def _scan(label, scan):
 
 def render(task, verification, evidence=None, *, closes=False, assistant=None, template=None):
     source = task['source']
-    v2 = task['schema_version'] == '0.2'
+    external = task['schema_version'] == '0.3'
+    v2 = task['schema_version'] in ('0.2', '0.3')
     verified = verification.get('technical_evidence_valid' if v2 else 'evidence_valid') is True
     claim = '' if verified else 'unverified claim: '
     reference = f'{source["repository"]}#{source["issue"]}'
@@ -72,7 +73,8 @@ def render(task, verification, evidence=None, *, closes=False, assistant=None, t
         state = verification.get('independent_review') or {}
         lines += [f'- Independent review: {md(state.get("status", "pending"))} '
                   f'({"valid" if state.get("valid") is True else "not valid"} per verify)',
-                  '- Final human sign-off: not shown (requires host context)']
+                  ('- External tip: separate implementation and exact publication assertions require host context.'
+                   if external else '- Final human sign-off: not shown (requires host context)')]
     else:
         for name in ('independent_review', 'human_signoff'):
             record = (evidence or {}).get(name)
@@ -80,7 +82,14 @@ def render(task, verification, evidence=None, *, closes=False, assistant=None, t
                          (claim + md(record['status']) + (' by ' + md(record['reviewer']) if record['reviewer'].strip() else '')
                           if record else 'pending (not supplied)'))
     lines += ['', '## Verification gates', '']
-    if v2:
+    if external:
+        lines += ['External tip: authority is pending; this renderer takes no host context.',
+                  'A separate live `verify --host-context-stdin` run decides authority; this body grants none.',
+                  'Fork: ' + code(task['execution']['head_repository']) + '; head: ' + code(task['execution']['head_ref']) +
+                  '; upstream base: ' + code(task['execution']['base_ref']) + '.',
+                  _gate('technical_evidence_valid', verification.get('technical_evidence_valid'))]
+        blockers = [(stage, error) for stage, errors in verification.get('stage_blockers', {}).items() for error in errors]
+    elif v2:
         # Without host context every authority state reads as unauthorized; omit rather than misstate it.
         lines += ['`agent-contrib verify` reported (text neutralized):', '',
                   _gate('technical_evidence_valid', verification.get('technical_evidence_valid')), '', AUTHORITY_OMITTED]
@@ -108,7 +117,10 @@ def render(task, verification, evidence=None, *, closes=False, assistant=None, t
         target = provenance['proposed_target_pulls'] or {}
         lines.append(_scan(f'Target open PRs ({md(target.get("repository", ""))})', target))
     lines += [f'- {md(item.get("url", ""))}: {md(item.get("reason", ""))}' for item in duplicates]
-    lines += ['', 'Only open PRs are scanned; PRs that are no longer open, timeline claims and file-level conflicts are not checked.',
+    lines += ['', ('The external route checks source/fork policy, open overlaps, claims and all-state exact-head history at live gates. '
+                   'This render has no host context: all-state publication recognition remains pending. '
+                   'Scans are bounded, non-atomic and do not prove absence of semantic duplicates.' if external else
+                   'Only open PRs are scanned; PRs that are no longer open, timeline claims and file-level conflicts are not checked.'),
               '', '## AI assistance disclosure', '',
               f'Prepared with Agent Contrib CLI {__version__}. Contract SHA-256: '
               f'`{verification.get("contract_sha256") or core.canonical_hash(task)}`.']
@@ -153,11 +165,13 @@ def template_pointer(task, client):
 
 
 def pr_body(task, evidence=None, repo_dir=None, client=None, **options):
+    if isinstance(task, dict) and task.get('schema_version') == '0.3' and options.get('closes'):
+        raise core.ProtocolError('usage', 'External PR bodies support Refs only; --closes is unsupported')
     """Read-only: verify gates come from a fresh verify run, never from the caller."""
     verification = core.verify(task, evidence, repo_dir, client)
     if verification.get('schema_valid') is not True:
         raise core.ProtocolError('invalid_contract', 'Contract does not match its bundled schema')
-    if evidence is not None and core.schema_errors(evidence, core.bundled_schema('evidence', task['schema_version'])):
+    if evidence is not None and core.schema_errors(evidence, core.bundled_schema('evidence', core.evidence_version(task['schema_version']))):
         evidence = None  # Malformed evidence is reported by the gates, never quoted.
     template = template_pointer(task, client or core.GitHub())
     return render(task, verification, evidence, template=template, **options), verification

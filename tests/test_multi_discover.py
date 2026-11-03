@@ -68,7 +68,7 @@ class MultiDiscoverTests(unittest.TestCase):
             def __init__(self):
                 super().__init__()
                 for name in ('good/first', 'good/last'):
-                    self.metadata[name] = dict(full_name=name, default_branch='main', fork=False, has_issues=True)
+                    self.metadata[name] = dict(id=300 if name == 'good/first' else 301, full_name=name, default_branch='main', fork=False, has_issues=True)
                     self.repos[name] = FakeGitHub()
 
             def request(self, endpoint):

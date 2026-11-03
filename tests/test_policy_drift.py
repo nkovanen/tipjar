@@ -55,7 +55,7 @@ def reviewed(client):
     inspected = core.inspect_issue('acme/photos#12', client)
     task['source'], task['approval'] = inspected['source'], inspected['approval']
     task['discovery']['duplicate_prs'] = inspected['duplicates']
-    return task, policy.for_inspected(inspected, client)['inventory_sha256']
+    return task, policy.for_inspected(inspected, client, inventory_format=min(policy.INVENTORY_FORMAT,3))['inventory_sha256']
 
 
 def run(client, *argv):
@@ -240,7 +240,7 @@ class InventoryFormatTests(unittest.TestCase):
         task, recorded = reviewed(self.client)
         inspected = core.inspect_issue('acme/photos#12', self.client)
         self.assertEqual(policy.for_inspected(inspected, self.client)['inventory_format'], policy.INVENTORY_FORMAT)
-        self.assertEqual(policy.INVENTORY_FORMAT, 3)
+        self.assertEqual(policy.INVENTORY_FORMAT, 4)
         with patch.object(policy, 'INVENTORY_FORMAT', 4):
             self.assertNotEqual(policy.for_inspected(inspected, self.client)['inventory_sha256'], recorded)
 

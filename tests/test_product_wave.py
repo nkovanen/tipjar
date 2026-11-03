@@ -1,6 +1,8 @@
 """Cross-feature journeys preserve snapshots without creating authority."""
 import contextlib
 import io
+import hashlib
+import xml.etree.ElementTree as ET
 import json
 from pathlib import Path
 import shutil
@@ -84,6 +86,36 @@ class ProductWaveTests(unittest.TestCase):
             self.assertEqual(impact['repositories_represented'], 1)
             self.assertNotIn('repositories_helped', impact)
             self.assertEqual(impact['trust'], 'self-reported recorded observations')
+
+    def test_integrated_receipt_roundtrips_to_card_and_rejects_bad_input_offline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path, svg = [Path(directory) / name for name in ('receipt.json', 'gift.svg')]
+            with patch.object(core, 'GitHub', return_value=ReceiptGitHub()):
+                code, captured = invoke('receipt', 'acme/photos#30', '--output', path)
+            self.assertEqual(code, 0)
+            self.assertEqual(core.schema_errors(captured, outputs.output_schema('receipt')), [])
+            with patch.object(core, 'GitHub', side_effect=AssertionError('offline')):
+                code, card = invoke('card', path, '--output', svg)
+                self.assertEqual(code, 0)
+                self.assertEqual(core.schema_errors(card, outputs.output_schema('card')), [])
+                self.assertEqual(card['sha256'], hashlib.sha256(svg.read_bytes()).hexdigest())
+                self.assertEqual(card['url'], captured['receipt']['pull_request']['url'])
+                self.assertEqual(card['observed_at'], captured['receipt']['observed_at'])
+                self.assertEqual(card['state'], 'draft')
+                ET.fromstring(svg.read_bytes())
+                code, impact = invoke('impact', path, path)
+                self.assertEqual(code, 0)
+                self.assertEqual(impact['receipts'], [captured['receipt']])
+                self.assertEqual(core.schema_errors(impact, outputs.output_schema('impact')), [])
+                broken = captured['receipt']
+                broken['pull_request']['url'] += '?unsafe=1'
+                path.write_text(json.dumps(broken), encoding='utf-8')
+                target = Path(directory) / 'bad.svg'
+                for args in [('impact', path), ('card', path, '--output', target)]:
+                    code, result = invoke(*args)
+                    self.assertEqual(code, 1)
+                    self.assertEqual(result['error']['code'], 'invalid_receipt')
+                self.assertFalse(target.exists())
 
     def test_shared_reference_definitions_have_one_meaning(self):
         definitions = {}

@@ -44,7 +44,7 @@ class DiscoverGoldenTests(unittest.TestCase):
         with patch.object(core.dt, 'datetime', FrozenClock):
             for name, (repository, client) in scenarios().items():
                 with self.subTest(name=name):
-                    result = core.discover(repository, client)
+                    result = core.discover(repository, client, invitation_protocol='tipjar-invitation/1')
                     actual = json.dumps({'result': result, 'calls': client.calls}, indent=2, ensure_ascii=True) + '\n'
                     path = GOLDEN / (name + '.json')
                     if os.environ.get('UPDATE_GOLDEN'):

@@ -1,5 +1,10 @@
 # Command reference
 
+For an outside-contributor gift, follow [external tips (task 0.3)](external-tips.md):
+`prepare --schema-version 0.3 --fork OWNER/REPO --head-ref NEW_BRANCH`, then explicit
+`implementation`, `draft` and `published` verify stages. The historical routes
+below retain their separate approval and owner/maintainer requirements.
+
 Every `agent-contrib` command, its options, exit codes and limits. Commands print JSON
 by default (see [text output](#text-output-unreleased)); the field-by-field JSON reference is in
 [output-reference.md](output-reference.md). Start with the [command index](#command-index);
@@ -72,6 +77,7 @@ an incomplete report exit 1, as the table says. "Reads GitHub" means fixed
 | `evidence init` | Unfilled evidence skeleton from observed Git facts | No | 0 file written; 1 error |
 | `pr-body` | Markdown PR description from the contract, evidence and a fresh `verify` | Yes | 0 file written; 1 error |
 | `receipt` | Save a public PR observation to a new file | Yes | 0 written; 1 invalid/incomplete read or write error |
+| `card` | Create a local SVG gift card from a receipt; share manually | No | 0 written; 1 invalid input or write error |
 | `impact` | Summarize editable recorded observations, deduplicated by numeric identity | No | 0 valid summary; 1 invalid/conflicting input |
 | `feedback` | Reviews, comments and exact-head checks of a published PR | Yes | 0 complete; 1 incomplete |
 | `ownership` | Report-only claims, linked PRs and possible prior fixes for one issue | Yes | 0 complete; 1 incomplete |
@@ -91,6 +97,7 @@ an incomplete report exit 1, as the table says. "Reads GitHub" means fixed
 | `agent-contrib discover owner/repo --signals` | Same reads and fields, plus per-issue `signals` and a signal-aware `ordering` |
 | `agent-contrib discover owner/repo --responsiveness` | One extra read of recently closed PRs, reported as `repository_signals.responsiveness`; issues and ordering unchanged |
 | `agent-contrib receipt owner/repo#123 --output receipt.json` | New schema 0.1 public PR observation; never overwrites |
+| `agent-contrib card receipt.json --output gift.svg [--caption TEXT]` | Offline SVG; personal caption, never a GitHub title; never overwrites |
 | `agent-contrib impact receipt.json [FILE...]` | Offline counts from at most 100 bounded local receipts |
 | `agent-contrib audit owner/repo [--print-policy]` | Read-only maintainer report: policy validity, labels, instruction coverage, issue-quality and overlap counts, non-binding suggestions |
 | `agent-contrib inspect 'owner/repo#123'` | Detailed issue snapshot, source policy, instructions, exclusions and PR matches |
@@ -1064,6 +1071,8 @@ signed evidence attestations (the rest of #18) are not implemented.
 ```sh
 tipjar receipt 'owner/repo#123' --output receipt.json
 tipjar --format text impact receipt.json later-receipt.json
+tipjar card receipt.json --output gift.svg
+tipjar card receipt.json --caption 'A personal gift of agent work' --output captioned.svg
 ```
 
 `receipt` exclusively saves a schema 0.1 public PR observation from two fixed
@@ -1078,7 +1087,13 @@ file order; equal-time conflicting snapshots reject. Drafts count as open;
 closed means unmerged. Output counts unique PRs and repositories represented and
 lists selected observations. Editable local data is labeled self-reported
 recorded observations, never signed proof, authenticated contributions, tests,
-quality or permission. See [receipt limits and refresh](receipts.md).
+quality or permission. `card` reuses the bounded offline receipt loader and creates
+an exclusive, inert SVG file. Its JSON result includes the artifact SHA-256,
+canonical PR link, exact observed state/date and observation warning. Receipt 0.1
+has no title: cards show an honest missing-title fallback, or optional bounded
+`--caption` text visibly labeled personal (never a GitHub title). Full sanitized
+captions remain accessible when visually truncated. Review and share manually;
+nothing posts or refreshes. See [receipt limits and card workflow](receipts.md).
 
 ### Output schemas
 
@@ -1086,7 +1101,7 @@ Every command's JSON output has a packaged JSON Schema (draft 2020-12 subset).
 `agent-contrib schema COMMAND` prints it; `error` is the error envelope that
 replaces any command's result on a usage, input or protocol error, and
 `evidence-init` is `evidence init`. `instructions` reports the
-`output_schema_version` (currently `2`) and the package directory. Objects are
+`output_schema_version` (currently `3`) and the package directory. Objects are
 closed: a field is required unless marked optional, and fields not listed never
 appear. Output values do not carry the schema version; a shape change bumps the
 version together with the CLI's semantic version and changelog. Remote text in
@@ -1246,7 +1261,7 @@ option before the subcommand.
 
 #### Global options on offline commands
 
-`instructions`, `schema`, `skill`, `lint`, `scope-check`, `evidence init`, `init`, `jar-check`, `dependencies`, `impact` and `session`
+`instructions`, `schema`, `skill`, `lint`, `scope-check`, `evidence init`, `init`, `jar-check`, `dependencies`, `impact`, `session` and `card`
 never read GitHub. On them `--report-budget` and `--cache` are both usage errors
 (exit 2, "`--cache` applies only to commands that read GitHub", and likewise for
 `--report-budget`), checked before any file is read; `--min-remaining` already
@@ -1337,24 +1352,33 @@ Malformed repository arguments are usage errors (exit 2) before any GitHub read,
 including budget instrumentation. Existing commands keep their argument-exit
 behavior.
 
-The JSON is `tipjar-report/1` (output schema version 2). States:
+Current output 4 uses invitation/2: `.tipjar.json` takes precedence at the pinned
+commit; only when absent does the reader inspect root `README.md` for the exact
+repository-scoped official prefix. Invalid manifests never fall back to README.
+Reports include `repository_id`, `tree_sha`, `manifest_present`, `source_kind`
+and nullable `badge`; `path`, `blob_sha` and `sha256` identify the actual file.
+README reports keep `manifest: null`. Historical output 1–3 remains unchanged.
+See [README invitations](readme-invitations.md). States:
 
 | State | Meaning | Exit |
 | --- | --- | --- |
 | `welcome` | Valid source invitation; policy review still required | 0 |
 | `closed` | Valid opt-out declaration | 0 |
-| `undeclared` | Complete pinned tree has no exact root jar | 0 |
+| `undeclared` | Complete source has no recognized invitation | 0 |
 | `unknown` | Read, identity, file-kind or validation failure | 1 |
 
 Exit 0 reports a complete observation; it grants no permission. On early failure,
 unavailable branch/commit/blob/digest fields remain null. The exact byte SHA-256
-is retained when bytes were decoded, including invalid manifests or mismatched
-blobs; a digest alone does not establish trusted source provenance. Text output
+is exposed only after path, file kind, base64, supplied sizes and Git blob identity
+are verified; parse failures retain that verified digest. A readable undeclared
+README legitimately has non-null digests. A digest authenticates no consent. Text output
 is abridged and sanitized; canonical JSON retains validated untrusted text.
 
 `discover`, `inspect`, `audit` and `prepare` include the actual issue source's
-pinned jar. Closed and unknown declarations block preparation and every live
-contribution gate, including approved-label, fork and host-mandate routes.
+pinned declaration. Current public reads and task 0.3 use invitation/2. Published
+task 0.1/0.2 preparation and verification retain manifest-only invitation/1 and
+historical inventories, with no additional README intent read or blocker.
+Applicable closed/unknown declarations still block their routes.
 A welcome never grants issue approval or execution/publication authority.
 Live gates reconstruct the jar at the contract's source commit: added, removed
 or byte-changed jars require refreshing and reviewing the contract. Branch
@@ -1425,8 +1449,75 @@ authority. Schema 0.1 upstream mode still requires matching label approval;
 its existing fork route requires an available immediate GitHub fork and actual
 local execution authorization, and fork completion grants no upstream authority.
 Schema 0.2 still requires actual admin/maintain authority and host mandates.
-An arbitrary no-jar repository has no new outside-contributor upstream route
-in this slice.
+For an explicitly selected no-jar repository, use the separately reviewed task 0.3
+external route below; absence of a jar supplies no approval or authority.
+
+## External contribution route
+
+Task schema 0.3 explicitly supports a reviewed draft from a personal immediate
+fork to a human-selected public upstream issue, with separate implementation and
+exact-result publication assertions. Welcome and undeclared sources both require
+complete source/fork policy accounting; no invitation or approval is invented.
+See [the complete external-tip workflow](external-tips.md) for commands, records, pause points and limits. Evidence
+remains schema 0.2; new reports use output/4. Existing 0.1/0.2 authority is unchanged.
+
+
+## Task 0.3 helper handoff (candidate)
+
+```sh
+tipjar authorization-request task.json --repo-dir CHECKOUT
+tipjar authorization-request task.json --repo-dir CHECKOUT --policy-assessment assessment.json --policy-ledger policy.md
+tipjar authorization-request task.json --stage draft --repo-dir CHECKOUT --evidence evidence.json --publication-payload payload.json --policy-assessment assessment.json --policy-ledger policy.md
+tipjar drift task.json
+tipjar pr-body task.json --repo-dir CHECKOUT --evidence evidence.json --output body.md
+```
+
+For task 0.3, `authorization-request` emits
+`kind: agent-contrib/external-authorization-request`, request version 0.1: a
+review view with `issued: false` and `ready_for_issuance: false` **always**. It
+contains no fillable consent record. Neither this envelope nor `bindings` can
+serve as an external-context assertion. A zero exit means live view reads
+completed, including when authorization or evidence remains blocked. Exit 1
+means incomplete reads or invalid input; unsupported options give exit 2 before
+GitHub/budget reads. Task 0.2 retains its original request shape, readiness
+semantics and default behavior; the new options are refused for it.
+
+The default view is implementation. The draft view requires checkout, evidence
+0.2 and exact draft-payload 0.1. Optional policy assessment JSON is shape-checked
+and canonically hashed; the original ledger is read as bounded regular bytes
+(up to 8 MiB) and hashed without normalization. Neither becomes “policy clear.”
+Absent assessment/ledger hashes remain null and unresolved. Inputs named with
+`--repo-dir` must be outside that checkout. Source/fork inventory digests, task,
+actor, refs and invitation basis are shown; a draft view adds evidence, review,
+payload, head/tree and current base-tip bindings. A no-jar acknowledgement is a
+required human decision, never an emitted approval. All inventory and blocker
+text remains untrusted. The host must render its own full snapshot, issue actual
+assertions, refresh applicable-target observations and retain real decision
+events. No native human authorization issuer is implemented.
+
+Task 0.3 `drift` defaults to the task's stored source inventory digest. An explicit
+`--policy-sha256` must match that binding. Source identity, issue, instructions,
+label policy, jar state/exact byte hash and current inventory comparisons remain
+report-only. A moved source tip alone is informational. `tipjar.reviewed` holds
+the jar binding from the task; `baseline` is a reconstructed observation, which
+need not reproduce reviewed bytes. `external.fork_policy` reports the current
+fork digest with null expected/changed values because the task contains no fork
+baseline; compare with the retained host assertion. Applicable external links
+must still be reread by host tools. An unchanged report grants no authority and
+does not establish policy compliance or fresh host observations.
+
+Task 0.3 `pr-body` consumes evidence **0.2**, renders self-attested claims and
+pending host-context gates, points to source templates and describes bounded
+external overlap/history checks accurately. It does not read a host context or
+assert publication readiness. `--closes` is refused with exit 2 before API reads;
+use the default `Refs` body. It preserves exclusive creation and the returned
+`sha256` hashes the exact UTF-8 body bytes. Review/merge required template text
+before fixing the exact draft-payload strings. Rendering publishes nothing.
+
+These variants belong to active output schema **3**; frozen output/1 and output/2
+resources are unchanged. Export with `tipjar schema authorization-request`,
+`tipjar schema drift` and `tipjar schema pr-body`. See [the giver journey](tipping.md)
+for human stops and [external tips](external-tips.md) for binding requirements.
 
 ## Offline session planning
 
@@ -1445,9 +1536,9 @@ agent-contrib --format text find --owner acme
 agent-contrib schema find
 ```
 
-One authenticated legacy code-search page uses exactly
-`filename:.tipjar.json path:/`, optionally `user:OWNER`, with `per_page=10` and
-`page=1`. OWNER accepts the GitHub login grammar (1–39 ASCII letters, digits and
+Exactly two sequential authenticated page-1 searches use
+`filename:.tipjar.json path:/` and `"tipjar:welcome:v1" filename:README.md path:/`,
+each optionally scoped with `user:OWNER`, `per_page=5` and `page=1`. OWNER accepts the GitHub login grammar (1–39 ASCII letters, digits and
 hyphens, starting with a letter or digit), never arbitrary search qualifiers.
 There is no cursor, backfill, fallback query, sort promise or fair rotation.
 
@@ -1460,23 +1551,25 @@ private names, ids and manifests are suppressed. A fork invites only itself.
 Only `disposition: welcome` is selectable; ordinary policy review and separate
 execution/publication authority still apply. There is no automatic issue proposal.
 
-Canonical output is `find-jars-report/1`, independent of output-schema version.
+Canonical current output is `find-jars-report/2` in output schema 4.
 `observations` contains `{repository, repository_id, disposition, reason,
-verified_at, jar}`. Jar reports retain their existing schema. Reasons are fixed
+verified_at, jar}`. Jar reports use the versioned invitation source union. Reasons are fixed
 codes; invalid identities and withheld private data are null. `requests.search`
 and `requests.core` count command gh invocations, excluding instrumentation.
-`search` records query, page, per_page, total_count, incomplete_results,
-returned_count, truncated and short_page. Unavailable search values are null.
+`searches` contains two records with query, page, per_page, total_count,
+incomplete_results, returned_count, truncated, short_page and fixed error codes.
+Unavailable values are null. Failed searches retain verified findings from the
+other query; cross-query paths for one validated repository share one inspection.
 `coverage.exhaustive` is always false. Timestamps and pinned commits are
 observations, not atomic or “live now” guarantees.
 
-At most 51 command gh invocations (one search and up to fifty core), sequential,
+At most 52 command gh invocations (two searches and up to fifty core), sequential,
 without application retries/sleeps/pagination; `--report-budget` adds two snapshots
-with up to three invocations each (53 all-success, at most 57). These are not raw
+with up to three invocations each (54 all-success, at most 58). These are not raw
 HTTP counts: gh may internally follow redirects, which are not instrumented.
 Application code never follows returned URLs or adopts renamed/transferred
 identities. Each whole invocation retains the 30-second parent timeout and
-8 MiB response cap: summed command invocation timeouts are at most 25.5 minutes,
+8 MiB response cap: summed command invocation timeouts are at most 26 minutes,
 excluding processing and optional instrumentation. Find reads remain uncached
 even with `--cache`. Search has a separate, tighter quota; `--min-remaining` and
 `api_budget` measure core only, never search availability. Authentication, quota
@@ -1490,5 +1583,20 @@ complete batch is never a global census. Search omits many repositories,
 especially forks; indexing may lag. No adoption is established and there is no
 curated fallback list. Until indexed jars exist, explicitly name projects for
 existing assessment commands; absence grants nothing. Direct `tipjar jar
-owner/repo` works without indexing. The outside-contributor upstream-route gap
-remains separate work.
+owner/repo` works without indexing. A selected outside contribution continues
+through the reviewed task 0.3 [external-tip route](external-tips.md).
+
+## badge
+
+`agent-contrib badge owner/repo` prints output-4 repository, exact README snippet
+and placement/precedence guidance. `agent-contrib --format text badge owner/repo`
+prints the snippet for pasting at byte zero of README.md with its blank line.
+Offline; no file write or GitHub request. See [README invitations](readme-invitations.md).
+
+The current `find` output is find-jars-report/2: exactly two sequential page-1
+searches, each at most five hits, followed by one shared pass over at most ten
+repositories. The `searches` records retain independent failures and counts.
+At most 52 gh invocations, or 58 with budget instrumentation; no retry/backfill.
+Output 4 includes actual README invitation provenance; historical output 1–3 is
+unchanged. Task 0.3 now requires inventory format 4 and fresh repreparation of old
+unpublished drafts. Published task 0.1/0.2 behavior is unchanged.

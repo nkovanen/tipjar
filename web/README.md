@@ -30,7 +30,7 @@ tipjar find > jars.json
 Choose or drop `jars.json` in `directory.html` beneath the local directory. Search coverage is partial and indexing may lag;
 no adoption or exhaustive directory is established. A failed/incomplete batch may
 still retain observations; inspect its diagnostics before using it.
-This importer requires format `find-jars-report/1`, at most 1 MiB and 200
+This importer accepts format `find-jars-report/1` or `/2`, at most 1 MiB and 200
 observations. It ignores extra bounded metadata, rejects unknown formats,
 invalid identities, conflicting dispositions, duplicate repositories, invalid
 UTF-8 and unsupported manifest schemas. Example **fictional** snapshot:
@@ -151,3 +151,11 @@ existing local import harness's final completion marker. Screenshots and the
 local harness report go outside the checkout to `/tmp/tipjar-board-browser`
 (or `TIPJAR_BROWSER_EVIDENCE`). Native OS clipboard/save dialogs remain manual
 checks; the local harness replaces those boundaries and reports any LIMIT lines.
+
+README onboarding in `directory.html` validates owner/repo locally and generates
+the exact official prefix. The landing `?repo=` parameter only pre-fills that
+editor through a locally validated link. No save, clipboard write or GitHub call
+occurs on page load. Optional JSON preferences take precedence. Local imports
+accept explicit find-jars-report/1 (manifest only) and /2 (versioned invitation
+provenance); both remain untrusted observations. The public board retains its
+separate, frozen manifest-only board1 contract.
