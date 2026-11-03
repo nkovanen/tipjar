@@ -1,9 +1,12 @@
 """Offline task-selection benchmark (#28): evidence, labels, reconstruction, strict replay and metrics."""
 import importlib.util
+import contextlib
+import io
 import json
 import pathlib
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from agent_contribute import core
 
@@ -14,6 +17,10 @@ SPEC.loader.exec_module(bench)
 
 T = '2026-05-01T00:00:00Z'
 REPO = 'acme/photos'
+
+
+def pr_item(title, state='open', closed_at=None):
+    return {'title': title, 'state': state, 'closed_at': closed_at, 'created_at': '2026-01-01T00:00:00Z'}
 
 
 def load_tool(name):
@@ -137,8 +144,51 @@ class PullRequestMembershipTests(unittest.TestCase):
     def test_pr_closed_at_the_cutoff_is_not_open_and_renames_are_reversed(self):
         events = [event('closed', '2026-04-01T00:00:00Z'), event('reopened', '2026-06-01T00:00:00Z'),
                   event('renamed', '2026-06-02T00:00:00Z', rename={'from': 'Old title', 'to': 'New title'})]
-        self.assertEqual(bench.pr_at_cutoff({'title': 'New title'}, events, T), {'open': False, 'title': 'Old title'})
-        self.assertEqual(bench.pr_at_cutoff({'title': 'Same'}, [], T), {'open': True, 'title': 'Same'})
+        self.assertEqual(bench.pr_at_cutoff(pr_item('New title'), events, T), {'open': False, 'title': 'Old title'})
+        self.assertEqual(bench.pr_at_cutoff(pr_item('Same'), [], T), {'open': True, 'title': 'Same'})
+
+    def test_malformed_history_is_unknown_never_silently_verified(self):
+        for events in ([{'event': 'closed'}], [event('closed', 'x')],
+                       [event('closed', '2026-04-01T00:00:00')], [None],
+                       [event('renamed', '2026-06-02T00:00:00Z')],
+                       [event('renamed', '2026-06-02T00:00:00Z', rename={'from': 3, 'to': 'New'})],
+                       [event('renamed', '2026-06-02T00:00:00Z', rename={'from': 'Old', 'to': 'Mismatch'})]):
+            with self.subTest(events=events), self.assertRaises(bench.BenchmarkError):
+                bench.pr_at_cutoff(pr_item('New'), events, T)
+
+    def test_cutoff_boundaries_and_multiple_renames_preserve_historical_title(self):
+        events = [event('renamed', T, rename={'from': 'Before', 'to': 'At cutoff'}),
+                  event('renamed', '2026-06-01T00:00:00Z', rename={'from': 'At cutoff', 'to': 'Interim'}),
+                  event('renamed', '2026-06-02T00:00:00Z', rename={'from': 'Interim', 'to': 'Now'})]
+        self.assertEqual(bench.pr_at_cutoff(pr_item('Now'), events, T), {'open': True, 'title': 'At cutoff'})
+
+    def test_membership_requires_consistent_current_anchors_and_transitions(self):
+        close = event('closed', '2026-06-01T00:00:00Z')
+        for item, events in (({'title': 'A'}, []),
+                             (pr_item('A'), [event('reopened', '2026-04-01T00:00:00Z')]),
+                             (pr_item('A', 'closed', close['created_at']), []),
+                             (pr_item('A', 'closed', close['created_at']), [close, close]),
+                             (pr_item('A'), [close]),
+                             (pr_item('A', 'closed', '2026-06-02T00:00:00Z'), [close]),
+                             (pr_item('A'), [event('closed', '2025-12-01T00:00:00Z')])):
+            with self.subTest(item=item, events=events), self.assertRaises(bench.BenchmarkError):
+                bench.pr_at_cutoff(item, events, T)
+        self.assertEqual(bench.pr_at_cutoff(pr_item('A', 'closed', close['created_at']), [close], T),
+                         {'open': True, 'title': 'A'})
+
+    def test_equal_time_state_order_is_unknown_but_independent_fields_commute(self):
+        at = '2026-04-01T00:00:00Z'
+        closed, reopened = event('closed', at), event('reopened', at)
+        for events in ([closed, reopened], [reopened, closed]):
+            with self.subTest(events=events), self.assertRaises(bench.BenchmarkError):
+                bench.pr_at_cutoff(pr_item('A'), events, T)
+        closed['id'], reopened['id'] = 11, 12
+        with self.assertRaises(bench.BenchmarkError):
+            bench.pr_at_cutoff(pr_item('A'), [reopened, closed], T)
+        renamed = event('renamed', at, rename={'from': 'Before', 'to': 'A'})
+        for events in ([closed, renamed], [renamed, closed]):
+            self.assertEqual(bench.pr_at_cutoff(pr_item('A', 'closed', at), events, T),
+                             {'open': False, 'title': 'A'})
 
 
 class ReconstructionTests(unittest.TestCase):
@@ -195,6 +245,19 @@ class ValidationTests(unittest.TestCase):
                 change(broken)
                 with self.assertRaises(bench.BenchmarkError):
                     bench.validate(broken)
+
+    def test_history_complete_marker_requires_verified_unique_prs(self):
+        good = snapshot([{'number': 1, 'title': 'A'}], prs=[{'number': 7, 'title': 'B'}])
+        good['pr_history_complete'] = True
+        bench.validate(good)
+        for mutation in ('unverified', 'duplicate'):
+            broken = json.loads(json.dumps(good))
+            if mutation == 'unverified':
+                broken['open_prs_at_cutoff'][0]['membership_verified'] = False
+            else:
+                broken['open_prs_at_cutoff'].append(dict(broken['open_prs_at_cutoff'][0]))
+            with self.subTest(mutation=mutation), self.assertRaises(bench.BenchmarkError):
+                bench.validate(broken)
 
 
 class ReplayTests(unittest.TestCase):
@@ -321,6 +384,36 @@ class ToolTests(unittest.TestCase):
         self.assertEqual((registered['snapshots'][0]['positive'], raw['snapshots'][0]['positive']), (1, 2))
         self.assertIn('Labels: raw (sensitivity analysis, not the registered result)', scorer.table(raw))
 
+    def test_legacy_and_mixed_reports_carry_per_snapshot_history_caveats(self):
+        scorer, experiment = load_tool('score'), load_tool('experiment')
+        legacy = snapshot([{'number': 1, 'title': 'A'}], prs=[{'number': 7, 'title': 'B'}])
+        legacy['open_prs_at_cutoff'][0]['membership_verified'] = False
+        repaired = snapshot([{'number': 2, 'title': 'C'}])
+        repaired['pr_history_complete'] = True
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = [self.write(tmp, legacy, 'legacy.json'), self.write(tmp, repaired, 'repaired.json')]
+            report = scorer.score(paths, [1], reps=10)
+        statuses = [row['pr_history']['status'] for row in report['snapshots']]
+        self.assertEqual(statuses, ['legacy-unreconstructed', 'candidate-histories-complete'])
+        self.assertEqual(report['snapshots'][0]['pr_history']['unverified_prs'], 1)
+        self.assertIn('unreconstructed', report['history_caveat'])
+        self.assertIn('unreconstructed', scorer.table(report))
+        self.assertIn('candidate-histories-complete', scorer.table(report))
+        rows = experiment.evaluate({'mixed': [legacy, repaired]}, ['default'], [1], reps=10)
+        self.assertEqual([x['status'] for x in rows[0]['pr_history']], statuses)
+        self.assertIn('unreconstructed', rows[0]['history_caveat'])
+        self.assertIn('unreconstructed', experiment.table(rows))
+        self.assertIn('candidate-histories-complete', experiment.table(rows))
+        complete = experiment.evaluate({'new': [repaired]}, ['default'], [1], reps=10)
+        self.assertIsNone(complete[0]['history_caveat'])
+
+    def test_native_experiment_refuses_explicitly_incomplete_history(self):
+        experiment = load_tool('experiment')
+        incomplete = snapshot([{'number': 1, 'title': 'A'}])
+        incomplete['pr_history_complete'] = False
+        with self.assertRaises(experiment.benchlib.BenchmarkError):
+            experiment.evaluate({'test': [incomplete]}, ['default'], [1], reps=10)
+
     def test_experiment_qualifies_only_above_the_permutation_null(self):
         experiment = load_tool('experiment')
         issues = [{'number': n, 'title': f'Issue {n}', 'outcome': 'positive' if n > 30 else 'negative',
@@ -355,6 +448,8 @@ class CollectorTests(unittest.TestCase):
                    'pull_request': {}},
                10: {'number': 10, 'title': 'Unrelated docs', 'created_at': '2026-01-04T00:00:00Z',
                     'pull_request': {}}}
+        for pr in prs.values():
+            pr.update(state='open', closed_at=None)
         calls = []
 
         class Client:
@@ -378,6 +473,9 @@ class CollectorTests(unittest.TestCase):
                 if endpoint.startswith(f'repos/{REPO}/issues/9/events'):
                     return [event('renamed', '2026-06-02T00:00:00Z',
                                   rename={'from': 'Thumbnail bounds draft', 'to': 'Thumbnail bounds cleanup'})]
+                if endpoint.startswith(f'repos/{REPO}/issues/10/events'):
+                    return [event('renamed', '2026-06-03T00:00:00Z',
+                                  rename={'from': 'Thumbnail bounds fix', 'to': 'Unrelated docs'})]
                 raise AssertionError(endpoint)
         return Client(), calls
 
@@ -389,12 +487,75 @@ class CollectorTests(unittest.TestCase):
         prs = {pr['number']: pr for pr in snap['open_prs_at_cutoff']}
         self.assertNotIn(8, prs)  # closed at the cutoff, reopened later
         self.assertEqual(prs[9], dict(prs[9], title='Thumbnail bounds draft', membership_verified=True))
-        self.assertFalse(prs[10]['membership_verified'])  # cannot create an overlap, so not read
-        self.assertFalse([call for call in calls if '/issues/10/events' in call])
+        self.assertTrue(prs[10]['membership_verified'])
+        self.assertEqual(prs[10]['title'], 'Thumbnail bounds fix')
+        self.assertTrue([call for call in calls if '/issues/10/events' in call])
+        self.assertTrue(snap['pr_history_complete'])
+        hidden_only = dict(snap, open_prs_at_cutoff=[prs[10]], issues=[
+            issue for issue in snap['issues']] + [dict(snap['issues'][0], number=6, title='Different topic')])
+        self.assertEqual(bench.replay(hidden_only), [6, 5])
         issue = snap['issues'][0]
         self.assertEqual(set(issue['evidence']), {'closes', 'references', 'current'})
         self.assertNotIn('outcome', issue)
         self.assertEqual(bodies, {'5': ''})
+
+    def test_unknown_history_is_retained_as_incomplete_and_cannot_be_scored(self):
+        collect = load_tool('collect')
+        for history in (None, [event('renamed', 'bad', rename={'from': 'Old', 'to': 'Unrelated docs'})],
+                        [{'event': 'closed'}]):
+            with self.subTest(history=history):
+                original = collect.pr_events
+                def events(client, repo, number):
+                    return history if number == 10 else original(client, repo, number)
+                with patch.object(collect, 'pr_events', events):
+                    snap, _ = collect.collect(REPO, T, 90, self.fake()[0], max_issues=10, max_search_pages=1)
+                self.assertFalse(snap['pr_history_complete'])
+                self.assertFalse(next(pr for pr in snap['open_prs_at_cutoff'] if pr['number'] == 10)['membership_verified'])
+                self.assertTrue(any('PR #10' in note for note in snap['notes']))
+                with self.assertRaises(bench.BenchmarkError):
+                    bench.validate(snap)
+
+    def test_history_page_cap_does_not_claim_completeness(self):
+        collect = load_tool('collect')
+        calls = []
+        class Client:
+            def request(self, endpoint):
+                calls.append(endpoint)
+                return [event('labeled', T, label={'name': 'bug'})] * 100
+        self.assertIsNone(collect.pr_events(Client(), REPO, 10))
+        self.assertEqual(len(calls), 2)
+
+    def test_incomplete_collection_writes_evidence_without_printing_label_counts(self):
+        collect = load_tool('collect')
+        snap = snapshot([{'number': 1, 'title': 'A'}])
+        snap['pr_history_complete'] = False
+        snap['notes'] = ['PR history incomplete']
+        with tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()) as output:
+            args = ['collect', REPO, '--cutoff', T, '--output', str(pathlib.Path(tmp, 'snapshot.json'))]
+            with patch.object(collect.sys, 'argv', args), patch.object(collect, 'collect', return_value=(snap, {})), \
+                    patch.object(collect.benchlib, 'labels', side_effect=AssertionError('unknown history cannot be labelled')):
+                collect.main()
+            self.assertFalse(json.loads(pathlib.Path(tmp, 'snapshot.json').read_text())['pr_history_complete'])
+        summary = json.loads(output.getvalue())
+        self.assertFalse(summary['pr_history_complete'])
+        self.assertIsNone(summary['positive'])
+        self.assertIsNone(summary['negative'])
+        self.assertIsNone(summary['excluded'])
+
+    def test_missing_current_close_field_is_not_invented_as_null(self):
+        collect = load_tool('collect')
+        client, _ = self.fake()
+        original = client.request
+        def request(endpoint):
+            result = original(endpoint)
+            if endpoint.startswith('search/'):
+                for item in result['items']:
+                    if item['number'] == 10:
+                        item.pop('closed_at', None)
+            return result
+        client.request = request
+        snap, _ = collect.collect(REPO, T, 90, client, max_issues=10, max_search_pages=1)
+        self.assertFalse(snap['pr_history_complete'])
 
     def test_collect_refuses_an_immature_window(self):
         collect = load_tool('collect')

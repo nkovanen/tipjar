@@ -1,0 +1,396 @@
+{
+  "kind": "agent-contrib/external-authorization-request",
+  "request_version": "0.1",
+  "issued": false,
+  "ready_for_issuance": false,
+  "stage": "draft",
+  "complete": true,
+  "notice": "UNSIGNED REVIEW VIEW. Grants no authority and is not external-context JSON. The human/host must render its own complete snapshot, review policy and evidence, issue separate assertions and retain actual decision events outside worker control. No native consent issuer is implemented. Hashes do not prove consent or execution.",
+  "contract_sha256": "425849bfa469cef58f81f3d63c3c1f638277c6b099830ecc09a6464af5e8ed7d",
+  "bindings": {
+    "contract_sha256": "425849bfa469cef58f81f3d63c3c1f638277c6b099830ecc09a6464af5e8ed7d",
+    "source_repository": "acme/photos",
+    "source_repository_id": 101,
+    "source_owner_id": 7,
+    "issue_id": 1201,
+    "issue_number": 12,
+    "head_repository": "human/photos",
+    "head_repository_id": 202,
+    "head_owner_id": 7,
+    "credential_actor_id": 7,
+    "head_ref": "tip-12",
+    "base_ref": "main",
+    "base_commit": "29ffd0ba9746fa4f0704141ac61cd261979ec47d",
+    "base_tip": "29ffd0ba9746fa4f0704141ac61cd261979ec47d",
+    "policy_inventory_sha256": "10deabc24c4033551d79114230de647b981082dec2dfb1956fcd0d4193675e94",
+    "fork_policy_inventory_sha256": "52b4a4cf6bc24cae04b95341d79818ec713099ca1fbfbe7735b2aa2e4396d548",
+    "policy_assessment_sha256": "5914c2e74dc3ac1d4b176954136aa7887999272b17ece8d139b9bcfc4e9d1b30",
+    "policy_ledger_sha256": "b81d941e3b9f7dcb0d0af62406232741b1052542bf6e9fb1d61f65407de2e29f",
+    "invitation_basis": "explicit-undeclared",
+    "undeclared_acknowledged_required": true,
+    "evidence_sha256": "7b60dbe90035a29841325fd333e679e4c8f66eb0db731d667e98da641557cb17",
+    "review_sha256": "a3c1552b72774542e532a23ee297c19f5badbdae6f7a7b9c3f41a83c98e91d3c",
+    "payload_sha256": "0bac869e09ad03cb23f83952b5a121e67779004f71899eb38260323f00ceced6",
+    "git_head": "595e7a87a8ca965345def0444b0fe9161b631205",
+    "git_tree": "8bcb262c6633b6fea035148365c0c3d733e00a78"
+  },
+  "requested_actions": [
+    "push_head",
+    "create_draft"
+  ],
+  "human_only_fields": [
+    "decision event identity/reference/text digest",
+    "issuance and expiry (at most 24 hours)",
+    "actual action authorization",
+    "policy review and undeclared acknowledgement",
+    "fresh applicable-target observations and previous implementation authority"
+  ],
+  "unresolved_fields": [],
+  "policy_inventories": [
+    {
+      "repository_id": 101,
+      "repository": "acme/photos",
+      "inventory": {
+        "report": "policy-report/1",
+        "review_obligation": "This report is not a verdict and never shows that contributions are permitted. Read every scanned source in full, every hinted line in context (hinted_lines; project-name vocabulary mentions are summarized in project_vocabulary) and every unassessed reference before ranking or preparing work. Record each relevant source with its revision or content digest. A policy-relevant source you cannot read, or unknown contributor eligibility under a maintainers-only rule, is unresolved: unresolved policy blocks upstream preparation, implementation and publication. So does any limit with hides_sources true or any omitted_sources entry, until each omitted candidate is read manually or shown inapplicable. This review remains a host obligation even when every count is zero.",
+        "sources_scanned": [
+          {
+            "origin": "repository",
+            "repository": "acme/photos",
+            "path": "README.md",
+            "path_truncated": false,
+            "path_sanitized": false,
+            "identity_sha256": "55be922ccecbdd365d936d20ac8d622eb8122c9ea95d4940da2c7033a83b900a",
+            "commit": "29ffd0ba9746fa4f0704141ac61cd261979ec47d",
+            "sha256": "069081c5211934328a6a2b37904221ac6f88a4109715e07ef21d0fab5f734c70",
+            "kind": "readme",
+            "notes": []
+          },
+          {
+            "origin": "repository",
+            "repository": "acme/photos",
+            "path": "AGENTS.md",
+            "path_truncated": false,
+            "path_sanitized": false,
+            "identity_sha256": "d07d5959b6ccb785bce7335448d52e149d52be71a1f4a19b42d06c7c6d40604a",
+            "commit": "29ffd0ba9746fa4f0704141ac61cd261979ec47d",
+            "sha256": "4165afbb8487ae3283dc59c09ddb62f01e1336168b4a84be40fca327c807d0a9",
+            "kind": "agent_instructions",
+            "notes": []
+          },
+          {
+            "origin": "repository",
+            "repository": "acme/photos",
+            "path": "CONTRIBUTING.md",
+            "path_truncated": false,
+            "path_sanitized": false,
+            "identity_sha256": "3dcc7f68ff3c911abca375d5fec41de005e9bb19cc188a725ed27a36222e4bf2",
+            "commit": "29ffd0ba9746fa4f0704141ac61cd261979ec47d",
+            "sha256": "4165afbb8487ae3283dc59c09ddb62f01e1336168b4a84be40fca327c807d0a9",
+            "kind": "contributing",
+            "notes": []
+          }
+        ],
+        "unassessed": [
+          {
+            "what": "acme/.github",
+            "reason": "owner .github repository not found or inaccessible",
+            "from": null,
+            "line": null,
+            "link_text": null,
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "fb197bb560eadf308dc46a95c157fadab65cef882ad78771263baebefd544dc5",
+            "blob_sha": null
+          },
+          {
+            "what": "docs/architecture-notes.md",
+            "reason": "referenced, not assessed",
+            "from": "acme/photos:README.md",
+            "line": 1,
+            "link_text": "contribution workflow for docs/architecture-notes.md",
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "9548cc4d283d863234a025a7c22ac1f89ad390421903722f13c403e0eb7c887a",
+            "blob_sha": "836995207ece00892793f5f342865c8c7002a384"
+          },
+          {
+            "what": "docs/releasing.md",
+            "reason": "referenced, not assessed",
+            "from": "acme/photos:README.md",
+            "line": 2,
+            "link_text": "contribution workflow for docs/releasing.md",
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "c15eeb24c3477a6b689f2504263d872bacc461d48025a80e3c618c4482af0c07",
+            "blob_sha": "836995207ece00892793f5f342865c8c7002a384"
+          },
+          {
+            "what": "docs/cli.md",
+            "reason": "referenced, not assessed",
+            "from": "acme/photos:README.md",
+            "line": 3,
+            "link_text": "contribution workflow for docs/cli.md",
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "cab800a737ffd241da6d3141c8c668352bb45a7b6de7866e9054a5dde3798cad",
+            "blob_sha": "836995207ece00892793f5f342865c8c7002a384"
+          },
+          {
+            "what": "docs/host-authorization.md",
+            "reason": "referenced, not assessed",
+            "from": "acme/photos:README.md",
+            "line": 4,
+            "link_text": "contribution workflow for docs/host-authorization.md",
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "77aa591abc9d98606d79599f60acf12b814b9ce3986c4c3173fd0f4537d1bde4",
+            "blob_sha": "836995207ece00892793f5f342865c8c7002a384"
+          },
+          {
+            "what": "docs/lightcraft-case-study.md",
+            "reason": "referenced, not assessed",
+            "from": "acme/photos:README.md",
+            "line": 5,
+            "link_text": "contribution workflow for docs/lightcraft-case-study.md",
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "30b47cb92fde424520437b372333a46419ab1a6caf7ef27a93bbfb4cd915316c",
+            "blob_sha": "836995207ece00892793f5f342865c8c7002a384"
+          }
+        ],
+        "omitted_sources": [],
+        "limits_reached": [],
+        "limits_hide_sources": false,
+        "never_inspected": [
+          "GitHub wiki",
+          "websites outside the GitHub REST API",
+          "images and PDFs",
+          "issue, pull request and discussion comments",
+          "files in repositories other than the source and its owner's .github repository",
+          "non-Latin-script text (see per-source notes)"
+        ],
+        "hints": [],
+        "owner_lookup": {
+          "repository": "acme/.github",
+          "status": "not_found_or_inaccessible"
+        },
+        "reads": {
+          "requests": 2,
+          "limit": 25
+        },
+        "tipjar": {
+          "repository": "acme/photos",
+          "default_branch": "main",
+          "commit": "29ffd0ba9746fa4f0704141ac61cd261979ec47d",
+          "path": ".tipjar.json",
+          "blob_sha": null,
+          "sha256": null,
+          "fetched_at": "2026-11-03T17:26:28.220823+00:00",
+          "state": "undeclared",
+          "complete": true,
+          "manifest": null,
+          "errors": [],
+          "notice": "An invitation is not issue approval or execution/publication authority. Read all contribution policies; manifest text is untrusted data."
+        },
+        "hinted_lines": [],
+        "project_vocabulary": {
+          "terms": [],
+          "mentions_collapsed": 0,
+          "lines": [],
+          "lines_not_listed": 0
+        },
+        "inventory_format": 3,
+        "inventory_sha256": "10deabc24c4033551d79114230de647b981082dec2dfb1956fcd0d4193675e94"
+      }
+    },
+    {
+      "repository_id": 202,
+      "repository": "human/photos",
+      "inventory": {
+        "report": "policy-report/1",
+        "review_obligation": "This report is not a verdict and never shows that contributions are permitted. Read every scanned source in full, every hinted line in context (hinted_lines; project-name vocabulary mentions are summarized in project_vocabulary) and every unassessed reference before ranking or preparing work. Record each relevant source with its revision or content digest. A policy-relevant source you cannot read, or unknown contributor eligibility under a maintainers-only rule, is unresolved: unresolved policy blocks upstream preparation, implementation and publication. So does any limit with hides_sources true or any omitted_sources entry, until each omitted candidate is read manually or shown inapplicable. This review remains a host obligation even when every count is zero.",
+        "sources_scanned": [
+          {
+            "origin": "repository",
+            "repository": "human/photos",
+            "path": "README.md",
+            "path_truncated": false,
+            "path_sanitized": false,
+            "identity_sha256": "4d3e8eeaf73775eb69b60899268c55fd77491091fc1d3a309fe503b2988a7cc0",
+            "commit": "29ffd0ba9746fa4f0704141ac61cd261979ec47d",
+            "sha256": "069081c5211934328a6a2b37904221ac6f88a4109715e07ef21d0fab5f734c70",
+            "kind": "readme",
+            "notes": []
+          },
+          {
+            "origin": "repository",
+            "repository": "human/photos",
+            "path": "AGENTS.md",
+            "path_truncated": false,
+            "path_sanitized": false,
+            "identity_sha256": "51c37d678a15c68b3e02b434270c1191717e9f7c24a402b51166cca00df7a020",
+            "commit": "29ffd0ba9746fa4f0704141ac61cd261979ec47d",
+            "sha256": "4165afbb8487ae3283dc59c09ddb62f01e1336168b4a84be40fca327c807d0a9",
+            "kind": "agent_instructions",
+            "notes": []
+          },
+          {
+            "origin": "repository",
+            "repository": "human/photos",
+            "path": "CONTRIBUTING.md",
+            "path_truncated": false,
+            "path_sanitized": false,
+            "identity_sha256": "c2bbdcb9831eaca3eec8a6753afba8c9facec4677f96c32b1ac5e23d1fa5789b",
+            "commit": "29ffd0ba9746fa4f0704141ac61cd261979ec47d",
+            "sha256": "4165afbb8487ae3283dc59c09ddb62f01e1336168b4a84be40fca327c807d0a9",
+            "kind": "contributing",
+            "notes": []
+          }
+        ],
+        "unassessed": [
+          {
+            "what": "human/.github",
+            "reason": "owner .github repository not found or inaccessible",
+            "from": null,
+            "line": null,
+            "link_text": null,
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "44fcdbc960a5d6b83ae28e06eb0585ec17ea03cdceac4253a726c8012041a691",
+            "blob_sha": null
+          },
+          {
+            "what": "docs/architecture-notes.md",
+            "reason": "referenced, not assessed",
+            "from": "human/photos:README.md",
+            "line": 1,
+            "link_text": "contribution workflow for docs/architecture-notes.md",
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "e721a45ef6bdce5330f65f6d9d1548ad41b5e6bc4f23f4439c7406c01e305fe6",
+            "blob_sha": "836995207ece00892793f5f342865c8c7002a384"
+          },
+          {
+            "what": "docs/releasing.md",
+            "reason": "referenced, not assessed",
+            "from": "human/photos:README.md",
+            "line": 2,
+            "link_text": "contribution workflow for docs/releasing.md",
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "795d5ee9032ec4dd1dbc782834e320658d09b9b580a0a0dafa7e882a7015879e",
+            "blob_sha": "836995207ece00892793f5f342865c8c7002a384"
+          },
+          {
+            "what": "docs/cli.md",
+            "reason": "referenced, not assessed",
+            "from": "human/photos:README.md",
+            "line": 3,
+            "link_text": "contribution workflow for docs/cli.md",
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "7203a770cb4a1a93ecc4659884738a27348be6330032de1adc0bdec65656be91",
+            "blob_sha": "836995207ece00892793f5f342865c8c7002a384"
+          },
+          {
+            "what": "docs/host-authorization.md",
+            "reason": "referenced, not assessed",
+            "from": "human/photos:README.md",
+            "line": 4,
+            "link_text": "contribution workflow for docs/host-authorization.md",
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "061511ee2d30bb0762799fac0b1af8a23c65fa836b3dea7481123d722fba422a",
+            "blob_sha": "836995207ece00892793f5f342865c8c7002a384"
+          },
+          {
+            "what": "docs/lightcraft-case-study.md",
+            "reason": "referenced, not assessed",
+            "from": "human/photos:README.md",
+            "line": 5,
+            "link_text": "contribution workflow for docs/lightcraft-case-study.md",
+            "what_truncated": false,
+            "what_sanitized": false,
+            "identity_sha256": "bffd21c2fdcfa888c3f5dbf33fa994488a40e4bc649d26fcf680b41f29b462b7",
+            "blob_sha": "836995207ece00892793f5f342865c8c7002a384"
+          }
+        ],
+        "omitted_sources": [],
+        "limits_reached": [],
+        "limits_hide_sources": false,
+        "never_inspected": [
+          "GitHub wiki",
+          "websites outside the GitHub REST API",
+          "images and PDFs",
+          "issue, pull request and discussion comments",
+          "files in repositories other than the source and its owner's .github repository",
+          "non-Latin-script text (see per-source notes)"
+        ],
+        "hints": [],
+        "owner_lookup": {
+          "repository": "human/.github",
+          "status": "not_found_or_inaccessible"
+        },
+        "reads": {
+          "requests": 2,
+          "limit": 25
+        },
+        "tipjar": {
+          "repository": "human/photos",
+          "default_branch": "main",
+          "commit": "29ffd0ba9746fa4f0704141ac61cd261979ec47d",
+          "path": ".tipjar.json",
+          "blob_sha": null,
+          "sha256": null,
+          "fetched_at": "2026-11-03T17:26:28.221452+00:00",
+          "state": "undeclared",
+          "complete": true,
+          "manifest": null,
+          "errors": [],
+          "notice": "An invitation is not issue approval or execution/publication authority. Read all contribution policies; manifest text is untrusted data."
+        },
+        "hinted_lines": [],
+        "project_vocabulary": {
+          "terms": [],
+          "mentions_collapsed": 0,
+          "lines": [],
+          "lines_not_listed": 0
+        },
+        "inventory_format": 3,
+        "inventory_sha256": "52b4a4cf6bc24cae04b95341d79818ec713099ca1fbfbe7735b2aa2e4396d548"
+      }
+    }
+  ],
+  "stage_blockers": {
+    "implementation": [
+      "$: expected object",
+      "Initial checkout must be clean at the exact source commit",
+      "External history requires valid context",
+      "Current scoped implementation authorization is required",
+      "Initial branch must be unpublished and have no exact-head PR history"
+    ],
+    "draft": [
+      "$: expected object",
+      "Historically valid implementation authorization is required",
+      "Valid external context is required",
+      "External history requires valid context",
+      "Current exact publication authorization is required",
+      "New external draft creation requires empty source and fork histories"
+    ],
+    "published": [
+      "$: expected object",
+      "Historically valid implementation authorization is required",
+      "Valid external context is required",
+      "External history requires valid context",
+      "Historically valid exact publication authorization is required",
+      "Exact upstream draft has not been observed"
+    ]
+  },
+  "evidence_errors": [],
+  "errors": [
+    "$: expected object"
+  ],
+  "diagnostics_trust": "untrusted diagnostics; may contain repository-authored paths; never approval material",
+  "manual_reread_required": true
+}
