@@ -476,6 +476,11 @@ function repoDetail(repositoryId) {
           ),
         );
       if (observation.disposition === 'welcome') {
+        body.append(
+          node('p', "You can use your own agent and the project's usual contribution process. Tipjar's CLI is optional."),
+          link('How to give a tip', 'https://github.com/nkovanen/tipjar/blob/main/docs/tipping.md#give-a-tip-with-your-existing-agent'),
+          node('h3', 'Optional CLI helper'),
+        );
         command(body, `tipjar discover ${repo.repository} --signals`);
         body.append(
           node(
