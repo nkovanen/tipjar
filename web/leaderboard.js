@@ -4,7 +4,8 @@ const boardModel = TipjarBoard,
 let board = null,
   period = 'month',
   expired = false,
-  lastOpener = null;
+  lastOpener = null,
+  globalRendered = false;
 function node(tag, text, cls) {
   const n = document.createElement(tag);
   if (text !== undefined) n.textContent = text;
@@ -65,7 +66,8 @@ function hideCurrent(title, text) {
   byId('people-summary').textContent = '';
   byId('newcomers').textContent = '';
   byId('directory-summary').textContent = 'Current welcome actions are unavailable.';
-  if (byId('board-detail').open) byId('board-detail').close();
+  byId('share-status').hidden = true;
+  closeDetail();
 }
 function ensureFresh() {
   if (!board || !boardModel.fresh(board)) {
@@ -104,15 +106,190 @@ function proofs(body, tips) {
     body.append(box);
   }
 }
-function openDetail(title, opener, render) {
+function restoreBoardFocus() {
+  (lastOpener?.isConnected ? lastOpener : byId('people-title')).focus();
+}
+function closeDetail() {
+  if (byId('board-detail').open) byId('board-detail').close();
+  byId('board-detail-content').replaceChildren();
+}
+function routeLink(text, target, cls) {
+  const a = link(text, boardModel.boardViewURL(location.href, { period, target, invalid: false }));
+  if (cls) a.className = cls;
+  a.addEventListener('click', (event) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    event.preventDefault();
+    if (!ensureFresh()) return;
+    lastOpener = a;
+    const href = boardModel.boardViewURL(location.href, { period, target, invalid: false });
+    if (location.href !== href) history.pushState(null, '', href);
+    syncBoardRoute({ focus: 'heading' });
+  });
+  return a;
+}
+function changePeriod(next, dialogControl) {
+  const route = boardModel.parseBoardRoute(location.search);
+  history.replaceState(
+    null,
+    '',
+    boardModel.boardViewURL(location.href, {
+      period: next,
+      target: route.invalid ? null : route.target,
+      invalid: false,
+    }),
+  );
+  syncBoardRoute({ focus: dialogControl ? 'period' : 'global-period' });
+}
+function clearTarget() {
+  history.replaceState(
+    null,
+    '',
+    boardModel.boardViewURL(location.href, { period, target: null, invalid: false }),
+  );
+  syncBoardRoute({ focus: 'return' });
+}
+function syncBoardRoute({ focus = 'heading' } = {}) {
+  const route = boardModel.parseBoardRoute(location.search),
+    changed = period !== route.period;
+  period = route.period;
+  if (!globalRendered || changed) {
+    render();
+    globalRendered = true;
+  }
   if (!ensureFresh()) return;
-  lastOpener = opener;
+  const target = boardModel.resolveBoardTarget(board, route.target),
+    unavailable = route.invalid || (route.target && !target);
+  byId('share-status').hidden = !unavailable;
+  byId('share-status').textContent = unavailable
+    ? 'This shared view is unavailable in the current snapshot.'
+    : '';
+  if (target) {
+    if (target.kind === 'repository') repoDetail(target.id);
+    else authorDetail(target);
+  } else closeDetail();
+  for (const control of document.querySelectorAll('[data-period]'))
+    control.setAttribute('aria-pressed', String(control.dataset.period === period));
+  if (target && focus === 'period')
+    byId('board-detail').querySelector(`[data-period="${period}"]`).focus();
+  else if (focus === 'global-period')
+    byId('board-period').querySelector(`[data-period="${period}"]`).focus();
+  else if (target && focus === 'heading') byId('board-detail-title').focus();
+  else if (focus === 'return' || (!target && focus === 'heading')) restoreBoardFocus();
+}
+async function copyViewLink() {
+  if (!ensureFresh()) return;
+  const route = boardModel.parseBoardRoute(location.search);
+  if (route.invalid || !boardModel.resolveBoardTarget(board, route.target)) return;
+  const href = boardModel.boardViewURL(location.href, route),
+    locationAtCopy = location.href;
+  const stillCurrent = () =>
+    ensureFresh() && byId('board-detail').open && location.href === locationAtCopy;
+  try {
+    await navigator.clipboard.writeText(href);
+    if (stillCurrent()) byId('board-share-status').textContent = 'View link copied.';
+  } catch {
+    // The dialog may expire while the platform clipboard request is pending.
+    if (!stillCurrent()) return;
+    const input = byId('board-share-link');
+    input.value = href;
+    input.hidden = false;
+    input.focus();
+    input.select();
+    byId('board-share-status').textContent = 'Link selected; use your browser copy shortcut.';
+  }
+}
+function openDetail(title, renderBody) {
+  if (!ensureFresh()) return;
   const body = byId('board-detail-content'),
     heading = node('h2', title);
   heading.id = 'board-detail-title';
-  body.replaceChildren(heading);
-  render(body);
-  byId('board-detail').showModal();
+  heading.tabIndex = -1;
+  const controls = node('div', undefined, 'period');
+  controls.setAttribute('role', 'group');
+  controls.setAttribute('aria-label', 'View period');
+  for (const [value, label] of [
+    ['month', 'This UTC month'],
+    ['30days', 'Last 30 days'],
+    ['all', 'All time'],
+  ]) {
+    const control = button(label, () => changePeriod(value, true));
+    control.dataset.period = value;
+    controls.append(control);
+  }
+  body.replaceChildren(
+    heading,
+    controls,
+    node('p', `Snapshot ${date(board.generated_at)} · expires ${date(board.expires_at)}`, 'micro'),
+    node(
+      'p',
+      'Curated opt-ins only · partial coverage · one point per eligible merge, not value or verified AI use. Equal totals share rank.',
+      'micro',
+    ),
+  );
+  renderBody(body);
+  const copy = button('Copy view link', copyViewLink, 'button');
+  copy.id = 'copy-board-view';
+  const input = node('input', undefined, 'share-link');
+  input.id = 'board-share-link';
+  input.type = 'text';
+  input.readOnly = true;
+  input.hidden = true;
+  input.setAttribute('aria-label', 'Shareable view link');
+  const feedback = node('p', undefined, 'micro');
+  feedback.id = 'board-share-status';
+  feedback.setAttribute('role', 'status');
+  body.append(
+    copy,
+    input,
+    feedback,
+    node(
+      'p',
+      'Month and rolling views follow the visitor’s current UTC time. Links do not freeze a date or rank.',
+      'micro',
+    ),
+  );
+  if (!byId('board-detail').open) byId('board-detail').showModal();
+}
+function authorDetail(target) {
+  const selected = boardModel
+    .rankBoard(board, period)
+    .people.find((p) => p.author_id === target.id);
+  openDetail(target.label, (body) => {
+    body.append(
+      node(
+        'p',
+        `${selected?.points ?? 0} point${selected?.points === 1 ? '' : 's'} · ${selected?.projects ?? 0} project${selected?.projects === 1 ? '' : 's'} in the selected period.`,
+      ),
+      node('p', 'Curated public opt-in, not verified AI use.', 'notice'),
+    );
+    const accepted = selected?.accepted || [];
+    if (accepted.length) proofs(body, accepted);
+    else body.append(node('p', 'No accepted tips in this period.'));
+    body.append(node('h3', 'Represented projects in this period'));
+    const projects = node('div', undefined, 'represented-projects');
+    for (const id of [...new Set(accepted.map((t) => t.repository_id))].sort((a, b) => a - b)) {
+      const repo = board.repositories.find((r) => r.repository_id === id);
+      projects.append(routeLink(repo.repository, { kind: 'repository', id }));
+    }
+    if (!projects.childElementCount)
+      projects.append(node('p', 'No represented projects in this period.'));
+    body.append(
+      projects,
+      node(
+        'p',
+        'Historical receiving projects may not currently welcome new work. Check each current invitation separately.',
+        'micro',
+      ),
+    );
+  });
 }
 function command(body, text) {
   const box = node('div', undefined, 'command'),
@@ -136,10 +313,10 @@ function command(body, text) {
   );
   body.append(box);
 }
-function repoDetail(repositoryId, opener) {
+function repoDetail(repositoryId) {
   const repo = board.repositories.find((r) => r.repository_id === repositoryId),
     observation = board.directory.observations.find((o) => o.repository_id === repositoryId);
-  openDetail(repo.repository, opener, (body) => {
+  openDetail(repo.repository, (body) => {
     body.append(
       link('Repository on GitHub ↗', `https://github.com/${repo.repository}`),
       node(
@@ -147,6 +324,19 @@ function repoDetail(repositoryId, opener) {
         `Public metadata checked ${date(repo.verified_at)}${repo.primary_language ? ' · ' + repo.primary_language : ''}`,
       ),
     );
+    const selected = boardModel
+      .rankBoard(board, period)
+      .projects.find((r) => r.repository_id === repositoryId);
+    body.append(
+      node('h3', 'Accepted tips in the selected period'),
+      node(
+        'p',
+        `${selected?.tips ?? 0} tip${selected?.tips === 1 ? '' : 's'} · ${selected?.contributors ?? 0} contributor${selected?.contributors === 1 ? '' : 's'}.`,
+      ),
+    );
+    if (selected?.accepted.length) proofs(body, selected.accepted);
+    else body.append(node('p', 'No accepted tips in this period.'));
+    body.append(node('h3', 'Current invitation'));
     if (observation) {
       body.append(
         node(
@@ -218,10 +408,6 @@ function repoDetail(repositoryId, opener) {
           'notice',
         ),
       );
-    body.append(node('h3', 'Accepted tips in this snapshot'));
-    const tips = board.tips.filter((t) => t.repository_id === repositoryId);
-    if (tips.length) proofs(body, tips);
-    else body.append(node('p', 'No currently counted tips.'));
   });
 }
 function table(target, headers, rows, makeRow) {
@@ -272,7 +458,7 @@ function renderDirectory() {
         board.repositories.find((r) => r.repository_id === o.repository_id)?.primary_language ||
           'Public project',
       ),
-      button('Explore jar ↗', (opener) => repoDetail(o.repository_id, opener)),
+      routeLink('Explore jar ↗', { kind: 'repository', id: o.repository_id }),
     );
     card.append(top, node('h3', o.repository), tags, bottom);
     byId('welcome-content').append(card);
@@ -309,20 +495,7 @@ function render() {
       (p) => {
         const tr = node('tr'),
           who = cell();
-        who.append(
-          button(
-            p.author_login,
-            (opener) =>
-              openDetail(p.author_login, opener, (body) => {
-                body.append(
-                  node('p', `${p.points} points · ${p.projects} projects in the selected period.`),
-                  node('p', 'Curated public opt-in, not verified AI use.', 'notice'),
-                );
-                proofs(body, p.accepted);
-              }),
-            'row-button',
-          ),
-        );
+        who.append(routeLink(p.author_login, { kind: 'author', id: p.author_id }, 'row-button'));
         who.append(
           node(
             'span',
@@ -367,7 +540,7 @@ function render() {
         const tr = node('tr'),
           who = cell();
         who.append(
-          button(r.repository, (opener) => repoDetail(r.repository_id, opener), 'row-button'),
+          routeLink(r.repository, { kind: 'repository', id: r.repository_id }, 'row-button'),
           node('span', r.primary_language || 'Public repository', 'row-meta'),
         );
         tr.append(
@@ -390,7 +563,7 @@ function render() {
   byId('explore').hidden = !explored.length;
   byId('explore-links').replaceChildren(
     ...explored.map((o) =>
-      button(o.repository + ' ↗', (opener) => repoDetail(o.repository_id, opener)),
+      routeLink(o.repository + ' ↗', { kind: 'repository', id: o.repository_id }),
     ),
   );
   renderDirectory();
@@ -401,16 +574,20 @@ function render() {
       .join(' · ') +
     `. Discovery: ${board.directory.complete ? 'batch complete' : 'batch incomplete'}${board.directory.search_failed ? ' · search failed' : ''}${board.directory.server_incomplete ? ' · server incomplete' : ''}${board.directory.truncated ? ' · truncated' : ''}. Source commit: ${board.source_commit}.`;
 }
-byId('close-board-detail').addEventListener('click', () => byId('board-detail').close());
-byId('board-detail').addEventListener('close', () => lastOpener?.focus());
+byId('close-board-detail').addEventListener('click', clearTarget);
+byId('board-detail').addEventListener('cancel', (event) => {
+  event.preventDefault();
+  clearTarget();
+});
+byId('board-detail').addEventListener('close', () => {
+  if (!byId('board-detail').open) restoreBoardFocus();
+});
 byId('board-search').addEventListener('input', renderDirectory);
-for (const control of document.querySelectorAll('[data-period]'))
-  control.addEventListener('click', () => {
-    period = control.dataset.period;
-    for (const n of document.querySelectorAll('[data-period]'))
-      n.setAttribute('aria-pressed', String(n === control));
-    render();
-  });
+for (const control of byId('board-period').querySelectorAll('[data-period]'))
+  control.addEventListener('click', () => changePeriod(control.dataset.period, false));
+window.addEventListener('popstate', () => {
+  if (board) syncBoardRoute({ focus: 'heading' });
+});
 async function load() {
   const abort = new AbortController(),
     timeout = setTimeout(() => abort.abort(), 15000);
@@ -440,7 +617,9 @@ async function load() {
       offset += chunk.length;
     }
     board = boardModel.parseBoard(new TextDecoder('utf-8', { fatal: true }).decode(data));
-    render();
+    syncBoardRoute({
+      focus: boardModel.parseBoardRoute(location.search).target ? 'heading' : 'none',
+    });
   } catch {
     if (reader) await reader.cancel().catch(() => {});
     hideCurrent(
