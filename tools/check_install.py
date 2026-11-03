@@ -54,6 +54,7 @@ RESOURCE_PATHS = (
     "schemas/output/1/session.schema.json",
     "schemas/output/1/skill.schema.json",
     "schemas/output/1/verify.schema.json",
+    "schemas/output/2/card.schema.json",
     "schemas/output/2/audit.schema.json",
     "schemas/output/2/authorization-request.schema.json",
     "schemas/output/2/dependencies.schema.json",
@@ -118,6 +119,7 @@ def installed_check(source):
     resources = importlib.resources.files("agent_contribute")
     for name in RESOURCE_PATHS:
         assert resources.joinpath(name).read_bytes() == (source / "agent_contribute" / name).read_bytes(), name
+    assert not resources.joinpath("schemas/output/1/card.schema.json").is_file(), "Card starts at output2"
     # Development tools such as the task-selection benchmark never ship in the wheel.
     assert not [str(file) for file in dist.files if str(file).startswith("web/") or str(file).startswith("tests/web/")]
     assert not [str(file) for file in dist.files if str(file).startswith("tools/") or "benchmark" in str(file)]
@@ -266,6 +268,14 @@ def installed_check(source):
     assert impact["trust"] == "self-reported recorded observations"
     assert json.loads(cli("schema", "receipt"))["$id"] == "urn:agent-contrib:output:2:receipt"
     assert json.loads(cli("schema", "impact"))["$id"] == "urn:agent-contrib:output:2:impact"
+
+    card = Path.cwd() / "synthetic-card.svg"
+    saved = json.loads(run([tipjar, "card", recorded, "--output", card,
+                            "--caption", "A personal gift of agent work"], cwd=Path.cwd(), env=env))
+    assert saved["sha256"] == hashlib.sha256(card.read_bytes()).hexdigest()
+    assert "Personal caption" in card.read_text(encoding="utf-8")
+    run([tipjar, "card", recorded, "--output", card], cwd=Path.cwd(), env=env, expected=1)
+    assert json.loads(cli("schema", "card"))["$id"] == "urn:agent-contrib:output:2:card"
 
     # Exercise real installed entry points, including small buffered JSON errors.
     for name, entrypoint in (

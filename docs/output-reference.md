@@ -68,6 +68,19 @@ One of `audit_report`, `audit_unread`.
 | `provenance` | `authorization_provenance` |  |
 | `api_budget` | `api_budget` (optional) |  |
 
+### `card`
+
+`agent-contrib schema card` · Exclusive offline SVG card from an editable local PR observation; no authority.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `output` | string |  |
+| `sha256` | string |  |
+| `url` | string |  |
+| `observed_at` | string |  |
+| `state` | "draft" \| "open" \| "closed" \| "merged" |  |
+| `warning` | string |  |
+
 ### `dependencies`
 
 `agent-contrib schema dependencies` · Offline report of explicit GitHub dependency URLs; candidates grant no authority.
