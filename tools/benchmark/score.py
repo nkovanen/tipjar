@@ -38,9 +38,11 @@ def score(paths, ks, bodies_dir=None, reps=2000, seed=0, scheme='registered'):
         labels = benchlib.labels(snapshot, scheme=scheme)
         counts = {name: sum(value == name for value in labels.values()) for name in ('positive', 'negative', 'excluded')}
         report['snapshots'].append({'repository': snapshot['repository'], 'cutoff': snapshot['cutoff'],
-                                    'horizon_days': snapshot['horizon_days'], 'issues': len(labels), **counts})
+                                    'horizon_days': snapshot['horizon_days'], 'issues': len(labels), **counts,
+                                    'pr_history': benchlib.history_status(snapshot)})
         for name in runs:
             runs[name].append((benchlib.rank(snapshot, name, bodies), labels))
+    report['history_caveat'] = benchlib.history_caveat([s['pr_history'] for s in report['snapshots']])
     for name, variant_runs in runs.items():
         report['variants'][name] = {f'@{k}': summarize(variant_runs, k, reps, seed) for k in ks}
     return report
@@ -51,7 +53,8 @@ def fmt(value):
 
 
 def table(report):
-    lines = [benchlib.scheme_title(report['labels']), '', '| Variant | k | Precision@k, unjudged as misses (95% sensitivity) | Upper bound | Judged coverage | '
+    lines = [benchlib.scheme_title(report['labels']), '',
+             *benchlib.history_lines([s['pr_history'] for s in report['snapshots']]), '', '| Variant | k | Precision@k, unjudged as misses (95% sensitivity) | Upper bound | Judged coverage | '
              'Condensed P@k | Recall@k | Random null median (95%) |', '| --- | --- | --- | --- | --- | --- | --- | --- |']
     for name, results in report['variants'].items():
         for k, r in results.items():

@@ -24,7 +24,9 @@ def load(paths):
 def evaluate(splits, variants, ks, reps=2000, seed=0, scheme='registered'):
     rows = []
     for split, snapshots in splits.items():
+        snapshots = [benchlib.validate(snapshot) for snapshot in snapshots]
         labels = [benchlib.labels(snap, scheme=scheme) for snap in snapshots]
+        history = [benchlib.history_status(snap) for snap in snapshots]
         population = {'snapshots': len(snapshots), 'issues': sum(len(label) for label in labels),
                       'judged': sum(sum(v != 'excluded' for v in label.values()) for label in labels),
                       'positives': sum(sum(v == 'positive' for v in label.values()) for label in labels)}
@@ -33,7 +35,8 @@ def evaluate(splits, variants, ks, reps=2000, seed=0, scheme='registered'):
             for k in ks:
                 ci = benchlib.bootstrap(runs, k, 'precision_lower', reps=reps, seed=seed)
                 null = benchlib.permutation_null(runs, k, 'precision_lower', reps=reps, seed=seed)
-                rows.append({'labels': scheme, 'split': split, 'variant': variant, 'k': k, 'population': population,
+                rows.append({'pr_history': history, 'history_caveat': benchlib.history_caveat(history),
+                             'labels': scheme, 'split': split, 'variant': variant, 'k': k, 'population': population,
                              'repositories': [snap['repository'] + '@' + snap['cutoff'][:10] for snap in snapshots],
                              **{metric: benchlib.pooled(runs, k, metric) for metric in
                                 ('precision_lower', 'precision_upper', 'coverage', 'condensed_precision', 'recall')},
@@ -46,7 +49,12 @@ def evaluate(splits, variants, ks, reps=2000, seed=0, scheme='registered'):
 def table(rows):
     def fmt(value):
         return '–' if value is None else f'{value:.2f}'
-    out = [benchlib.scheme_title(rows[0]['labels']) if rows else '', '', '| Split | Variant | k | P@k, unjudged as misses (95% sensitivity) | Upper bound | Coverage | '
+    histories = {}
+    for row in rows:
+        for status in row['pr_history']:
+            histories[(status['repository'], status['cutoff'], status['status'])] = status
+    out = [benchlib.scheme_title(rows[0]['labels']) if rows else '', '',
+           *benchlib.history_lines(list(histories.values())), '', '| Split | Variant | k | P@k, unjudged as misses (95% sensitivity) | Upper bound | Coverage | '
            'Condensed P@k | Recall@k | Random null median (95%) | Qualifies |',
            '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |']
     for row in rows:
