@@ -159,7 +159,7 @@ fresh, from the current trusted default-branch SHA, and strictly newer than serv
 generation. A delayed or reordered artifact therefore cannot restore older data.
 The predeploy source check makes at most two unauthenticated, uncached public
 GitHub GETs against fixed controller routes, separate from the collector budget
-(8 MiB/30 seconds each). The served state is one bounded 4 MiB/30-second request
+(8 MiB/30 seconds each, including a Linux wall-clock interrupt for DNS and headers). The served state is one bounded 4 MiB/30-second request
 to exactly `https://nkovanen.github.io/tipjar/board.json`. Redirects, unreadable or
 malformed state block. There is no retry, fallback host or user-supplied URL.
 Only an explicit controller first-deployment `bootstrap` dispatch permits HTTP

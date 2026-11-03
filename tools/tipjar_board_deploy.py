@@ -8,6 +8,7 @@ import http.client
 import json
 from pathlib import Path
 import re
+import signal
 import stat
 import sys
 import tarfile
@@ -19,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 CONTROLLER = 'nkovanen/tipjar'
 CONTROLLER_ID = 1444643470
+READ_SECONDS = 30
 MAX_JSON = 4 * 1024 * 1024
 MAX_HTTP = 8 * 1024 * 1024
 MAX_ARTIFACT = 64 * 1024 * 1024
@@ -47,9 +49,17 @@ def fetch(host, path, limit):
                                      re.fullmatch(r'/repos/nkovanen/tipjar/git/ref/heads/[A-Za-z0-9%._~-]+', path))
     ):
         raise ValueError('unsupported public endpoint')
-    connection = http.client.HTTPSConnection(host, timeout=30)
-    deadline = time.monotonic() + 30
+    # Socket timeouts alone do not bound DNS or a peer trickling response headers.
+    if not hasattr(signal, 'setitimer') or signal.getitimer(signal.ITIMER_REAL)[0]:
+        raise ValueError('Linux Pages read deadline unavailable')
+    def timed_out(signum, frame):
+        raise ValueError('public read timed out')
+    previous = signal.signal(signal.SIGALRM, timed_out)
+    connection = None
     try:
+        signal.setitimer(signal.ITIMER_REAL, READ_SECONDS)
+        deadline = time.monotonic() + READ_SECONDS
+        connection = http.client.HTTPSConnection(host, timeout=READ_SECONDS)
         connection.request('GET', path, headers={
             'Accept': 'application/json', 'User-Agent': 'tipjar-board-predeploy',
             'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache',
@@ -75,7 +85,10 @@ def fetch(host, path, limit):
     except (OSError, http.client.HTTPException) as exc:
         raise ValueError('public read failed') from exc
     finally:
-        connection.close()
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+        if connection is not None:
+            connection.close()
 
 
 def public_get(host, path, limit):

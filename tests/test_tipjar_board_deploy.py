@@ -4,6 +4,8 @@ import importlib
 import io
 import json
 import subprocess
+import signal
+import time
 import sys
 from pathlib import Path
 import tarfile
@@ -152,6 +154,27 @@ class DeployTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.tool.fetch('example.com', '/arbitrary', 8)
             self.assertEqual(calls, [])
+
+    @unittest.skipUnless(hasattr(signal, 'setitimer'), 'Linux Pages checker wall-clock deadline')
+    def test_slow_response_headers_are_interrupted_by_total_read_deadline(self):
+        completed = []
+        class Connection:
+            sock = None
+            def __init__(self, host, timeout):
+                pass
+            def request(self, method, path, headers):
+                pass
+            def getresponse(self):
+                time.sleep(0.2)
+                completed.append(True)
+                raise OSError('slow header read completed')
+            def close(self):
+                pass
+        with patch.object(self.tool.http.client, 'HTTPSConnection', Connection), \
+             patch.object(self.tool, 'READ_SECONDS', 0.03, create=True):
+            with self.assertRaises(ValueError):
+                self.tool.fetch('nkovanen.github.io', '/tipjar/board.json', 8)
+        self.assertEqual(completed, [], 'The header read outlived its wall-clock budget')
 
     def test_local_postbuild_cli_refuses_stale_source_without_network(self):
         generated = datetime.now(timezone.utc).replace(microsecond=0)
