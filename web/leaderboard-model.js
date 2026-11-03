@@ -595,6 +595,16 @@
     const inert = { period: "month", target: null, invalid: true };
     if (typeof search !== "string" || search.length > 2048) return inert;
     const params = new URLSearchParams(search);
+    if (params.has("repo")) {
+      const hint = local.parseRepositoryHandoff(search);
+      return hint.invalid
+        ? inert
+        : {
+            period: hint.period,
+            target: { kind: "repository-name", name: hint.repository },
+            invalid: false,
+          };
+    }
     if ([...params].length > 16) return inert;
     for (const key of ["repository_id", "author_id", "period"])
       if (params.getAll(key).length > 1) return inert;
@@ -651,11 +661,33 @@
         }
       : null;
   }
+  function resolveRepositoryName(board, name, now = new Date()) {
+    if (typeof name !== "string" || !fresh(board, now))
+      return { status: "unavailable" };
+    const hint = local.parseRepositoryHandoff(
+      new URLSearchParams({ repo: name }).toString(),
+    );
+    if (hint.invalid || !hint.repository) return { status: "unavailable" };
+    const rows = board.repositories.filter(
+      (row) => row.repository.toLowerCase() === hint.repository,
+    );
+    if (rows.length > 1) return { status: "unavailable" };
+    if (!rows.length) return { status: "not-listed" };
+    return {
+      status: "matched",
+      target: {
+        kind: "repository",
+        id: rows[0].repository_id,
+        label: rows[0].repository,
+      },
+    };
+  }
   const api = {
     MAX_BYTES,
     parseBoardRoute,
     boardViewURL,
     resolveBoardTarget,
+    resolveRepositoryName,
     parseBoard,
     rankBoard,
     fresh,
