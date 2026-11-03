@@ -67,13 +67,17 @@ function hideCurrent(title, text) {
   byId('newcomers').textContent = '';
   byId('directory-summary').textContent = 'Current welcome actions are unavailable.';
   byId('share-status').hidden = true;
-  const route = boardModel.parseBoardRoute(location.search);
-  if (!route.invalid && route.target?.kind === 'repository-name') {
-    const ownedFocus = byId('repository-handoff').contains(document.activeElement);
-    renderRepositoryHandoff(route.target.name, { status: 'unavailable' });
-    if (ownedFocus) byId('handoff-title').focus();
-  } else clearRepositoryHandoff();
+  reconcileUnavailableRoute(boardModel.parseBoardRoute(location.search));
+}
+function reconcileUnavailableRoute(route, focus = false) {
+  const named = !route.invalid && route.target?.kind === 'repository-name',
+    ownedFocus = byId('repository-handoff').contains(document.activeElement);
+  byId('share-status').hidden = true;
+  if (named) renderRepositoryHandoff(route.target.name, { status: 'unavailable' });
+  else clearRepositoryHandoff();
   closeDetail();
+  if (named && (focus || ownedFocus)) byId('handoff-title').focus();
+  else if (focus) restoreBoardFocus();
 }
 function ensureFresh() {
   if (!board || !boardModel.fresh(board)) {
@@ -244,11 +248,18 @@ function syncBoardRoute({ focus = 'heading' } = {}) {
   const route = boardModel.parseBoardRoute(location.search),
     changed = period !== route.period;
   period = route.period;
+  if (!ensureFresh()) {
+    reconcileUnavailableRoute(route, focus === 'heading' || focus === 'return');
+    for (const control of byId('board-period').querySelectorAll('[data-period]'))
+      control.setAttribute('aria-pressed', String(control.dataset.period === period));
+    if (focus === 'global-period')
+      byId('board-period').querySelector(`[data-period="${period}"]`).focus();
+    return;
+  }
   if (!globalRendered || changed) {
     render();
     globalRendered = true;
   }
-  if (!ensureFresh()) return;
   const nameHandoff = !route.invalid && route.target?.kind === 'repository-name';
   const target = nameHandoff ? null : boardModel.resolveBoardTarget(board, route.target),
     unavailable = !nameHandoff && (route.invalid || (route.target && !target));
@@ -678,9 +689,7 @@ byId('board-detail').addEventListener('close', () => {
 byId('board-search').addEventListener('input', renderDirectory);
 for (const control of byId('board-period').querySelectorAll('[data-period]'))
   control.addEventListener('click', () => changePeriod(control.dataset.period, false));
-window.addEventListener('popstate', () => {
-  if (board) syncBoardRoute({ focus: 'heading' });
-});
+window.addEventListener('popstate', () => syncBoardRoute({ focus: 'heading' }));
 async function load() {
   const abort = new AbortController(),
     timeout = setTimeout(() => abort.abort(), 15000);

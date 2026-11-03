@@ -98,6 +98,152 @@ const fixture = (name) =>
   }
   try {
     for (const width of [1440, 390]) {
+      const p = await page(width),
+        requests = [];
+      p.on('request', (r) => requests.push(r.url()));
+      let releaseSnapshot, markStarted;
+      const started = new Promise((resolve) => {
+        markStarted = resolve;
+      });
+      await p.route('**/tipjar/board.json', async (route) => {
+        await new Promise((resolve) => {
+          releaseSnapshot = resolve;
+          markStarted();
+        });
+        await route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify(fixture('valid')),
+        });
+      });
+      await p.addInitScript(() => {
+        history.replaceState(null, '', '?repo=fictional-demo%2Fwelcoming-jar');
+        history.pushState(null, '', '?repository_id=101');
+      });
+      await p.goto(origin + '/tipjar/leaderboard.html', { waitUntil: 'domcontentloaded' });
+      await started;
+      await p.goBack();
+      await p.waitForFunction(() =>
+        document.getElementById('repository-handoff').innerText.includes('lookup is unavailable'),
+      );
+      assert.equal(await p.locator('#repository-handoff .handoff-profile').count(), 0);
+      await p.goForward();
+      await p.waitForFunction(() => document.getElementById('repository-handoff').hidden);
+      releaseSnapshot();
+      await p.locator('#people-content tbody tr').waitFor();
+      await p.locator('#board-detail[open]').waitFor();
+      assert.equal(await p.locator('#people-content tbody tr').count(), 1);
+      assert.equal(
+        await p.locator('#board-detail-title').innerText(),
+        'fictional-demo/welcoming-jar',
+      );
+      assert.equal(requests.filter((u) => u.endsWith('/board.json')).length, 1);
+      assert.deepEqual(p.errors, []);
+      await p.close();
+      checks++;
+    }
+    const unavailableHistoryFailures = [];
+    for (const width of [1440, 390])
+      for (const state of ['expired', 'failed'])
+        for (const starting of ['name', 'numeric']) {
+          const p = await page(width, state === 'failed' ? null : fixture('v2/readme-welcome')),
+            requests = [];
+          p.on('request', (r) => requests.push(r.url()));
+          const nameURL = '?repo=fictional-demo%2Fwelcoming-jar&period=month',
+            numericURL = '?repository_id=101&period=month';
+          const label = `${state}/${starting}/${width}`;
+          try {
+            if (state === 'failed') {
+              await p.addInitScript(
+                ({ previous, current }) => {
+                  history.replaceState(null, '', previous);
+                  history.pushState(null, '', current);
+                },
+                {
+                  previous: starting === 'name' ? numericURL : nameURL,
+                  current: starting === 'name' ? nameURL : numericURL,
+                },
+              );
+              await p.goto(origin + '/tipjar/leaderboard.html');
+              await p.waitForFunction(() =>
+                document.getElementById('board-status').innerText.includes('breather'),
+              );
+            } else {
+              await p.goto(origin + '/tipjar/leaderboard.html' + nameURL);
+              await p.locator('#repository-handoff .handoff-profile').click();
+              if (starting === 'name') {
+                await p.goBack();
+                await p.locator('#repository-handoff .handoff-profile').waitFor();
+              }
+              await p.clock.setSystemTime(new Date('2026-11-05T12:00:00Z'));
+              await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+              await p.waitForFunction(() =>
+                document.getElementById('board-status').innerText.includes('Refresh overdue'),
+              );
+            }
+            await p.evaluate(() => {
+              window.unavailableWrites = [];
+              for (const method of ['pushState', 'replaceState']) {
+                const original = history[method].bind(history);
+                history[method] = (...args) => {
+                  window.unavailableWrites.push(method);
+                  return original(...args);
+                };
+              }
+              for (const method of ['resolveRepositoryName', 'resolveBoardTarget', 'rankBoard'])
+                TipjarBoard[method] = () => {
+                  throw new Error('Unavailable route must not resolve identity or scores');
+                };
+            });
+            const first = state === 'expired' && starting === 'name' ? 'goForward' : 'goBack';
+            for (const navigate of [first, first === 'goBack' ? 'goForward' : 'goBack']) {
+              await p[navigate]();
+              const named = new URL(p.url()).searchParams.has('repo');
+              await p.waitForFunction(
+                (shouldShow) => {
+                  const panel = document.getElementById('repository-handoff');
+                  return shouldShow
+                    ? !panel.hidden && panel.innerText.includes('lookup is unavailable')
+                    : panel.hidden && panel.childElementCount === 0;
+                },
+                named,
+                { timeout: 1500 },
+              );
+              assert.equal(await p.locator('#repository-handoff .handoff-profile').count(), 0);
+              assert.equal(await p.locator('#board-detail').evaluate((e) => e.open), false);
+              assert.equal(await p.locator('#copy-board-view').isVisible(), false);
+              if (named) {
+                assert.doesNotMatch(
+                  await p.locator('#repository-handoff').innerText(),
+                  /fictional-demo|Not listed/,
+                );
+                assert.equal(
+                  await p
+                    .getByRole('link', { name: 'Prepare an invitation locally', exact: true })
+                    .getAttribute('href'),
+                  origin + '/tipjar/directory.html?repo=fictional-demo%2Fwelcoming-jar#maintainers',
+                );
+              }
+              assert.deepEqual(await p.evaluate(() => window.unavailableWrites), []);
+              assert.equal(requests.filter((u) => u.endsWith('/board.json')).length, 1);
+              assert.equal(
+                requests.some((u) => u.includes('api.github.com')),
+                false,
+              );
+              assert.deepEqual(p.errors, []);
+              await p.screenshot({
+                path: path.join(output, `history-${state}-${starting}-${navigate}-${width}.png`),
+                fullPage: true,
+              });
+              checks++;
+            }
+          } catch (error) {
+            unavailableHistoryFailures.push(label + ': ' + error.message);
+          } finally {
+            await p.close();
+          }
+        }
+    assert.deepEqual(unavailableHistoryFailures, []);
+    for (const width of [1440, 390]) {
       const p = await page(width, fixture('v2/readme-welcome')),
         requests = [];
       p.on('request', (r) => requests.push(r.url()));
