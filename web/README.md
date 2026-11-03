@@ -144,9 +144,44 @@ Expiry closes and clears entity details, scores, copy and current welcome action
 
 Invalid, duplicate or conflicting selectors are inert and never become HTML,
 commands, identities or requests. Imported local files cannot supply these views.
-The root badge's existing `?repo=owner/name` onboarding and no-fetch CSP remain
-unchanged; automatic badge-name-to-board matching is deferred. Use the root's
-Community board / Find a jar links to browse public observations.
+The root badge's existing `?repo=owner/name` destination, onboarding and no-fetch
+CSP remain unchanged. Its explicit board lookup handoff is described below.
+
+## From a README badge to the public board
+
+A valid badge name on the root page offers **Look for this project on the public
+board** alongside the existing local invitation editor. The root fetches no data.
+The link opens `leaderboard.html?repo=owner%2Frepo&period=month`, a lookup hint
+rather than a canonical profile URL. The board uses its one existing snapshot
+request and requires an exact, unique current repository-name match. It does not
+redirect automatically: choose **Open current project view** to enter the numeric
+view. Copy view link remains numeric, and existing invitation checks still apply.
+
+A match establishes only the current snapshot's namespace observation. A renamed
+repository's former name is not followed; a reused name might now identify a
+different numeric repository. Badge origin and earlier ownership are not verified.
+A badge/query match never grants contribution approval or execution/publication
+authority. Current accepting projects, closed jars and welcome-only projects can
+all have a profile without being equivalent invitations.
+
+A fresh name with no included row shows limited-coverage information and local
+onboarding plus the fixed **Suggest a jar for review** form. Missing, malformed,
+expired or ambiguous data instead makes lookup unavailable. It supplies no stale
+identity or numeric profile link. Suggestions require curator review and never
+guarantee listing. No name/body/identity from the URL is added to the external
+suggestion form URL.
+
+Name and numeric selectors cannot be mixed or duplicated. Names, periods, encoded
+URLs and both query bounds are checked before creating personalized links. Invalid
+links use generic copy, never a raw query echo. A name-handoff period change
+replaces the current hint entry; Back/Forward recomputes names from the same fresh
+snapshot without another request. Changing to a numeric view clears the lookup
+panel; close uses the existing global-heading focus fallback when that opener is
+removed. Expiry clears matched labels and profile links, including on tab resume.
+
+Without JavaScript, static board, local onboarding and suggestion links remain,
+with an explanation that project lookup needs JavaScript and a fresh snapshot.
+No browser GitHub API request, new collector/data format or badge protocol is used.
 
 ## Browser checks
 
