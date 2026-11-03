@@ -94,6 +94,13 @@ authorization; final sign-off is pending.
 ## Repository policy review (mandatory; not verifier-enforced)
 
 Read `tipjar` on discovery/inspection/preparation and in `repository_policy`.
+Current public reads and task 0.3 recognize a scoped official README invitation
+only when `.tipjar.json` is absent. The manifest takes precedence. Task 0.3 binds
+inventory format 4 and actual source kind/path/blob; old unpublished drafts must
+be reprepared and freshly authorized. Published task 0.1/0.2 preparation and live
+verification retain manifest-only resolution and historical inventory semantics.
+Use `tipjar badge owner/repo` for offline onboarding. Never automatically edit a
+copied fork badge; its owner must intentionally correct or remove it.
 For an explicitly named repository, undeclared is a usable assessment path and
 needs no missing-jar override. `--welcomed-only` selects declared welcomes only
 among supplied names; selection grants no approval. Stop on closed/unknown jars,

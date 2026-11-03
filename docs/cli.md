@@ -1352,24 +1352,33 @@ Malformed repository arguments are usage errors (exit 2) before any GitHub read,
 including budget instrumentation. Existing commands keep their argument-exit
 behavior.
 
-The JSON is `tipjar-report/1` (frozen output/2 and active output/3). States:
+Current output 4 uses invitation/2: `.tipjar.json` takes precedence at the pinned
+commit; only when absent does the reader inspect root `README.md` for the exact
+repository-scoped official prefix. Invalid manifests never fall back to README.
+Reports include `repository_id`, `tree_sha`, `manifest_present`, `source_kind`
+and nullable `badge`; `path`, `blob_sha` and `sha256` identify the actual file.
+README reports keep `manifest: null`. Historical output 1–3 remains unchanged.
+See [README invitations](readme-invitations.md). States:
 
 | State | Meaning | Exit |
 | --- | --- | --- |
 | `welcome` | Valid source invitation; policy review still required | 0 |
 | `closed` | Valid opt-out declaration | 0 |
-| `undeclared` | Complete pinned tree has no exact root jar | 0 |
+| `undeclared` | Complete source has no recognized invitation | 0 |
 | `unknown` | Read, identity, file-kind or validation failure | 1 |
 
 Exit 0 reports a complete observation; it grants no permission. On early failure,
 unavailable branch/commit/blob/digest fields remain null. The exact byte SHA-256
-is retained when bytes were decoded, including invalid manifests or mismatched
-blobs; a digest alone does not establish trusted source provenance. Text output
+is exposed only after path, file kind, base64, supplied sizes and Git blob identity
+are verified; parse failures retain that verified digest. A readable undeclared
+README legitimately has non-null digests. A digest authenticates no consent. Text output
 is abridged and sanitized; canonical JSON retains validated untrusted text.
 
 `discover`, `inspect`, `audit` and `prepare` include the actual issue source's
-pinned jar. Closed and unknown declarations block preparation and every live
-contribution gate, including approved-label, fork and host-mandate routes.
+pinned declaration. Current public reads and task 0.3 use invitation/2. Published
+task 0.1/0.2 preparation and verification retain manifest-only invitation/1 and
+historical inventories, with no additional README intent read or blocker.
+Applicable closed/unknown declarations still block their routes.
 A welcome never grants issue approval or execution/publication authority.
 Live gates reconstruct the jar at the contract's source commit: added, removed
 or byte-changed jars require refreshing and reviewing the contract. Branch
@@ -1450,7 +1459,7 @@ fork to a human-selected public upstream issue, with separate implementation and
 exact-result publication assertions. Welcome and undeclared sources both require
 complete source/fork policy accounting; no invitation or approval is invented.
 See [the complete external-tip workflow](external-tips.md) for commands, records, pause points and limits. Evidence
-remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.
+remains schema 0.2; new reports use output/4. Existing 0.1/0.2 authority is unchanged.
 
 
 ## Task 0.3 helper handoff (candidate)
@@ -1527,9 +1536,9 @@ agent-contrib --format text find --owner acme
 agent-contrib schema find
 ```
 
-One authenticated legacy code-search page uses exactly
-`filename:.tipjar.json path:/`, optionally `user:OWNER`, with `per_page=10` and
-`page=1`. OWNER accepts the GitHub login grammar (1–39 ASCII letters, digits and
+Exactly two sequential authenticated page-1 searches use
+`filename:.tipjar.json path:/` and `"tipjar:welcome:v1" filename:README.md path:/`,
+each optionally scoped with `user:OWNER`, `per_page=5` and `page=1`. OWNER accepts the GitHub login grammar (1–39 ASCII letters, digits and
 hyphens, starting with a letter or digit), never arbitrary search qualifiers.
 There is no cursor, backfill, fallback query, sort promise or fair rotation.
 
@@ -1542,23 +1551,25 @@ private names, ids and manifests are suppressed. A fork invites only itself.
 Only `disposition: welcome` is selectable; ordinary policy review and separate
 execution/publication authority still apply. There is no automatic issue proposal.
 
-Canonical output is `find-jars-report/1`, independent of output-schema version.
+Canonical current output is `find-jars-report/2` in output schema 4.
 `observations` contains `{repository, repository_id, disposition, reason,
-verified_at, jar}`. Jar reports retain their existing schema. Reasons are fixed
+verified_at, jar}`. Jar reports use the versioned invitation source union. Reasons are fixed
 codes; invalid identities and withheld private data are null. `requests.search`
 and `requests.core` count command gh invocations, excluding instrumentation.
-`search` records query, page, per_page, total_count, incomplete_results,
-returned_count, truncated and short_page. Unavailable search values are null.
+`searches` contains two records with query, page, per_page, total_count,
+incomplete_results, returned_count, truncated, short_page and fixed error codes.
+Unavailable values are null. Failed searches retain verified findings from the
+other query; cross-query paths for one validated repository share one inspection.
 `coverage.exhaustive` is always false. Timestamps and pinned commits are
 observations, not atomic or “live now” guarantees.
 
-At most 51 command gh invocations (one search and up to fifty core), sequential,
+At most 52 command gh invocations (two searches and up to fifty core), sequential,
 without application retries/sleeps/pagination; `--report-budget` adds two snapshots
-with up to three invocations each (53 all-success, at most 57). These are not raw
+with up to three invocations each (54 all-success, at most 58). These are not raw
 HTTP counts: gh may internally follow redirects, which are not instrumented.
 Application code never follows returned URLs or adopts renamed/transferred
 identities. Each whole invocation retains the 30-second parent timeout and
-8 MiB response cap: summed command invocation timeouts are at most 25.5 minutes,
+8 MiB response cap: summed command invocation timeouts are at most 26 minutes,
 excluding processing and optional instrumentation. Find reads remain uncached
 even with `--cache`. Search has a separate, tighter quota; `--min-remaining` and
 `api_budget` measure core only, never search availability. Authentication, quota

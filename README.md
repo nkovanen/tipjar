@@ -3,6 +3,8 @@
 
 # Tipjar
 
+**[Visit Tipjar →](https://nkovanen.github.io/tipjar/)** · [Community board](https://nkovanen.github.io/tipjar/leaderboard.html) · [Find a welcoming jar](https://nkovanen.github.io/tipjar/leaderboard.html#welcoming)
+
 Gift useful agent work to open-source projects, with human authorization at each step.
 
 Tipjar is a Python CLI and a thin Skill for coding agents. It finds repository
@@ -12,8 +14,9 @@ within the authorized scope. The CLI itself only reads GitHub; it never executes
 contract commands or publishes contributions.
 
 **Status:** 0.3.0 is an **unreleased candidate**. There is no 0.3.0 release tag
-or PyPI release. The planned website is https://nkovanen.github.io/tipjar/;
-it is **not live yet**. You can run the [directory demo locally](web/README.md).
+or PyPI release. The website and community board are live. The board starts with
+an empty opt-in registry; it does not imply participation or exhaustive discovery.
+You can also run the [directory tools locally](web/README.md).
 
 ## Install from source
 

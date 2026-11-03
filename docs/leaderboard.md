@@ -18,7 +18,8 @@ impact reports never supply scoring authority.
 ## Submit and curate one accepted tip
 
 Use the controller repository's [submission form](https://github.com/nkovanen/tipjar/issues/new?template=submit-tip.yml).
-The reviewed form source is [inert until controller activation](examples/submit-tip.yml.disabled).
+The [active submission form](../.github/ISSUE_TEMPLATE/submit-tip.yml) matches
+the retained [inert recipe](examples/submit-tip.yml.disabled).
 Submit through the same GitHub account that authored the PR. The declaration
 explicitly opts in that PR and its public identity/proof/merge facts/size context,
 self-declares agent assistance and no control of the receiving repository,
@@ -131,8 +132,9 @@ deployment. These are non-atomic public observations, not continuous guarantees.
 
 ## Reviewed workflow and controller activation
 
-[The workflow example](examples/tipjar-board-pages.yml.disabled) is inert. It
-runs daily and manually after activation. It checks out the trusted default-branch
+[The active workflow](../.github/workflows/tipjar-board-pages.yml) runs daily and
+manually; [the retained example](examples/tipjar-board-pages.yml.disabled) is inert.
+It checks out the trusted default-branch
 commit with credentials disabled, collects with job-scoped `GH_TOKEN` and only
 `contents: read`, copies `web/` unchanged to the site root, and adds `board.json`.
 No frontend build or external dependency install is required. It uploads a Pages
@@ -167,7 +169,9 @@ Only an explicit controller first-deployment `bootstrap` dispatch permits HTTP
 Later ordinary dispatches leave bootstrap false. Never use it to recover from a
 missing existing deployment without investigating that loss.
 
-Controller activation after independent implementation review:
+The site is deployed with GitHub Actions and a `github-pages` environment limited
+to `main`. The following checklist documents activation and future deployment
+verification after independent implementation review:
 
 1. Integrate collector, frontend, checker, registry and source packaging policy.
    Run the required unit/Ajv/Node checks and standalone package checks; inspect

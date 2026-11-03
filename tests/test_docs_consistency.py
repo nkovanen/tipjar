@@ -46,7 +46,8 @@ class DocsConsistencyTests(unittest.TestCase):
                 self.assertIn('unreleased candidate', text)
         readme = (ROOT / 'README.md').read_text('utf-8')
         self.assertLess(readme.index('pipx install'), readme.index('agent-contrib skill --output'))
-        self.assertIn('not live yet', readme)
+        self.assertIn('[Visit Tipjar →](https://nkovanen.github.io/tipjar/)', readme.split('## Install from source')[0])
+        self.assertNotIn('not live yet', readme)
         self.assertIn('https://nkovanen.github.io/tipjar/', readme)
         self.assertIn('distribution remains `agent-contrib`', readme)
         self.assertIn('Python module remains', readme)
@@ -116,7 +117,7 @@ class DocsConsistencyTests(unittest.TestCase):
         text = (ROOT / 'docs/product-map.md').read_text('utf-8')
         self.assertIn('agent-contrib/blob/ae206ce0ef079cd369dda0803a4374ca177516bd/docs/product-map.md', text)
         for phrase in ('`discover --limit`', 'machine-readable opt-out', 'no native human/host mandate issuer',
-                       'unreleased candidate', 'read-only', 'not live yet'):
+                       'unreleased candidate', 'read-only', 'are live'):
             self.assertIn(phrase, text)
 
     def test_product_map_does_not_list_shipped_output_schemas_as_missing(self):

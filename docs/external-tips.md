@@ -39,7 +39,7 @@ records unchanged and must never generate consent. There is no consent issuer,
 cryptographic proof of a human, or authenticated issuer-file system here.
 
 Both authorizations bind the exact contract, personal actor, source **and fork**
-format-3 inventories, canonical assessment hash, original policy-ledger bytes and
+format-4 inventories, canonical assessment hash, original policy-ledger bytes and
 invitation basis. No-jar selection requires `undeclared_acknowledged: true` in
 both; welcome uses false. This acknowledges “no declared agent invitation; I
 choose to offer this policy-compliant draft, which maintainers may decline.”
@@ -108,4 +108,4 @@ no fork baseline). External policy targets still require manual host rereads.
 pending host-context gates; it never publishes. `feedback` remains a generic
 report and supplies no external lifecycle authority. See the
 [tipping walkthrough](tipping.md) for these helper commands and human stops.
-Use canonical JSON `external-tip-report/1` and output/3 schemas for automation.
+Use canonical JSON `external-tip-report/1` and output/4 schemas for automation.

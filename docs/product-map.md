@@ -1,11 +1,14 @@
 # Product status
 
 Tipjar 0.3.0 is an **unreleased candidate**. Development continues in
-[nkovanen/tipjar](https://github.com/nkovanen/tipjar). The website at
-https://nkovanen.github.io/tipjar/ is planned and not live yet.
+[nkovanen/tipjar](https://github.com/nkovanen/tipjar). The
+[website and community board](https://nkovanen.github.io/tipjar/) are live.
 
 ### Implemented
 
+- Public community board: curated opt-in merged tips, most-tipped projects and
+  fresh welcoming jars, with partial coverage and expiring observations. The
+  production registry starts empty; no participation is implied.
 - Repository invitations: recognize the exact repository-scoped official README
   prefix and validate `.tipjar.json` manifest 0.1, inspect a pinned
   declaration with `jar`, and enforce welcome/closed/unknown states during
