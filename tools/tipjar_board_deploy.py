@@ -98,10 +98,16 @@ def public_get(host, path, limit):
         raise ValueError('public state unreadable') from exc
 
 
+def http_status_suffix(status):
+    if type(status) is int and 100 <= status <= 599:
+        return f' (HTTP {status})'
+    return ''
+
+
 def current_source():
     status, data = public_get('api.github.com', '/repos/nkovanen/tipjar', MAX_HTTP)
     if status != 200:
-        raise ValueError('controller metadata unreadable')
+        raise ValueError('controller metadata unreadable' + http_status_suffix(status))
     repo = strict_json(data)
     if not isinstance(repo, dict) or type(repo.get('id')) is not int or repo['id'] != CONTROLLER_ID or (
         repo.get('full_name') != CONTROLLER or repo.get('private') is not False or
@@ -115,7 +121,7 @@ def current_source():
         raise ValueError('invalid default branch')
     status, data = public_get('api.github.com', '/repos/nkovanen/tipjar/git/ref/heads/' + quote(branch, safe=''), MAX_HTTP)
     if status != 200:
-        raise ValueError('default branch unreadable')
+        raise ValueError('default branch unreadable' + http_status_suffix(status))
     ref = strict_json(data)
     obj = ref.get('object') if isinstance(ref, dict) else None
     if not isinstance(ref, dict) or ref.get('ref') != 'refs/heads/' + branch or not isinstance(obj, dict) or (
@@ -130,7 +136,7 @@ def served_board():
     if status == 404:
         return None
     if status != 200:
-        raise ValueError('served board unreadable; redirects are not followed')
+        raise ValueError('served board unreadable; redirects are not followed' + http_status_suffix(status))
     return data
 
 
