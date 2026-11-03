@@ -137,7 +137,10 @@ class FakeGitHub:
             if callable(result): result = result()
             if isinstance(result, Exception): raise result
             return copy.deepcopy(result)
-        if endpoint.startswith('search/code?'): return copy.deepcopy(self.search)
+        if endpoint.startswith('search/code?'):
+            if 'filename%3AREADME.md' in endpoint:
+                return {'total_count':0,'incomplete_results':False,'items':[]}
+            return copy.deepcopy(self.search)
         if endpoint == 'repos/nkovanen/tipjar': return copy.deepcopy(self.controller)
         if endpoint == 'repos/nkovanen/tipjar/issues/11': return copy.deepcopy(self.issue)
         if endpoint == 'repos/fictional-demo/welcoming-jar': return copy.deepcopy(self.meta)
@@ -230,7 +233,7 @@ class CollectorTests(unittest.TestCase):
         self.assertNotIn('fictional-demo',json.dumps(result))
 
     def test_failed_search_retains_partial_flags_without_rows(self):
-        c=FakeGitHub();c.overrides['search/code?q=filename%3A.tipjar.json+path%3A%2F&per_page=10&page=1']=core.ProtocolError('api_error','private name')
+        c=FakeGitHub();c.overrides['search/code?q=filename%3A.tipjar.json+path%3A%2F&per_page=5&page=1']=core.ProtocolError('api_error','private name')
         r={'format':'tipjar-board-registry/1','tips':[],'repositories':[],'exclusions':[]}
         result=collect(c,r)
         self.assertTrue(result['directory']['search_failed']);self.assertFalse(result['directory']['complete'])
@@ -357,13 +360,13 @@ class IndependentSchemaTests(unittest.TestCase):
             if required:self.fail('Required board parity cannot load Ajv')
             self.skipTest('Optional board parity needs Ajv2020')
         script="""const fs=require('fs'),Ajv=require(process.argv[1]);const {schema,cases}=JSON.parse(fs.readFileSync(0,'utf8'));const validate=new Ajv({strict:true}).compile(schema);process.stdout.write(JSON.stringify(cases.map(x=>validate(x))));"""
-        for name,good in [('tipjar-board',fixture()),('tipjar-board-registry',registry())]:
+        for name,good in [('tipjar-board',fixture()),('tipjar-board-registry',registry()),('tipjar-board-v2',v2_fixture())]:
             cases=[good];expected=[True]
             for mutation in [lambda v:v.update(unexpected=True),lambda v:v.update(format='unknown'),
                              lambda v:v['tips'][0].update(author_id=True),
                              lambda v:v['tips'][0].update(author_id=9007199254740992)]:
                 v=copy.deepcopy(good);mutation(v);cases.append(v);expected.append(False)
-            if name=='tipjar-board':
+            if name in ('tipjar-board','tipjar-board-v2'):
                 v=copy.deepcopy(good);v['source_commit']='X'+'a'*40;cases.append(v);expected.append(False)
                 v=copy.deepcopy(good);v['source_commit']='a'*39+'z';cases.append(v);expected.append(False)
             else:
@@ -414,8 +417,214 @@ class BoundaryRegressionTests(unittest.TestCase):
 
     def test_full_truncated_index_keeps_partial_even_with_duplicate_hits(self):
         c=FakeGitHub();hit={'repository':c.meta,'name':'.tipjar.json','path':'.tipjar.json','sha':'c'*40}
-        c.search={'total_count':11,'incomplete_results':False,'items':[hit]*10}
+        c.search={'total_count':6,'incomplete_results':False,'items':[hit]*5}
         result=collect(c)
         self.assertTrue(result['directory']['truncated'])
         self.assertFalse(result['directory']['complete'])
         self.assertEqual(len(result['tips']),1)
+
+
+V2_FIXTURES = FIXTURES / 'v2'
+MANIFEST_SEARCH = 'search/code?q=filename%3A.tipjar.json+path%3A%2F&per_page=5&page=1'
+README_SEARCH = 'search/code?q=%22tipjar%3Awelcome%3Av1%22+filename%3AREADME.md+path%3A%2F&per_page=5&page=1'
+README_WELCOME = (b'<!-- tipjar:welcome:v1 -->\n'
+    b'[![Agent-work tips welcome](https://nkovanen.github.io/tipjar/brand/agent-work-welcome.svg)]'
+    b'(https://nkovanen.github.io/tipjar/?repo=fictional-demo%2Fwelcoming-jar)\n\n# FICTIONAL DEMO\n')
+
+
+def v2_fixture(name='readme-welcome'):
+    return json.loads((V2_FIXTURES / (name + '.json')).read_text())
+
+
+class InvitationGitHub(FakeGitHub):
+    """Real canonical invitation2 reader over fictional pinned trees/content."""
+    def __init__(self, files=None):
+        super().__init__()
+        self.files = {'.tipjar.json': self.manifest} if files is None else files
+
+    def request_once(self, endpoint):
+        import base64
+        if endpoint in self.overrides:
+            return super().request_once(endpoint)
+        if '/git/trees/' in endpoint:
+            self.calls.append(endpoint)
+            return {'sha':'2'*40,'truncated':False,'tree':[
+                {'path':path,'type':'blob','mode':'100644','size':len(data),
+                 'sha':hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()}
+                for path,data in self.files.items()]}
+        if '/contents/' in endpoint:
+            self.calls.append(endpoint)
+            path=endpoint.split('/contents/')[1].split('?')[0]
+            data=self.files[path]
+            return {'type':'file','path':path,'encoding':'base64','size':len(data),
+                    'sha':hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest(),
+                    'content':base64.b64encode(data).decode()}
+        return super().request_once(endpoint)
+
+
+class Board2ContractTests(unittest.TestCase):
+    def test_shared_corpus_preserves_parse_and_freshness_contract(self):
+        index=json.loads((V2_FIXTURES/'corpus.json').read_text())
+        now=dt.datetime.fromisoformat(index['now'].replace('Z','+00:00'))
+        for case in index['cases']:
+            data=(V2_FIXTURES/case['file']).read_bytes()
+            with self.subTest(file=case['file']):
+                try:
+                    value=board.validate_board(data,now=now)
+                    valid=True
+                except core.ProtocolError:valid=False
+                self.assertEqual(valid,case['valid'])
+                try:
+                    board.require_fresh(data,now=now)
+                    fresh=True
+                except core.ProtocolError:fresh=False
+                self.assertEqual(fresh,case['fresh'])
+                if valid:self.assertEqual(value,json.loads(data))
+
+    def test_both_versions_validate_without_current_reader_validation(self):
+        from unittest.mock import patch
+        with patch.object(board.tipjar,'_complete_report',side_effect=AssertionError('mutable reader validator used')):
+            board.validate_board(fixture(),now=NOW)
+            board.validate_board(v2_fixture(),now=NOW)
+        self.assertEqual(board.summarize(fixture()['tips'],now=NOW,period='all'),
+                         board.summarize(v2_fixture()['tips'],now=NOW,period='all'))
+
+    def test_archived_board1_still_requires_pinned_commit_without_mutable_reader(self):
+        from unittest.mock import patch
+        value=fixture();obs=value['directory']['observations'][0]
+        obs['jar']['commit']=None;obs['source']=None
+        with patch.object(board.tipjar,'_complete_report',side_effect=AssertionError('mutable validator used')):
+            with self.assertRaises(core.ProtocolError):board.validate_board(value,now=NOW)
+
+    def test_v2_source_complete_requires_all_pins_and_matches_raw_jar(self):
+        for name in ('manifest-welcome','readme-welcome','readme-undeclared','absent'):
+            for field,new in [('source',None),('repository_id',102)]:
+                value=v2_fixture(name);value['directory']['observations'][0][field]=new
+                with self.subTest(name=name,field=field),self.assertRaises(core.ProtocolError):
+                    board.validate_board(value,now=NOW)
+        for field,new in [('commit','e'*40),('blob_sha','e'*40),('tree_sha','e'*40),('sha256','e'*64)]:
+            value=v2_fixture();value['directory']['observations'][0]['source'][field]=new
+            with self.subTest(field=field),self.assertRaises(core.ProtocolError):board.validate_board(value,now=NOW)
+
+    def test_unknown_formats_duplicate_keys_and_future_times_fail_closed(self):
+        for data in [b'{"format":"tipjar-board/2","format":"tipjar-board/1"}',
+                     (V2_FIXTURES/'readme-welcome.json').read_bytes().replace(b'"tree_sha":',b'"tree_sha":"' + b'a'*40 + b'","tree_sha":',1)]:
+            with self.assertRaises(core.ProtocolError):board.validate_board(data,now=NOW)
+        for stamp in ('2026-11-03T12:00:01Z','2026-11-03T12:00:00','2026-11-03T12:00:00+01:00', '20261103T120000+00:00'):
+            value=v2_fixture();value['directory']['observations'][0]['jar']['fetched_at']=stamp
+            with self.subTest(stamp=stamp),self.assertRaises(core.ProtocolError):board.validate_board(value,now=NOW)
+        for stamp in ('2026-11-03T12:00:00Z','2026-11-03T12:00:00+00:00'):
+            value=v2_fixture();value['directory']['observations'][0]['jar']['fetched_at']=stamp
+            self.assertEqual(board.validate_board(value,now=NOW),value)
+
+
+class Board2CollectorTests(unittest.TestCase):
+    def test_reader2_manifest_readme_plain_and_absent_sources(self):
+        for files,kind,state,path in [({'.tipjar.json':b'{"schema_version":"0.1","status":"welcome"}'},'manifest','welcome','.tipjar.json'),
+                                    ({'README.md':README_WELCOME},'readme','welcome','README.md'),
+                                    ({'README.md':b'# FICTIONAL DEMO\n'},'readme','undeclared','README.md'),
+                                    ({},'absent','undeclared',None)]:
+            with self.subTest(kind=kind,state=state):
+                c=InvitationGitHub(files);result=collect(c)
+                self.assertEqual(result['format'],'tipjar-board/2')
+                self.assertEqual(len(result['tips']),1)
+                obs=result['directory']['observations'][0]
+                self.assertEqual(obs['disposition'],state)
+                self.assertEqual(obs['source']['kind'],kind)
+                self.assertEqual(obs['source']['path'],path)
+                self.assertEqual(obs['source']['tree_sha'],'2'*40)
+                self.assertEqual(obs['jar']['repository_id'],101)
+                self.assertEqual(set(obs['source']),{'kind','path','commit','tree_sha','blob_sha','sha256'})
+                if path:
+                    import hashlib
+                    self.assertEqual(obs['source']['sha256'],hashlib.sha256(files[path]).hexdigest())
+                else:self.assertIsNone(obs['source']['blob_sha']);self.assertIsNone(obs['source']['sha256'])
+                self.assertEqual([e for e in c.calls if e.startswith('search/code?')],[MANIFEST_SEARCH,README_SEARCH])
+
+    def test_canonical_manifest_precedence_and_copied_or_invalid_readme(self):
+        for files,state in [({'.tipjar.json':b'{"schema_version":"0.1","status":"closed"}','README.md':README_WELCOME},'closed'),
+                            ({'.tipjar.json':b'bad manifest','README.md':README_WELCOME},'unknown'),
+                            ({'.tipjar.json':b'{"schema_version":"99","status":"welcome"}','README.md':README_WELCOME},'unknown'),
+                            ({'README.md':README_WELCOME.replace(b'fictional-demo%2Fwelcoming-jar',b'copied-parent%2Fproject')},'unknown'),
+                            ({'README.md':README_WELCOME+README_WELCOME},'unknown')]:
+            with self.subTest(state=state,files=list(files)):
+                c=InvitationGitHub(files);result=collect(c);obs=result['directory']['observations'][0]
+                self.assertEqual(obs['disposition'],state);self.assertEqual(len(result['tips']),1)
+                if state=='unknown':self.assertIsNone(obs['jar']);self.assertIsNone(obs['source'])
+                else:self.assertEqual(obs['source']['kind'],'manifest')
+                if '.tipjar.json' in files:self.assertFalse(any('/contents/README.md?' in x for x in c.calls))
+
+    def test_second_readme_search_private_hit_scrubs_earlier_public_tip(self):
+        c=InvitationGitHub({'README.md':README_WELCOME})
+        c.overrides[README_SEARCH]={'total_count':1,'incomplete_results':False,'items':[
+            {'repository':dict(c.meta,private=True),'path':'README.md','name':'README.md','sha':'c'*40}]}
+        result=collect(c)
+        # The PR read succeeds before the second search; all later metadata stays public.
+        self.assertLess(c.calls.index('repos/fictional-demo/welcoming-jar/pulls/7'),c.calls.index(README_SEARCH))
+        self.assertEqual(result['tips'],[]);self.assertEqual(result['repositories'],[])
+        self.assertEqual(result['directory']['observations'],[])
+        self.assertNotIn('fictional-demo',json.dumps(result))
+        self.assertEqual(result['coverage']['unknown_tips'],1)
+
+    def test_both_raw_searches_capture_private_ids_before_finder_scrubs_them(self):
+        for endpoint in (MANIFEST_SEARCH,README_SEARCH):
+            for visibility in ({'private':True},{'private':False,'visibility':'internal'}):
+                c=InvitationGitHub();c.overrides[endpoint]={'items':[{'repository':dict(c.meta,**visibility)}]}
+                b=board.BudgetClient(c,clock=lambda:COLLECT_NOW)
+                b.request_once(endpoint)
+                b.request('repos/fictional-demo/welcoming-jar')
+                with self.subTest(endpoint=endpoint,visibility=visibility):
+                    self.assertIn(101,b.private_ids);self.assertIn('fictional-demo/welcoming-jar',b.private_names)
+
+    def test_each_search_failure_is_partial_and_preserved_without_rows(self):
+        empty={'format':'tipjar-board-registry/1','tips':[],'repositories':[],'exclusions':[]}
+        for failed in (MANIFEST_SEARCH,README_SEARCH):
+            c=InvitationGitHub();c.overrides[failed]=core.ProtocolError('api_error','FICTIONAL PRIVATE ERROR')
+            result=collect(c,empty)
+            with self.subTest(failed=failed):
+                self.assertTrue(result['coverage']['partial']);self.assertTrue(result['directory']['search_failed'])
+                self.assertFalse(result['directory']['complete']);self.assertEqual(result['tips'],[])
+                self.assertEqual(c.calls[-2:],[MANIFEST_SEARCH,README_SEARCH])
+                self.assertNotIn('PRIVATE ERROR',json.dumps(result))
+
+    def test_both_searches_dedup_same_repository_and_preserve_partial_flags(self):
+        c=InvitationGitHub({'README.md':README_WELCOME})
+        for endpoint,path in [(MANIFEST_SEARCH,'.tipjar.json'),(README_SEARCH,'README.md')]:
+            c.overrides[endpoint]={'total_count':6,'incomplete_results':True,'items':[
+                {'repository':c.meta,'name':path,'path':path,'sha':'c'*40}]}
+        result=collect(c)
+        self.assertEqual(len(result['tips']),1);self.assertEqual(len(result['repositories']),1)
+        self.assertEqual(len(result['directory']['observations']),1)
+        self.assertTrue(result['directory']['server_incomplete']);self.assertTrue(result['directory']['truncated'])
+        self.assertFalse(result['directory']['complete'])
+
+    def test_readme_read_start_is_retained_with_final_recheck_and_conservative_expiry(self):
+        class Clock:
+            def __init__(self):self.value=COLLECT_NOW
+            def __call__(self):
+                v=self.value;self.value+=dt.timedelta(seconds=1);return v
+        c=InvitationGitHub({'README.md':README_WELCOME});clock=Clock()
+        result=collect(c,clock=clock)
+        obs=result['directory']['observations'][0]
+        self.assertEqual(len(obs['checks']),5)  # metadata, commit, tree, README, final metadata
+        self.assertEqual(obs['verified_at'],obs['checks'][0])
+        content_index=c.calls.index('repos/fictional-demo/welcoming-jar/contents/README.md?ref='+'b'*40)
+        self.assertEqual(obs['checks'][3],(COLLECT_NOW+dt.timedelta(seconds=content_index)).isoformat().replace('+00:00','Z'))
+        self.assertEqual(result['expires_at'],'2026-11-06T12:00:00Z')
+        self.assertEqual(c.calls[-1],'repos/fictional-demo/welcoming-jar')
+
+    def test_current_emission_ignores_changed_library_default_and_rejects_unknown_report(self):
+        from unittest.mock import patch
+        original=board.tipjar.read_jar
+        seen=[]
+        def read(*args,**kwargs):
+            seen.append(kwargs.get('invitation_protocol'))
+            return original(*args,**kwargs)
+        with patch.object(board.tipjar,'read_jar',side_effect=read):
+            result=collect(InvitationGitHub())
+        self.assertEqual(result['format'],'tipjar-board/2')
+        self.assertTrue(seen);self.assertEqual(set(seen),{'tipjar-invitation/2'})
+        jar=v2_fixture()['directory']['observations'][0]['jar'];jar['new_field']='future'
+        with patch.object(board.tipjar,'read_jar',return_value=jar):
+            with self.assertRaises(core.ProtocolError) as raised:collect(InvitationGitHub())
+        self.assertEqual(raised.exception.code,'unsupported_board_reader')
