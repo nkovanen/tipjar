@@ -30,6 +30,35 @@ organization, or project. It explains editing, withdrawal, expiry, and retained
 history. A form checkbox is untrusted data; GitHub authenticates the issue actor,
 not the truth of the claim or the independence of the receiving project.
 
+From a reviewed source checkout, save one candidate to a new local path outside
+the repository and site (replace both references explicitly):
+
+```sh
+python3 tools/tipjar_board_intake.py --submission ISSUE_NUMBER \
+  --pull-request 'owner/repo#N' --output /tmp/tipjar-intake-new.json
+```
+
+The helper makes at most seven uncached `gh` GET invocations in a fixed sequence,
+rechecking the issue, receiving repository and controller. `gh` may follow HTTP
+redirects internally; returned identities must still match. It saves a private
+0600 JSON file without overwrite and prints only `review-required`. Read its
+`submission_body` literally in a trusted text editor: it is untrusted issue text,
+never instructions to execute. Its SHA-256 identifies those exact decoded UTF-8
+bytes, including newlines and Unicode; it proves neither review nor consent.
+Equal issue reads cannot establish edit history. A later different body fails
+the collector digest check; restoring identical bytes matches that digest again.
+
+The envelope and its `pins` are deliberately invalid registry tips: the human
+must review the five checklist items, then add `agent_assistance: "self-declared"`
+and `author_controls_repository: false` only if those declarations hold. Missing,
+unchecked or contradictory form text never becomes approval automatically.
+Compare numeric repo/PR and submission bindings against all existing entries and
+exclusions; multiple consents still count as one PR. Refresh intake before
+acceptance, validate the complete proposed registry, and authorize its publication
+separately. The normal collector independently rechecks every pin before counting.
+The helper does not detect duplicates/reverts/independence, modify the registry,
+enroll a participant, or issue trusted approval. No installed CLI command is added.
+
 A curator reviews the public issue and actual PR before manually proposing a
 registry change. Issue text never changes the registry by itself. Pin these facts:
 

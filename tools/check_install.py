@@ -494,7 +494,7 @@ def main():
                     "docs/examples/release-pypi.yml", "docs/output-reference.md",
                     "tests/fixtures/dependencies/requirements.txt",
                     ".github/workflows/ci.yml",
-                    "tools/tipjar_board.py", "tools/tipjar_board_deploy.py",
+                    "tools/tipjar_board.py", "tools/tipjar_board_deploy.py", "tools/tipjar_board_intake.py",
                     "tools/schemas/tipjar-board.schema.json",
                     "tools/schemas/tipjar-board-v2.schema.json",
                     "tools/schemas/tipjar-board-registry.schema.json",
