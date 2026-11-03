@@ -32,7 +32,7 @@ body:
           required: true
         - label: I explicitly opt in this pull request and my public GitHub identity, submission proof, merge facts, and nullable change-size context for the Tipjar public board.
           required: true
-        - label: I understand that a curator must accept this submission, and that editing this issue pauses counting until reviewed again.
+        - label: I understand that a curator must accept this submission, and that editing this issue pauses counting based on this submission until reviewed again.
           required: true
         - label: I understand that withdrawing or an accepted owner opt-out removes current rows on a successful refresh; failures can delay removal until displayed expiry. Public issues, source history, old artifacts, and caches may retain earlier data.
           required: true
