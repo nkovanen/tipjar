@@ -1,4 +1,4 @@
-# Working on Agent Contrib
+# Working on Tipjar
 
 This is a Python CLI/library and a thin agent Skill. Read README.md,
 CONTRIBUTING.md and SECURITY.md before changing behavior. There is no Rust build,

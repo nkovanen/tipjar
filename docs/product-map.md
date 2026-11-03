@@ -1,5 +1,9 @@
 # Product map
 
+Historical issue and PR references on this page belong to the original
+`nkovanen/agent-contrib` repository; development now continues in `nkovanen/tipjar`.
+
+
 What Agent Contrib does today, what the unreleased v0.3.0 candidate adds and
 what comes next. `[x]` is shipped in the published v0.2.0 release, `[3]` is
 implemented in the v0.3.0 candidate (unreleased), `[~]` is partly implemented
@@ -88,6 +92,7 @@ upstream-route gap remains separate follow-up work.
 Details: [getting started](getting-started.md), [command reference](cli.md), [upgrading from 0.2](upgrading.md) and [CHANGELOG](../CHANGELOG.md).
 
 ### Implemented
+- [3] Bounded `discover --limit` display, with observed/shown/omitted counts; all scans still run (historical [#1](https://github.com/nkovanen/agent-contrib/issues/1) and [PR #2](https://github.com/nkovanen/agent-contrib/pull/2))
 - [3] Offline `tipjar dependencies PATH`: explicit GitHub candidates from npm manifests/locks and Python requirements, plus opt-in installed npm metadata, with provenance and unresolved-source reporting ([workflow](dependencies.md))
 - [3] Task-scoped owner/maintainer authorization: schema 0.2, host-context mandate, exact-head draft recognition, `implementation`/`draft`/`completion` gates ([#3](https://github.com/nkovanen/agent-contrib/issues/3))
 - [3] Closed or missing stdout without traceback ([#4](https://github.com/nkovanen/agent-contrib/issues/4))
@@ -122,7 +127,6 @@ Details: [getting started](getting-started.md), [command reference](cli.md), [up
 
 ## Planned
 
-- [ ] Bounded `discover --limit` display ([#1](https://github.com/nkovanen/agent-contrib/issues/1), draft [PR #2](https://github.com/nkovanen/agent-contrib/pull/2), not part of the candidate)
 - [ ] F4 Fork-to-upstream route in schema 0.2 ([#22](https://github.com/nkovanen/agent-contrib/issues/22)) (after C1)
 
 Each planned item and each "Missing" part needs its own trust-boundary design.
