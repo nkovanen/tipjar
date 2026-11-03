@@ -43,7 +43,9 @@ sections are grouped by task.
   - [API budget (opt-in)](#api-budget-opt-in)
   - [Content cache (opt-in)](#content-cache-opt-in)
   - [Text output (unreleased)](#text-output-unreleased)
+- [Offline manifest setup and validation](#offline-manifest-setup-and-validation)
 - [Jar inspection (candidate, inspection only)](#jar-inspection-candidate-inspection-only)
+- [Find public invitations](#find)
 - [Command index](#command-index)
 
 ## Command index
@@ -60,6 +62,10 @@ an incomplete report exit 1, as the table says. "Reads GitHub" means fixed
 
 | Command | Purpose | Reads GitHub? | Exit codes |
 | --- | --- | --- | --- |
+| `init` | Create an explicit-state local invitation template at a new path | No | 0 created; 1 file error; 2 usage |
+| `jar-check` | Validate a bounded local invitation without printing its text | No | 0 valid; 1 invalid/unreadable; 2 usage |
+| `session` | Offline proposed shortlist with stopping caps | No | 0 proposal created (possibly empty); 1 invalid input or output |
+| `find` | Verify one public invitation batch, at most ten indexed hits | Yes | 0 complete bounded batch; 1 unknown/search incomplete |
 | `jar` | Inspect a pinned root invitation directly, without parent tracker resolution | Yes | 0 welcome/closed/undeclared; 1 unknown |
 | `discover` | Rank open issues of one repository, or 2-20, with policy and overlap context | Yes | 0 complete; 1 incomplete (also an incomplete `--responsiveness`, `--check-top` or `--repo-dir` report) |
 | `inspect` | One issue: approval, instructions, exclusions, overlapping PRs | Yes | 0 complete; 1 incomplete (also incomplete `--ownership` signals) |
@@ -70,6 +76,8 @@ an incomplete report exit 1, as the table says. "Reads GitHub" means fixed
 | `scope-check` | Offline check of local changes against the contract scope | No | 0 no violation; 1 violation or error |
 | `evidence init` | Unfilled evidence skeleton from observed Git facts | No | 0 file written; 1 error |
 | `pr-body` | Markdown PR description from the contract, evidence and a fresh `verify` | Yes | 0 file written; 1 error |
+| `receipt` | Save a public PR observation to a new file | Yes | 0 written; 1 invalid/incomplete read or write error |
+| `impact` | Summarize editable recorded observations, deduplicated by numeric identity | No | 0 valid summary; 1 invalid/conflicting input |
 | `feedback` | Reviews, comments and exact-head checks of a published PR | Yes | 0 complete; 1 incomplete |
 | `ownership` | Report-only claims, linked PRs and possible prior fixes for one issue | Yes | 0 complete; 1 incomplete |
 | `drift` | What changed since the contract was prepared | Yes | 0 complete and not drifted; 1 drifted or incomplete |
@@ -82,10 +90,13 @@ an incomplete report exit 1, as the table says. "Reads GitHub" means fixed
 
 | Command | Result |
 | --- | --- |
+| `agent-contrib find [--owner OWNER]` | Partial public invitation batch with pinned verification; no authority |
 | `agent-contrib discover owner/repo [--limit N]` | Repository resolution, policy/instruction context, ranked issues and overlap/completeness metadata |
 | `agent-contrib discover owner/a owner/b ... [--repositories-file FILE]` | Two to 20 repositories in one run, each with its own result, plus a merged candidate order |
 | `agent-contrib discover owner/repo --signals` | Same reads and fields, plus per-issue `signals` and a signal-aware `ordering` |
 | `agent-contrib discover owner/repo --responsiveness` | One extra read of recently closed PRs, reported as `repository_signals.responsiveness`; issues and ordering unchanged |
+| `agent-contrib receipt owner/repo#123 --output receipt.json` | New schema 0.1 public PR observation; never overwrites |
+| `agent-contrib impact receipt.json [FILE...]` | Offline counts from at most 100 bounded local receipts |
 | `agent-contrib audit owner/repo [--print-policy]` | Read-only maintainer report: policy validity, labels, instruction coverage, issue-quality and overlap counts, non-binding suggestions |
 | `agent-contrib inspect 'owner/repo#123'` | Detailed issue snapshot, source policy, instructions, exclusions and PR matches |
 | `agent-contrib prepare 'owner/repo#123' --output task.json` | A new schema `0.1` draft with a `pending` `ai-policy-review` prerequisite; an existing output file is never overwritten |
@@ -1053,13 +1064,34 @@ Any failed, partial or malformed read makes that part, and the observation,
 `complete: false` with fixed error strings. Contract-required verified heads and
 signed evidence attestations (the rest of #18) are not implemented.
 
+### Contribution receipts and impact
+
+```sh
+tipjar receipt 'owner/repo#123' --output receipt.json
+tipjar --format text impact receipt.json later-receipt.json
+```
+
+`receipt` exclusively saves a schema 0.1 public PR observation from two fixed
+GitHub GETs (repository metadata and PR detail). Exact canonical URL and numeric
+repository/PR identities, author, head/base, state and merge facts must be
+complete and consistent. It refuses private repositories and never overwrites.
+
+`impact` is offline: 1–100 regular non-symlink files, at most 64 KiB each. It
+rejects unknown schemas, duplicate JSON keys, malformed records and conflicting
+identities. The latest valid timestamp per numeric identity wins, regardless of
+file order; equal-time conflicting snapshots reject. Drafts count as open;
+closed means unmerged. Output counts unique PRs and repositories represented and
+lists selected observations. Editable local data is labeled self-reported
+recorded observations, never signed proof, authenticated contributions, tests,
+quality or permission. See [receipt limits and refresh](receipts.md).
+
 ### Output schemas
 
 Every command's JSON output has a packaged JSON Schema (draft 2020-12 subset).
 `agent-contrib schema COMMAND` prints it; `error` is the error envelope that
 replaces any command's result on a usage, input or protocol error, and
 `evidence-init` is `evidence init`. `instructions` reports the
-`output_schema_version` (currently `2`) and the package directory. Objects are
+`output_schema_version` (currently `3`) and the package directory. Objects are
 closed: a field is required unless marked optional, and fields not listed never
 appear. Output values do not carry the schema version; a shape change bumps the
 version together with the CLI's semantic version and changelog. Remote text in
@@ -1219,7 +1251,7 @@ option before the subcommand.
 
 #### Global options on offline commands
 
-`instructions`, `schema`, `skill`, `lint`, `scope-check` and `evidence init`
+`instructions`, `schema`, `skill`, `lint`, `scope-check`, `evidence init`, `init`, `jar-check`, `dependencies`, `impact` and `session`
 never read GitHub. On them `--report-budget` and `--cache` are both usage errors
 (exit 2, "`--cache` applies only to commands that read GitHub", and likewise for
 `--report-budget`), checked before any file is read; `--min-remaining` already
@@ -1228,6 +1260,61 @@ requires `--report-budget`. `--format` applies to every command.
 The text option uses the same stdout handling as JSON. Closed output returns 1
 quietly; writable output retains the command's normal exit status.
 
+## Offline dependency targets
+
+`tipjar dependencies PATH [--installed] [--output NEW_JSON_FILE]` (also available as
+`agent-contrib dependencies`) reads explicit GitHub
+dependency URLs from local npm manifests/lockfiles and Python requirements.
+Explicit `--installed` also reads bounded existing node_modules repository
+metadata for at most 100 direct registry packages, preserving observed versions
+and refusing symlinks. It
+never runs project code or requests registry metadata. `--format text` goes
+before the command. Malformed input, duplicate JSON keys, unsafe filesystem
+paths and unknown npm lock versions fail closed. Successful partial resolution
+reports exit 0 and distinguish `complete` from `resolution_complete`. Repository
+candidates grant no approval or execution/publication permission.
+
+See [dependency give-back workflow](dependencies.md) for formats, provenance,
+limits and the explicit report-to-discover step. `schema dependencies` exposes
+the packaged output contract.
+
+## Offline manifest setup and validation
+
+```sh
+tipjar init --status welcome --output .tipjar.json
+# Or choose --status closed explicitly when declining agent work.
+# Edit the template to describe your actual wanted work and boundaries, then:
+tipjar jar-check .tipjar.json
+tipjar --format text jar-check .tipjar.json
+tipjar schema init
+tipjar schema jar-check
+# Equivalent through the original command name:
+agent-contrib init --status closed --output closed-example.json
+agent-contrib jar-check closed-example.json
+```
+
+`init` requires both `--status welcome|closed` and `--output FILE`. It creates only
+that explicit local path, refusing existing files and symlinks. Templates use the
+packaged manifest parser before writing and include editable wanted/boundary text.
+The result contains `output`, `state`, the exact file byte `sha256`, `notice` and
+`next_steps`. Replace the marked wanted placeholder and review the boundaries
+before adoption; structurally valid text is not proof of your policy's intent.
+
+`jar-check FILE` reads at most 16,385 bytes from one regular local file (symlinks
+and nonregular files are refused), then uses the same strict packaged parser as
+remote jar inspection. Success reports `path`, `state`, `sha256`, `valid: true`
+and `notice`; it does not print the manifest text or modify the file. Invalid,
+unsupported, oversized, non-UTF-8 and unreadable files return exit 1 with the
+standard structured error envelope and no input-content echo. The hash covers
+original bytes, including formatting and line endings. Validation is local: it
+does not establish remote provenance, policy approval or any authorization.
+
+Both commands work without GitHub authentication, Git or `gh`. GitHub-only global
+`--cache`, `--report-budget` and `--min-remaining` options are refused with exit 2
+before touching a file. `--format text` is supported before either command.
+The `agent-contrib` alias exposes the same commands. See the
+[maintainer two-minute setup](maintainers.md#two-minute-setup-offline) for adoption
+and old-client limitations. No file is published automatically.
 
 ## Jar inspection (candidate, inspection only)
 
@@ -1255,7 +1342,7 @@ Malformed repository arguments are usage errors (exit 2) before any GitHub read,
 including budget instrumentation. Existing commands keep their argument-exit
 behavior.
 
-The JSON is `tipjar-report/1` (output schema version 2). States:
+The JSON is `tipjar-report/1` (frozen output/2 and active output/3). States:
 
 | State | Meaning | Exit |
 | --- | --- | --- |
@@ -1305,12 +1392,15 @@ is accepted only after its bytes match that pinned tree blob. Policy reads retai
 their own existing bounded budget in addition to jar reads.
 
 Caller-supplied report dictionaries are untrusted data. Public policy inventory
-builders reread the source jar at the requested commit (up to three additional
+builders reread the source jar at the requested commit (up to four additional
 `gh api` invocations). Live guards reread the current default-branch declaration
-(up to four) and the task's historical declaration (up to three), in addition to
+(up to four) and the task's historical declaration (up to four), in addition to
 inspection and other command reads. The standalone four-invocation jar budget
 is not a bound on an entire integrated command. Failed or inconsistent pins
-remain blockers.
+remain blockers. Each read resolves the commit object and queries its canonical
+tree SHA; explicit historical commits must match the returned commit identity.
+Supplying repository metadata saves one invocation, but never skips commit or
+tree validation. A jar absent from the complete tree saves the content read.
 
 The library's `core.prepare(inspected)` is an offline pending-draft transformation.
 It validates complete report shape, state/digest consistency and source pin
@@ -1340,8 +1430,8 @@ authority. Schema 0.1 upstream mode still requires matching label approval;
 its existing fork route requires an available immediate GitHub fork and actual
 local execution authorization, and fork completion grants no upstream authority.
 Schema 0.2 still requires actual admin/maintain authority and host mandates.
-An arbitrary no-jar repository has no new outside-contributor upstream route
-in this slice.
+For an explicitly selected no-jar repository, use the separately reviewed task 0.3
+external route below; absence of a jar supplies no approval or authority.
 
 ## External contribution route
 
@@ -1409,3 +1499,68 @@ These variants belong to active output schema **3**; frozen output/1 and output/
 resources are unchanged. Export with `tipjar schema authorization-request`,
 `tipjar schema drift` and `tipjar schema pr-body`. See [the giver journey](tipping.md)
 for human stops and [external tips](external-tips.md) for binding requirements.
+
+## Offline session planning
+
+`agent-contrib session DISCOVERY_JSON --max-tasks N --minutes M --output FILE` creates
+a proposed shortlist with per-task stopping caps. N is 1–20, M is 1–1440.
+Input is bounded to 8 MiB; no network or execution occurs, and actions remain
+unauthorized. The output file must not exist. `--format text` precedes `session`.
+See [the 60-minute example and host workflow](planning-sessions.md).
+
+## find
+
+```sh
+tipjar find
+tipjar find --owner acme
+agent-contrib --format text find --owner acme
+agent-contrib schema find
+```
+
+One authenticated legacy code-search page uses exactly
+`filename:.tipjar.json path:/`, optionally `user:OWNER`, with `per_page=10` and
+`page=1`. OWNER accepts the GitHub login grammar (1–39 ASCII letters, digits and
+hyphens, starting with a letter or digit), never arbitrary search qualifiers.
+There is no cursor, backfill, fallback query, sort promise or fair rotation.
+
+Each distinct eligible hit is checked against fresh repository/owner identities
+and public active metadata, then the pinned default-branch jar reader. Indexed
+blob SHAs are candidate hints: stale hits may now be closed or undeclared. A
+complete welcome gets a second metadata check; identity/default-branch changes
+make it unknown, and known private/archived/disabled targets are excluded. Known
+private names, ids and manifests are suppressed. A fork invites only itself.
+Only `disposition: welcome` is selectable; ordinary policy review and separate
+execution/publication authority still apply. There is no automatic issue proposal.
+
+Canonical output is `find-jars-report/1`, independent of output-schema version.
+`observations` contains `{repository, repository_id, disposition, reason,
+verified_at, jar}`. Jar reports retain their existing schema. Reasons are fixed
+codes; invalid identities and withheld private data are null. `requests.search`
+and `requests.core` count command gh invocations, excluding instrumentation.
+`search` records query, page, per_page, total_count, incomplete_results,
+returned_count, truncated and short_page. Unavailable search values are null.
+`coverage.exhaustive` is always false. Timestamps and pinned commits are
+observations, not atomic or “live now” guarantees.
+
+At most 51 command gh invocations (one search and up to fifty core), sequential,
+without application retries/sleeps/pagination; `--report-budget` adds two snapshots
+with up to three invocations each (53 all-success, at most 57). These are not raw
+HTTP counts: gh may internally follow redirects, which are not instrumented.
+Application code never follows returned URLs or adopts renamed/transferred
+identities. Each whole invocation retains the 30-second parent timeout and
+8 MiB response cap: summed command invocation timeouts are at most 25.5 minutes,
+excluding processing and optional instrumentation. Find reads remain uncached
+even with `--cache`. Search has a separate, tighter quota; `--min-remaining` and
+`api_budget` measure core only, never search availability. Authentication, quota
+or query errors are visible failures, without fallback or invented results.
+
+Exit 0 means this bounded batch is complete, including empty selection, known
+exclusions or intentional truncation. Unknowns, malformed search envelopes,
+short pages, server incompleteness or read errors give exit 1 while retaining
+other verified findings. Invalid usage gives exit 2 before budget reads. A
+complete batch is never a global census. Search omits many repositories,
+especially forks; indexing may lag. No adoption is established and there is no
+curated fallback list. Until indexed jars exist, explicitly name projects for
+existing assessment commands; absence grants nothing. Direct `tipjar jar
+owner/repo` works without indexing. A selected outside contribution continues
+through the reviewed task 0.3 [external-tip route](external-tips.md).

@@ -44,7 +44,10 @@ acceptance. Fork-only completion does not deliver an upstream tip. Expiry blocks
 new actions; historical recognition grants no new action. Assertions do not prove
 human presence; evidence is self-attested, scans bounded and GETs non-atomic.
 The host must enforce single use and retain original creation head/payload.
-The helpers `authorization-request`, `pr-body`, `drift` do not support 0.3.
+For 0.3, `authorization-request` produces an unsigned implementation or draft
+review view, `drift` reports live source/fork changes, and `pr-body` renders a local
+body for review. These helpers issue no consent and their views cannot serve as
+host context. Keep the separate human/host decisions and exact payload binding.
 The quick path below describes the separate historical 0.1/0.2 routes.
 
 ## Quick path: "Go help owner/repo"
@@ -592,7 +595,8 @@ PR belongs to that PR's repository; qualified references and issue URLs match
 the actual issue source. Topic and checklist overlaps remain conservative
 blockers. Failed, malformed or partial scans block readiness. An existing PR,
 including the contributor's own draft, remains an unresolved overlap under
-schema 0.1. Only the explicit schema 0.2 route recognizes an exact own draft.
+schema 0.1. The explicit schema 0.2 and 0.3 routes recognize an exact own draft under their
+respective same-repository and immediate-personal-fork identity checks.
 
 ## Repository approval and legacy schema 0.1 execution
 

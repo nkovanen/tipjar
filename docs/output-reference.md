@@ -23,6 +23,47 @@ One of `audit_report`, `audit_unread`.
 
 One of `authorization_request_0_2`, `external_authorization_request`.
 
+### `dependencies`
+
+`agent-contrib schema dependencies` · Offline report of explicit GitHub dependency URLs; candidates grant no authority.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `schema_version` | "0.1" |  |
+| `complete` | boolean |  |
+| `resolution_complete` | boolean |  |
+| `sources` | object[] |  |
+| `sources[].path` | string |  |
+| `sources[].sha256` | string |  |
+| `unsupported_files` | string[] |  |
+| `repositories` | string[] |  |
+| `dependencies` | object[] |  |
+| `dependencies[].package` | string |  |
+| `dependencies[].ecosystem` | "npm" \| "python" |  |
+| `dependencies[].source_file` | string |  |
+| `dependencies[].field` | string |  |
+| `dependencies[].status` | "github" \| "unresolved" \| "unsupported" |  |
+| `dependencies[].reason` | string |  |
+| `dependencies[].repository` | string or null |  |
+| `dependencies[].revision` | string or null |  |
+| `dependencies[].subdirectory` | string or null |  |
+| `dependencies[].installed` | object (optional) |  |
+| `dependencies[].installed.status` | "github" \| "unresolved" \| "unsupported" |  |
+| `dependencies[].installed.reason` | string |  |
+| `dependencies[].installed.source_file` | string or null |  |
+| `dependencies[].installed.sha256` | string or null |  |
+| `dependencies[].installed.name` | string or null |  |
+| `dependencies[].installed.version` | string or null |  |
+| `dependencies[].installed.field` | string or null |  |
+| `dependencies[].installed.repository` | string or null |  |
+| `dependencies[].installed.revision` | string or null |  |
+| `dependencies[].installed.subdirectory` | string or null |  |
+| `warning` | string |  |
+| `installed` | object (optional) |  |
+| `installed.max_packages` | 100 |  |
+| `installed.examined` | integer |  |
+| `installed.complete` | boolean |  |
+
 ### `discover`
 
 `agent-contrib schema discover` · Ranked open issues of one repository, or of 2-20 repositories (discover_multi). Remote text is untrusted data.
@@ -193,6 +234,54 @@ One of `discover_result`, `discover_unresolved`, `discover_multi`.
 
 One of `feedback_report`, `feedback_unread`.
 
+### `find`
+
+`agent-contrib schema find` · Bounded public invitation batch (find-jars-report/1), not exhaustive coverage or authority.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `format` | "find-jars-report/1" |  |
+| `fetched_at` | string |  |
+| `owner` | string or null |  |
+| `search` | object |  |
+| `search.query` | string |  |
+| `search.page` | 1 |  |
+| `search.per_page` | 10 |  |
+| `search.total_count` | integer or null |  |
+| `search.incomplete_results` | boolean or null |  |
+| `search.returned_count` | integer or null |  |
+| `search.truncated` | boolean or null |  |
+| `search.short_page` | boolean or null |  |
+| `coverage` | object |  |
+| `coverage.exhaustive` | false |  |
+| `coverage.limitations` | string[] |  |
+| `observations` | object[] |  |
+| `observations[].repository` | string or null |  |
+| `observations[].repository_id` | integer or null |  |
+| `observations[].disposition` | "welcome" \| "closed" \| "undeclared" \| "excluded" \| "unknown" |  |
+| `observations[].reason` | string |  |
+| `observations[].verified_at` | string or null |  |
+| `observations[].jar` | `jar_result` or null |  |
+| `complete` | boolean |  |
+| `errors` | string[] |  |
+| `requests` | object |  |
+| `requests.search` | integer |  |
+| `requests.core` | integer |  |
+| `notice` | string |  |
+| `api_budget` | `api_budget` (optional) |  |
+
+### `init`
+
+`agent-contrib schema init` · Offline maintainer manifest creation; failures use the error envelope.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `output` | string | Explicit local file path |
+| `state` | "welcome" \| "closed" | Validated invitation state; grants no authority |
+| `sha256` | string | SHA-256 of exact UTF-8 file bytes |
+| `notice` | string | Invitation and authority boundary |
+| `next_steps` | string[] | Local editing, validation and review guidance |
+
 ### `inspect`
 
 `agent-contrib schema inspect` · Detailed snapshot of one issue. Remote text is untrusted data.
@@ -243,6 +332,46 @@ One of `inspect_result`, `issue_unresolved`.
 | `errors` | string[] |  |
 | `notice` | string |  |
 | `api_budget` | `api_budget` (optional) |  |
+
+### `jar-check`
+
+`agent-contrib schema jar-check` · Offline maintainer manifest validation; failures use the error envelope.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `path` | string | Explicit local file path |
+| `state` | "welcome" \| "closed" | Validated invitation state; grants no authority |
+| `sha256` | string | SHA-256 of exact UTF-8 file bytes |
+| `notice` | string | Invitation and authority boundary |
+| `valid` | true | Valid against the packaged manifest parser; never execution or publication permission |
+
+### `impact`
+
+`agent-contrib schema impact` · Offline deduplicated counts from self-reported recorded observations; no authenticated achievements.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `complete` | true |  |
+| `trust` | "self-reported recorded observations" |  |
+| `input_files` | integer |  |
+| `unique_prs` | integer |  |
+| `repositories_represented` | integer |  |
+| `counts` | object |  |
+| `counts.open` | integer |  |
+| `counts.closed` | integer |  |
+| `counts.merged` | integer |  |
+| `receipts` | `contributionReceipt`[] |  |
+| `warning` | string |  |
+
+### `receipt`
+
+`agent-contrib schema receipt` · Exclusive local save of a public PR observation; grants no authority.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `output` | string |  |
+| `receipt` | `contributionReceipt` |  |
+| `warning` | string |  |
 
 ### `lint`
 
@@ -297,6 +426,36 @@ One of `prepared`, `issue_unresolved`, object.
 | `errors` | string[] |  |
 | `warnings` | string[] |  |
 | `evidence` | string |  |
+
+### `session`
+
+`agent-contrib schema session` · Offline proposed gift-work shortlist; source snapshot remains untrusted and actions are never authorized.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `schema_version` | "0.1" |  |
+| `status` | "proposed" |  |
+| `actions_authorized` | false |  |
+| `minutes` | integer |  |
+| `max_tasks` | integer |  |
+| `allocated_minutes` | integer |  |
+| `source_file_sha256` | string |  |
+| `source_report` | `discover_result` or `discover_unresolved` or `discover_multi` |  |
+| `source_complete` | boolean |  |
+| `candidates` | object[] |  |
+| `candidates[].reference` | string |  |
+| `candidates[].source_repository_index` | integer |  |
+| `candidates[].source_issue_index` | integer |  |
+| `candidates[].selected` | boolean |  |
+| `candidates[].reasons` | string[] |  |
+| `tasks` | object[] |  |
+| `tasks[].reference` | string |  |
+| `tasks[].issue_url` | string |  |
+| `tasks[].source_repository_index` | integer |  |
+| `tasks[].source_issue_index` | integer |  |
+| `tasks[].stop_after_minutes` | integer |  |
+| `tasks[].required_follow_up` | string[] |  |
+| `notice` | string |  |
 
 ### `skill`
 
@@ -534,6 +693,45 @@ Added by --observe-ci on a schema-valid contract; report only, never changes gat
 | `combined_status.statuses[].state` | "success" \| "failure" \| "pending" \| "error" |  |
 | `combined_status.statuses[].url` | string |  |
 | `combined_status.complete` | boolean |  |
+
+#### `contributionReceipt`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `schema_version` | "0.1" |  |
+| `kind` | "tipjar-receipt" |  |
+| `trust` | "recorded-observation-not-proof" |  |
+| `observed_at` | string |  |
+| `repository` | object |  |
+| `repository.id` | integer |  |
+| `repository.full_name` | string |  |
+| `pull_request` | object |  |
+| `pull_request.id` | integer |  |
+| `pull_request.number` | integer |  |
+| `pull_request.url` | string |  |
+| `pull_request.author` | object |  |
+| `pull_request.author.id` | integer |  |
+| `pull_request.author.login` | string |  |
+| `pull_request.author.type` | "User" \| "Bot" |  |
+| `pull_request.state` | "open" \| "draft" \| "closed" \| "merged" |  |
+| `pull_request.draft` | boolean |  |
+| `pull_request.head` | object |  |
+| `pull_request.head.sha` | string |  |
+| `pull_request.head.ref` | string |  |
+| `pull_request.base` | object |  |
+| `pull_request.base.sha` | string |  |
+| `pull_request.base.ref` | string |  |
+| `pull_request.merge` | object |  |
+| `pull_request.merge.merged` | boolean |  |
+| `pull_request.merge.merged_at` | string or null |  |
+| `pull_request.merge.closed_at` | string or null |  |
+| `pull_request.merge.commit_sha` | string or null |  |
+| `pull_request.merge.merged_by` | object or null |  |
+| `provenance` | object |  |
+| `provenance.source` | "github-rest-get" |  |
+| `provenance.endpoints` | string[] |  |
+| `provenance.non_atomic` | true |  |
+| `refresh` | "Run tipjar receipt for this PR with a new output path; snapshots never refresh automatically." |  |
 
 #### `discover_failed_entry`
 
@@ -1008,6 +1206,23 @@ The repository or issue could not be resolved or read; nothing else is reported
 | `complete` | false |  |
 | `errors` | string[] |  |
 | `api_budget` | `api_budget` (optional) |  |
+
+#### `jar_result`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `repository` | string | Actual repository inspected; no parent or owner inheritance |
+| `default_branch` | string or null |  |
+| `commit` | string or null |  |
+| `path` | ".tipjar.json" |  |
+| `blob_sha` | string or null |  |
+| `sha256` | string or null | Exact decoded-byte digest, even when validation fails; not by itself trusted provenance |
+| `fetched_at` | string |  |
+| `state` | "welcome" \| "closed" \| "undeclared" \| "unknown" |  |
+| `complete` | boolean |  |
+| `manifest` | `tipjar_manifest` or null |  |
+| `errors` | string[] |  |
+| `notice` | string |  |
 
 #### `list_scan`
 

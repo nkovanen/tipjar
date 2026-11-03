@@ -96,6 +96,14 @@ complete source/fork policy accounting; no invitation or approval is invented.
 See [the complete external-tip workflow](docs/external-tips.md) for commands, records, pause points and limits. Evidence
 remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.
 
+Contribution receipts record public PR observations only. Their editable local
+files are not signed proof, authorization or evidence that tests ran. Offline
+impact counts deduplicate numeric identities and reject malformed/conflicting
+records; they describe supplied snapshots, not authenticated achievements or
+current live state. Receipt reads are bounded to 100 non-symlink regular files
+of 64 KiB each. See [receipt provenance and refresh](docs/receipts.md).
+
+
 Jar report dictionaries supplied by native library callers are data, not
 attestations of a source read. Pending preparation validates their full shape,
 state/digest consistency and source pin, and shapes an unauthorized draft; it

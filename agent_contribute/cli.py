@@ -10,8 +10,8 @@ import sys
 import time
 from pathlib import Path
 
-from . import (audit, authrequest, budget, cache, ci, core, drift, feedback, multi, outputs, ownership, policy,
-               prbody, remote, signals, signatures, textfmt, tipjar, workspace, __version__)
+from . import (audit, authrequest, budget, cache, ci, core, dependencies, drift, feedback, find, multi, onboarding, outputs,
+               ownership, policy, prbody, receipts, remote, sessions, signals, signatures, textfmt, tipjar, workspace, __version__)
 
 
 HOST_INPUT_TIMEOUT = 5.0
@@ -49,7 +49,7 @@ def read_host_context_stdin():
 
 GLOBAL_OPTIONS = ('--format', '--report-budget', '--min-remaining', '--cache')
 # Commands that never read GitHub; GitHub-only global options are refused on them alike.
-OFFLINE_COMMANDS = ('instructions', 'schema', 'skill', 'lint', 'scope-check', 'evidence')
+OFFLINE_COMMANDS = ('instructions', 'schema', 'skill', 'lint', 'scope-check', 'evidence', 'init', 'jar-check', 'dependencies', 'impact', 'session')
 AI_POLICY_NOTICE = ('agent-contrib: --ai-policy is deprecated and ignored; '
                     'inspect always adds repository_policy')
 
@@ -114,7 +114,7 @@ def prevalidate(args):
         if args.repo_dir is not None and len(args.names) != 1:
             raise core.ProtocolError('usage', '--repo-dir with discover supports one repository')
         core.parse_repository(args.names[0]) if len(args.names) == 1 else multi.validate(args.names)
-    elif args.command in ('inspect', 'prepare', 'ownership', 'feedback'):
+    elif args.command in ('inspect', 'prepare', 'ownership', 'feedback', 'receipt'):
         core.parse_issue(args.reference)
         if args.command == 'prepare':
             if args.schema_version == '0.3':
@@ -126,6 +126,8 @@ def prevalidate(args):
                 raise core.ProtocolError('usage', '--fork and --head-ref require schema 0.3')
         if args.command == 'feedback' and args.expected_head is not None and not remote.SHA.fullmatch(args.expected_head):
             raise core.ProtocolError('invalid_head', 'Expected head must be a full 40-character commit SHA')
+    elif args.command == 'find':
+        find.validate_owner(args.owner)
     elif args.command == 'jar':
         try:
             core.parse_repository(args.repository)
@@ -234,9 +236,31 @@ def main(argv=None):
                              help='Task schema (default 0.1; 0.2 is the same-repository candidate route)')
             sub.add_argument('--fork', help='Schema 0.3: immediate personal fork owner/repo')
             sub.add_argument('--head-ref', help='Schema 0.3: new contribution branch')
+    sub = commands.add_parser('dependencies', help='Offline GitHub give-back candidates from explicit dependency URLs')
+    sub.add_argument('path', help='Project directory or package.json, package-lock.json or requirements.txt')
+    sub.add_argument('--installed', action='store_true',
+                     help='Also read up to 100 direct registry packages from existing node_modules metadata; no links or installs')
+    sub.add_argument('--output', help='Optional new JSON report file; never overwritten')
+    sub = commands.add_parser('receipt', help='Save a public PR observation; never proof or permission')
+    sub.add_argument('reference', help='Public GitHub owner/repo#PR')
+    sub.add_argument('--output', required=True, help='New receipt file; never overwritten')
+    sub = commands.add_parser('impact', help='Offline impact from editable recorded PR observations')
+    sub.add_argument('files', nargs='+', help='1-100 receipt files, at most 64 KiB each')
     sub = commands.add_parser('jar', help='Inspect the pinned root Tipjar invitation; inspection only, grants no authority',
                               description='Pinned root invitation inspection only; grants no approval or authority.')
     sub.add_argument('repository', help='GitHub owner/repo to inspect directly, without parent tracker resolution')
+    sub = commands.add_parser('init', help='Create a local Tipjar manifest template; offline, never overwrites')
+    sub.add_argument('--status', required=True, choices=('welcome', 'closed'), help='Explicit invitation state')
+    sub.add_argument('--output', required=True, help='New manifest file; edit and review before adopting')
+    sub = commands.add_parser('jar-check', help='Validate a local Tipjar manifest offline; grants no authority')
+    sub.add_argument('file', help='Bounded regular UTF-8 manifest file to check without changing it')
+    sub = commands.add_parser('session', help='Plan an offline proposed gift-work session from discovery JSON')
+    sub.add_argument('discovery', help='Bounded canonical discovery JSON file (8 MiB maximum)')
+    sub.add_argument('--max-tasks', type=int, required=True, help='Maximum shortlisted tasks (1–20)')
+    sub.add_argument('--minutes', type=int, required=True, help='Total stopping budget, not an estimate (1–1440)')
+    sub.add_argument('--output', required=True, help='New file for the proposed session; never overwritten')
+    sub = commands.add_parser('find', help='Find a bounded batch of public repository invitations; grants no authority')
+    sub.add_argument('--owner', help='Limit the fixed search to one GitHub user or organization login')
     commands.add_parser('instructions', help='Print the installed workflow, CLI version and supported schemas')
     sub = commands.add_parser('schema', help="Print the JSON Schema of a command's JSON output")
     sub.add_argument('name', choices=outputs.SCHEMAS, metavar='COMMAND',
@@ -318,7 +342,7 @@ def main(argv=None):
             for flag, given in (('--report-budget', args.report_budget), ('--cache', args.cache)):
                 if given:
                     raise core.ProtocolError('usage', flag + ' applies only to commands that read GitHub')
-        cache.configure(args.cache and args.command != 'jar')
+        cache.configure(args.cache and args.command not in ('jar', 'find'))
         if getattr(args, 'ai_policy', False):
             notice()
         prevalidate(args)
@@ -326,7 +350,12 @@ def main(argv=None):
             before = budget.snapshot()
             if args.min_remaining is not None:
                 budget.require_remaining(before, args.min_remaining)
-        if args.command == 'instructions':
+        if args.command == 'dependencies':
+            result = dependencies.report(args.path, installed=args.installed)
+            if args.output:
+                write_new_json(args.output, result)
+            code = 0
+        elif args.command == 'instructions':
             result = {'cli_version': __version__, 'supported_schema_versions': list(core.SUPPORTED_SCHEMA_VERSIONS),
                       'supported_host_context_versions': list(core.HOST_CONTEXT_VERSIONS),
                       'host_authorization': ('host-asserted; actual human event must be retained outside worker control; '
@@ -345,6 +374,10 @@ def main(argv=None):
                       'output_schema_version': outputs.VERSION,
                       'automatic_updates': False}
             code = 0
+        elif args.command == 'session':
+            result = sessions.plan(args.discovery, max_tasks=args.max_tasks, minutes=args.minutes)
+            write_new_json(args.output, result)
+            code = 0
         elif args.command == 'schema':
             result = outputs.output_schema(args.name)
             code = 0
@@ -353,6 +386,22 @@ def main(argv=None):
             create_new(args.output, adapter, 'adapter')
             result = {'output': str(args.output), 'cli_version': __version__,
                       'sha256': hashlib.sha256(adapter.encode()).hexdigest()}
+            code = 0
+        elif args.command == 'init':
+            template = onboarding.template(args.status)
+            create_new(args.output, template, 'Tipjar manifest')
+            result = onboarding.init_report(args.output, template)
+            code = 0
+        elif args.command == 'jar-check':
+            result = onboarding.jar_check(args.file)
+            code = 0
+        elif args.command == 'receipt':
+            receipt = receipts.observe(args.reference)
+            write_new_json(args.output, receipt)
+            result = {'output': str(args.output), 'receipt': receipt, 'warning': receipts.NOTICE}
+            code = 0
+        elif args.command == 'impact':
+            result = receipts.impact(args.files)
             code = 0
         elif args.command == 'lint':
             result = core.lint(core.read_json(args.contract))
@@ -382,6 +431,9 @@ def main(argv=None):
                                        repo_dir=args.repo_dir, payload=args.payload_data,
                                        policy_assessment=args.assessment_data, policy_ledger=args.ledger_data)
             code = 0 if result.get('complete' if args.task['schema_version'] == '0.3' else 'ready_for_issuance') is True else 1
+        elif args.command == 'find':
+            result = find.find_jars(owner=args.owner)
+            code = 0 if result['complete'] else 1
         elif args.command == 'jar':
             result = tipjar.read_jar(args.repository)
             code = 0 if result['complete'] else 1
