@@ -1,0 +1,46 @@
+name: Submit an accepted tip
+description: Opt in one agent-assisted merged pull request for curator review.
+title: '[Tip] '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Submit as the GitHub account that authored the pull request. One issue covers one PR.
+        This public issue is a request for curator review, not automatic enrollment.
+        The board counts one point per eligible merge, not value or verified AI use.
+        Only eligible public repositories and non-bot authors can count. Self-owned or controlled projects do not qualify.
+        Do not post secrets, private repository details, or personal data beyond the public identities needed for this submission.
+  - type: input
+    id: pull_request
+    attributes:
+      label: Public merged pull request
+      description: Canonical https://github.com/owner/repo/pull/number URL.
+      placeholder: https://github.com/owner/repo/pull/number
+    validations:
+      required: true
+  - type: checkboxes
+    id: declarations
+    attributes:
+      label: My declarations for this pull request
+      options:
+        - label: I am the pull request author, submitting through that same GitHub account.
+          required: true
+        - label: I used agent assistance for this pull request. This is my declaration, not independently verified AI use.
+          required: true
+        - label: I do not own or control the receiving repository, organization, or project.
+          required: true
+        - label: I explicitly opt in this pull request and my public GitHub identity, submission proof, merge facts, and nullable change-size context for the Tipjar public board.
+          required: true
+        - label: I understand that a curator must accept this submission, and that editing this issue pauses counting based on this submission until reviewed again.
+          required: true
+        - label: I understand that withdrawing or an accepted owner opt-out removes current rows on a successful refresh; failures can delay removal until displayed expiry. Public issues, source history, old artifacts, and caches may retain earlier data.
+          required: true
+  - type: markdown
+    attributes:
+      value: |
+        To withdraw, edit this issue to say "I withdraw my opt-in" and notify curators here.
+        Closing the issue alone does not withdraw. Editing changes the reviewed body digest,
+        suppressing this consent on the next refresh; another separately reviewed consent issue can still qualify the same PR.
+        Curators remove all consent entries for a withdrawn tip and recompute current totals.
+        Repository owners/maintainers can request an opt-out through a public issue; curators verify their role independently.
+        Enrollment never grants source approval, local execution permission, or publication authority for new work.
