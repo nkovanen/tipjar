@@ -1,0 +1,246 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "tips",
+    "repositories",
+    "exclusions"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "tipjar-board-registry/1"
+    },
+    "tips": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repository_id",
+          "repository",
+          "pull_request_id",
+          "number",
+          "author_id",
+          "submission",
+          "agent_assistance",
+          "author_controls_repository"
+        ],
+        "properties": {
+          "repository_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "repository": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}"
+          },
+          "pull_request_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "author_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "submission": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "controller_repository",
+              "controller_repository_id",
+              "issue_id",
+              "number",
+              "body_sha256"
+            ],
+            "properties": {
+              "controller_repository": {
+                "type": "string",
+                "const": "nkovanen/tipjar"
+              },
+              "controller_repository_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "issue_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "number": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "body_sha256": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "[0-9a-f]{64}"
+              }
+            }
+          },
+          "agent_assistance": {
+            "type": "string",
+            "const": "self-declared"
+          },
+          "author_controls_repository": {
+            "type": "boolean",
+            "const": false
+          }
+        }
+      },
+      "maxItems": 500
+    },
+    "repositories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repository_id",
+          "repository"
+        ],
+        "properties": {
+          "repository_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "repository": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}"
+          }
+        }
+      },
+      "maxItems": 100
+    },
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "repository_id",
+              "reason"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "repository"
+              },
+              "repository_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "withdrawal",
+                  "owner_opt_out",
+                  "controlled_repository",
+                  "coordinated_farming",
+                  "duplicate_or_split",
+                  "reverted",
+                  "curator_exclusion"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "author_id",
+              "reason"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "author"
+              },
+              "author_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "withdrawal",
+                  "owner_opt_out",
+                  "controlled_repository",
+                  "coordinated_farming",
+                  "duplicate_or_split",
+                  "reverted",
+                  "curator_exclusion"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "repository_id",
+              "pull_request_id",
+              "reason"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "tip"
+              },
+              "repository_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "pull_request_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "withdrawal",
+                  "owner_opt_out",
+                  "controlled_repository",
+                  "coordinated_farming",
+                  "duplicate_or_split",
+                  "reverted",
+                  "curator_exclusion"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "maxItems": 1000
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tipjar:tipjar-board-registry:1",
+  "description": "Closed source-only board contract. Cross-field identities, safe integers, actual timestamps, minimum checks, and exact 48-hour expiry require semantic validation; JSON byte caps also apply."
+}
