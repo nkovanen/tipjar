@@ -1,0 +1,27 @@
+{
+  "name": "tipjar-paseo-review-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "vitest run --config tests/vitest.config.ts", "typecheck": "tsc --noEmit", "bundle-check": "node tests/bundle-check.mjs" },
+  "dependencies": { "@noble/hashes": "1.8.0", "ajv": "8.20.0" },
+  "devDependencies": {
+    "@getpaseo/plugin": "0.15.0",
+    "@getpaseo/client": "0.15.0",
+    "@getpaseo/protocol": "0.15.0",
+    "@testing-library/react": "16.3.0",
+    "@types/node": "22.19.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@types/react-native-web": "0.19.2",
+    "esbuild": "0.25.12",
+    "jsdom": "27.1.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-web": "0.21.2",
+    "typescript": "5.9.3",
+    "vitest": "4.1.6",
+    "zod": "4.4.3"
+  }
+}
