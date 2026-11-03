@@ -114,17 +114,63 @@ def classify(record, cutoff, horizon_days, repository, *, open_prs=frozenset(), 
 def pr_at_cutoff(item, events, cutoff):
     """Whether a PR was open at T, and its title then, from its issue events."""
     start = when(cutoff)
-    open_now, title = True, item['title']
-    for event in _ordered(events):
-        moment = when(event['created_at'])
-        if event['event'] in ('closed', 'reopened') and moment <= start:
-            open_now = event['event'] == 'reopened'
-    for event in reversed(_ordered(events)):
-        if when(event['created_at']) <= start:
-            break
-        if event['event'] == 'renamed' and isinstance(event.get('rename'), dict):
-            title = event['rename'].get('from', title)
-    return {'open': open_now, 'title': title}
+    def timestamp(value):
+        try:
+            return when(value)
+        except (BenchmarkError, ValueError, IndexError, TypeError) as exc:
+            raise BenchmarkError('Unknown PR timestamp') from exc
+
+    if not isinstance(events, list) or not isinstance(item.get('title'), str):
+        raise BenchmarkError('Malformed PR history or title')
+    created = timestamp(item.get('created_at'))
+    if created > start or item.get('state') not in ('open', 'closed') or 'closed_at' not in item:
+        raise BenchmarkError('Unknown PR membership anchor')
+    closed_at = timestamp(item['closed_at']) if item['closed_at'] is not None else None
+    if (item['state'] == 'closed') != (closed_at is not None):
+        raise BenchmarkError('Conflicting PR state and close anchor')
+    ordered = []
+    for event in events:
+        if not isinstance(event, dict) or not isinstance(event.get('event'), str):
+            raise BenchmarkError('Malformed PR event')
+        moment = timestamp(event.get('created_at'))
+        if moment < created:
+            raise BenchmarkError('PR event precedes creation')
+        if event['event'] == 'renamed':
+            rename = event.get('rename')
+            if not isinstance(rename, dict) or any(not isinstance(rename.get(key), str) for key in ('from', 'to')):
+                raise BenchmarkError('Malformed PR rename')
+        if event['event'] in ('closed', 'reopened', 'renamed'):
+            ordered.append((moment, event))
+    ordered.sort(key=lambda pair: pair[0])
+    # IDs identify events, but do not attest to within-second chronology. A title
+    # change and a state change commute; multiple changes of either kind do not.
+    for moment in {moment for moment, _ in ordered}:
+        group = [event for at, event in ordered if at == moment]
+        state_events = sum(event['event'] in ('closed', 'reopened') for event in group)
+        renames = sum(event['event'] == 'renamed' for event in group)
+        if state_events > 1 or renames > 1:
+            raise BenchmarkError('Ambiguous simultaneous PR events')
+    current_open, open_at_start, last_close = True, True, None
+    for moment, event in ordered:
+        kind = event['event']
+        if kind in ('closed', 'reopened'):
+            if (kind == 'closed') != current_open:
+                raise BenchmarkError('Contradictory PR state transitions')
+            current_open = kind == 'reopened'
+            last_close = moment if not current_open else None
+            if moment <= start:
+                open_at_start = current_open
+    if current_open != (item['state'] == 'open') or last_close != closed_at:
+        raise BenchmarkError('PR history does not match current membership anchor')
+    title, title_at_start = item['title'], item['title']
+    for moment, event in reversed(ordered):
+        if event['event'] == 'renamed':
+            if event['rename']['to'] != title:
+                raise BenchmarkError('PR rename chain does not match title anchor')
+            title = event['rename']['from']
+            if moment > start:
+                title_at_start = title
+    return {'open': open_at_start, 'title': title_at_start}
 
 
 def reconstruct(item, events, cutoff):
@@ -157,10 +203,40 @@ def scheme_title(scheme):
     return f'Labels: {scheme} (sensitivity analysis, not the registered result)'
 
 
+LEGACY_HISTORY_CAVEAT = ('PR history caveat: legacy snapshots lack the repaired all-candidate reconstruction marker; '
+                         'unreconstructed histories may remain. These results do not establish BM-02 repair.')
+
+
+def history_status(snapshot):
+    return {'repository': snapshot['repository'], 'cutoff': snapshot['cutoff'],
+            'status': ('candidate-histories-complete' if snapshot.get('pr_history_complete') is True
+                       else 'legacy-unreconstructed'),
+            'unverified_prs': sum(pr.get('membership_verified') is not True for pr in snapshot['open_prs_at_cutoff'])}
+
+
+def history_caveat(statuses):
+    return LEGACY_HISTORY_CAVEAT if any(s['status'] == 'legacy-unreconstructed' for s in statuses) else None
+
+
+def history_lines(statuses):
+    notice = history_caveat(statuses)
+    return ([notice, ''] if notice else []) + [
+        f"PR history {s['repository']}@{s['cutoff']}: {s['status']} ({s['unverified_prs']} unverified retained PRs)."
+        for s in statuses]
+
+
 def validate(snapshot):
     """Refuse anything the scorer cannot score honestly."""
     if snapshot.get('format') != FORMAT:
         raise BenchmarkError(f'Unsupported snapshot format {snapshot.get("format")!r}')
+    if 'pr_history_complete' in snapshot:
+        prs = snapshot['open_prs_at_cutoff']
+        if (snapshot['pr_history_complete'] is not True or
+                any(pr.get('membership_verified') is not True for pr in prs)):
+            raise BenchmarkError('Incomplete PR history reconstruction')
+        numbers = [pr['number'] for pr in prs]
+        if len(numbers) != len(set(numbers)):
+            raise BenchmarkError('Duplicate PR numbers')
     cutoff = when(snapshot['cutoff'])
     horizon = snapshot['horizon_days']
     if type(horizon) is not int or horizon <= 0:

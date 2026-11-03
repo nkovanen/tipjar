@@ -112,7 +112,8 @@ percentile. Overlapping intervals do not show equivalence to random.
 - an outcome window that had not ended at collection time;
 - an incomplete `discover` replay;
 - a replay that does not return exactly the snapshot's issues;
-- a ranking that is not a permutation of the labelled issues.
+- a ranking that is not a permutation of the labelled issues;
+- an explicit `pr_history_complete` value other than `true` (new collectors retain unknown PR histories for audit but refuse to score them; collection summaries print unknown outcome counts). Legacy format 2 snapshots without this marker remain readable with their original limitations; they are not automatically repaired. Score and experiment text/JSON carry each snapshot's reconstruction status and a prominent caveat when any input is legacy, including mixed runs.
 
 ## What the snapshot can and cannot reconstruct at T
 
@@ -126,7 +127,7 @@ never stores information from after T, except as recorded below.
 | Labels | yes | Current labels with `labeled`/`unlabeled` events after T reversed. This matters because exclusion labels such as `wontfix` are often added after T. |
 | Comment count, last activity | yes | `commented` and other timeline events at or before T. |
 | Default-branch tree | approximately | The tree of the last commit at or before T on the **current** default branch (`commits?until=T`). Branch renames, rewritten history or backdated commits can differ from what the branch held at T. |
-| Open PRs at T | partly | Candidates come from search: created at or before T, and open now or closed after T. Every candidate whose **current** title overlaps a kept issue has its events read, which drops PRs closed at T (reopened later) and reverses later renames (`membership_verified: true`). The other candidates stay unverified with their current titles, so an overlap caused at T by a since-renamed title is missed (unresolved review BM-02; see [docs/benchmark.md](../../docs/benchmark.md)). Branch names and bodies are not stored, so overlap replay uses PR titles only. |
+| Open PRs at T | within search/history bounds | Candidates come from search: created at or before T, and open now or closed after T. Every candidate has its events read **before** title overlap selection. Current state, close time and creation time anchor a consistent full transition history; PRs closed at T are dropped and later renames reversed (`membership_verified: true`). Contradictory transitions or ambiguous equal-second changes remain unknown. A capped, unreadable or malformed history stays unverified, with `pr_history_complete: false`; scoring then refuses the new snapshot. Legacy snapshots collected with the current-title prefilter remain unrepaired until separately enriched (BM-02). Branch names and bodies are not stored, so overlap replay uses PR titles only. |
 | Author association | no | The current value, for both issue authors (affects `--signals` by one point) and PR authors (affects positives); a person may have joined the project since T. |
 | Reactions, assignees | no | Not stored. Neither affects ranking order. |
 | Issue body | no | REST has no edit history, and bodies are not committed. See below. |
@@ -167,8 +168,15 @@ Per repository, the collector makes:
 - at most 4 search queries × `--max-search-pages` pages (spaced 2.2 s apart, to
   stay within the search limit);
 - one timeline read (at most 5 pages) per kept issue;
-- one events read (at most 2 pages) per candidate PR whose current title
-  overlaps a kept issue.
+- one events read (at most 2 pages) per candidate PR, irrespective of its current title.
+
+This repairs the history-selection order, not search coverage: search caps and
+incomplete search results are still recorded in `notes`. A complete history
+marker covers only the candidates returned by those searches. Enriching stored
+snapshots requires a fresh title/identity anchor as well as events, because a
+PR may have been renamed again since the original collection. Preserve the
+original `collected_at` and record the enrichment time separately; do not treat
+a partially enriched copy as a reconstructed corpus.
 
 ## Data and provenance
 
