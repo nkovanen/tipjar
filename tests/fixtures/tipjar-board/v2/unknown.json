@@ -1,0 +1,74 @@
+{
+  "format": "tipjar-board/2",
+  "generated_at": "2026-11-03T12:00:00Z",
+  "expires_at": "2026-11-05T12:00:00Z",
+  "rules_version": 1,
+  "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "coverage": {
+    "exhaustive": false,
+    "partial": true,
+    "unknown_tips": 0,
+    "unknown_repositories": 1,
+    "excluded_tips": 0,
+    "excluded_repositories": 0,
+    "omitted_tips": 0,
+    "omitted_repositories": 0,
+    "omitted_directory_observations": 0
+  },
+  "tips": [
+    {
+      "repository_id": 101,
+      "pull_request_id": 201,
+      "number": 7,
+      "url": "https://github.com/fictional-demo/welcoming-jar/pull/7",
+      "author_id": 301,
+      "author_login": "fictional-giver",
+      "merged_at": "2026-11-02T10:00:00Z",
+      "checks": {
+        "consent": "2026-11-03T12:00:00Z",
+        "controller": "2026-11-03T12:00:00Z",
+        "repository": "2026-11-03T12:00:00Z",
+        "pull_request": "2026-11-03T12:00:00Z"
+      },
+      "verified_at": "2026-11-03T12:00:00Z",
+      "submission_url": "https://github.com/nkovanen/tipjar/issues/11",
+      "agent_assistance": "self-declared",
+      "size": {
+        "additions": 5,
+        "deletions": 2,
+        "changed_files": 1
+      }
+    }
+  ],
+  "repositories": [
+    {
+      "repository_id": 101,
+      "repository": "fictional-demo/welcoming-jar",
+      "primary_language": "Python",
+      "verified_at": "2026-11-03T12:00:00Z"
+    }
+  ],
+  "directory": {
+    "complete": false,
+    "search_failed": false,
+    "server_incomplete": false,
+    "truncated": false,
+    "observations": [
+      {
+        "repository_id": 101,
+        "repository": "fictional-demo/welcoming-jar",
+        "disposition": "unknown",
+        "verified_at": "2026-11-03T12:00:00Z",
+        "checks": [
+          "2026-11-03T12:00:00Z",
+          "2026-11-03T12:00:00Z",
+          "2026-11-03T12:00:00Z",
+          "2026-11-03T12:00:00Z",
+          "2026-11-03T12:00:00Z"
+        ],
+        "jar": null,
+        "source": null
+      }
+    ]
+  }
+}
