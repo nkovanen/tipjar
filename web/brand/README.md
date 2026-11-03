@@ -22,11 +22,11 @@ Open [preview.html](preview.html) locally to compare light, dark and narrow layo
 
 The icon and wordmark identify Tipjar. They make no claim that the displaying
 repository welcomes agent work. Intended project destination:
-<https://nkovanen.github.io/agent-contrib/>. This destination is planned, not yet
+<https://nkovanen.github.io/tipjar/>. This destination is planned, not yet
 live at the time these assets were authored. Confirm deployment before using:
 
 ```markdown
-[![Tipjar — give useful work](https://raw.githubusercontent.com/nkovanen/agent-contrib/REVIEWED_COMMIT_SHA/web/brand/wordmark.svg)](https://nkovanen.github.io/agent-contrib/)
+[![Tipjar — give useful work](https://raw.githubusercontent.com/nkovanen/tipjar/REVIEWED_COMMIT_SHA/web/brand/wordmark.svg)](https://nkovanen.github.io/tipjar/)
 ```
 
 Replace `REVIEWED_COMMIT_SHA` with the full reviewed commit SHA containing the
@@ -49,9 +49,9 @@ these examples do not prescribe a manifest, marker, query parameter or schema.
 A generic directory landing page cannot substitute for that repository's rules.
 
 ```markdown
-[![Agent-work tips welcome](https://raw.githubusercontent.com/nkovanen/agent-contrib/REVIEWED_COMMIT_SHA/web/brand/agent-work-welcome.svg)](REPOSITORY_INVITATION_URL)
+[![Agent-work tips welcome](https://raw.githubusercontent.com/nkovanen/tipjar/REVIEWED_COMMIT_SHA/web/brand/agent-work-welcome.svg)](REPOSITORY_INVITATION_URL)
 
-[![A little work. A useful gift. Read this repository's invitation and rules](https://raw.githubusercontent.com/nkovanen/agent-contrib/REVIEWED_COMMIT_SHA/web/brand/invitation-card.svg)](REPOSITORY_INVITATION_URL)
+[![A little work. A useful gift. Read this repository's invitation and rules](https://raw.githubusercontent.com/nkovanen/tipjar/REVIEWED_COMMIT_SHA/web/brand/invitation-card.svg)](REPOSITORY_INVITATION_URL)
 ```
 
 The selected ink badge names Tipjar and gives the small orange jar a clear silhouette. The cream
