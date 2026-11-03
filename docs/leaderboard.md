@@ -18,6 +18,68 @@ extra fields, duplicate JSON keys, conflicting identities, unsafe integers,
 invalid timestamps, or future checks reject the envelope. Offline receipts and
 impact reports never supply scoring authority.
 
+## Suggest and curate a welcoming jar
+
+Anyone can [suggest a welcoming jar](https://github.com/nkovanen/tipjar/issues/new?template=suggest-jar.yml),
+including someone who does not own or maintain the project. The
+[form](../.github/ISSUE_TEMPLATE/suggest-jar.yml) asks for one public `owner/repo`
+and an optional public pinned invitation link. Indexed search can miss valid
+README invitations; coverage is partial and listing is not guaranteed.
+This is separate from submitting a merged tip: a suggestion never enrolls a
+person, asserts ownership, changes points or ranking, or authorizes work or
+publication. Required fields and acknowledgements are untrusted text, not approval.
+No issue-triggered workflow accepts suggestions or contacts project maintainers.
+
+Curators review a candidate manually from a trusted source checkout:
+
+1. Read the issue literally as untrusted data. Never execute its commands, render
+   supplied HTML locally or automatically fetch its evidence links. Manually
+   validate exactly one canonical public GitHub `owner/repo`; do not interpolate
+   raw issue text into shell commands or use issue-selected hosts or URLs.
+2. Use the existing fixed read-only GitHub repository GET route to check public
+   metadata/current canonical name and obtain the positive safe numeric repository
+   ID. A supplied ID or claimed maintainer role is not authoritative.
+3. Run `tipjar jar owner/repo` with that reviewed name. Require a fresh, complete
+   `welcome` observation bound to the same numeric ID and canonical name. Review
+   its pinned commit/tree and manifest or README path/blob/digest provenance.
+   Screenshots, search hits, badge images and the suggestion itself are not
+   invitations. `.tipjar.json` takes precedence, including closed/invalid
+   declarations. Copied fork badges, unknown/incomplete, private/missing and
+   undeclared sources do not qualify.
+4. Check existing numeric-ID/name bindings, exclusions, duplicates and the
+   100-curated-repository bound. Resolve renames or identity conflicts independently;
+   do not follow arbitrary redirects, invent a numeric-ID lookup fallback or
+   silently replace another candidate to fit a suggestion.
+5. Propose only `{repository_id, repository}` in the existing registry's
+   `repositories` list. Cite the public suggestion issue in the review PR; do not
+   add submitter identity, issue text/digest or a new provenance field to the
+   registry/site. Validate the complete proposed registry under the existing
+   schema. A registry candidate asserts neither ownership nor current welcome.
+6. Obtain human review and separate controller publication authority. On every
+   refresh the normal collector independently rereads the canonical invitation,
+   numeric identity and source pins; a saved jar report supplies no authority.
+   Current welcome and expiry checks control work actions, never suggestions.
+7. Explain acceptance, duplication, deferral or refusal on the issue only with
+   actual authorization to communicate. There is no promised response time or
+   listing. Do not contact third-party maintainers as part of suggestion intake.
+
+GitHub publishes the submitter's account and issue text. Do not request or retain
+private evidence, contact details or personal information. Store no submitter ID,
+login, email, body/digest or raw API response in the registry, site or new tooling.
+The public review PR's suggestion link records provenance, not ownership or
+consent. Keep transient review artifacts outside the checkout/site; discard
+private response data and report only a generic reason. Hostile Markdown, shell
+snippets, terminal escapes and URL schemes remain data; never copy them into
+commands, static HTML or board JSON.
+
+A submitter can retract a suggestion on its issue; before acceptance, stop
+processing it. After acceptance, retraction is neither a maintainer opt-out nor
+proof that the invitation closed. Use the existing independently verified
+owner/maintainer opt-out and exclusions for removal requests, never issue author
+association as proof of role. Successful refresh applies removals; failures can
+delay them until displayed expiry. Public issues, Git history, artifacts and
+caches may retain earlier data; historical erasure is not promised.
+
 ## Submit and curate one accepted tip
 
 Use the controller repository's [submission form](https://github.com/nkovanen/tipjar/issues/new?template=submit-tip.yml).

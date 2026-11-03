@@ -60,7 +60,65 @@ const fixture = (name) =>
     );
     return p;
   }
+  async function suggestionLink(p, screenshot) {
+    const destination = 'https://github.com/nkovanen/tipjar/issues/new?template=suggest-jar.yml';
+    const link = p.getByRole('link', { name: 'Suggest a welcoming jar', exact: true });
+    assert.equal(await link.count(), 1);
+    assert.equal(await link.isVisible(), true);
+    assert.equal(await link.getAttribute('href'), destination);
+    assert.equal(await link.getAttribute('target'), null);
+    assert.match(await link.locator('..').innerText(), /Coverage is partial; listing is not guaranteed/);
+    // Reach the actual anchor in document order; do not programmatically focus it.
+    for (let tabs = 0; tabs < 60; tabs++) {
+      if (await link.evaluate((e) => document.activeElement === e)) break;
+      await p.keyboard.press('Tab');
+    }
+    assert.equal(await link.evaluate((e) => document.activeElement === e), true);
+    assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    if (screenshot) await p.screenshot({ path: path.join(output, screenshot), fullPage: true });
+    // Fulfill navigation locally: this check never contacts GitHub or submits an issue.
+    let navigated = false;
+    await p.route(destination, (route) => {
+      navigated = true;
+      return route.fulfill({ contentType: 'text/html', body: '<title>Local navigation check</title>' });
+    });
+    await p.keyboard.press('Enter');
+    await p.waitForURL(destination);
+    assert.equal(navigated, true);
+    assert.equal(await p.title(), 'Local navigation check');
+  }
   try {
+    for (const width of [1440, 390]) {
+      for (const javaScriptEnabled of [true, false]) {
+        for (const file of ['index', 'leaderboard']) {
+          const context = await browser.newContext({
+            viewport: { width, height: 1000 }, javaScriptEnabled, reducedMotion: 'reduce',
+          });
+          const p = await context.newPage();
+          const requests = [];
+          p.on('request', (r) => requests.push(r.url()));
+          await p.clock.install({ time: new Date('2026-11-03T13:00:00Z') });
+          await p.route('**/tipjar/board.json', (route) => route.fulfill({
+            contentType: 'application/json', body: JSON.stringify(fixture('v2/empty')),
+          }));
+          await p.goto(origin + '/tipjar/' + file + '.html');
+          await suggestionLink(p, `suggest-${file}-${width}-${javaScriptEnabled ? 'js' : 'nojs'}.png`);
+          assert.equal(requests.filter((u) => u.endsWith('/board.json')).length,
+            file === 'leaderboard' && javaScriptEnabled ? 1 : 0);
+          await context.close();
+          checks++;
+        }
+      }
+      for (const state of ['partial', 'expired', 'readme-welcome']) {
+        const p = await page(width, fixture('v2/' + state));
+        await p.goto(origin + '/tipjar/leaderboard.html');
+        await p.waitForFunction(() => !document.getElementById('board-status').innerText.includes('Filling'));
+        if (state === 'expired') assert.equal(await p.locator('#welcome-content article').count(), 0);
+        await suggestionLink(p, `suggest-${state}-${width}.png`);
+        await p.close();
+        checks++;
+      }
+    }
     for (const width of [1440, 390]) {
       const p = await page(width, fixture('v2/readme-welcome'));
       const requests = [];
