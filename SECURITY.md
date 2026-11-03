@@ -95,3 +95,11 @@ exact-result publication assertions. Welcome and undeclared sources both require
 complete source/fork policy accounting; no invitation or approval is invented.
 See [the complete external-tip workflow](docs/external-tips.md) for commands, records, pause points and limits. Evidence
 remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.
+
+Jar report dictionaries supplied by native library callers are data, not
+attestations of a source read. Pending preparation validates their full shape,
+state/digest consistency and source pin, and shapes an unauthorized draft; it
+cannot authenticate a well-formed fabricated inspection. Public policy inventory
+and live jar enforcement establish their own pinned reads through the supplied
+GitHub client. Fresh live verification remains required for every action. This
+boundary does not authenticate a caller-replaced client or sandbox native code.

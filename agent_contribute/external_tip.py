@@ -31,14 +31,16 @@ def identities(repository, fork, client):
     for meta in (source, target):
         if any(meta.get(k) is not False for k in ('private', 'archived', 'disabled')):
             raise core.ProtocolError('external_route', 'Source and fork must be known public, active repositories')
-    parent = target.get('parent', {})
+    parent = core.require(target.get('parent'), dict, 'fork parent')
+    parent_owner = core.require(parent.get('owner'), dict, 'fork parent owner')
+    permissions = core.require(target.get('permissions'), dict, 'fork permissions')
     if (source.get('has_issues') is not True or target.get('fork') is not True or
             target['id'] == source['id'] or target['owner']['type'] != 'User' or
             target['owner']['id'] != actor['id'] or target['owner']['login'] != actor['login'] or
-            target.get('permissions', {}).get('push') is not True or
-            not auth.positive(parent.get('id')) or not auth.positive(parent.get('owner', {}).get('id')) or
-            (parent.get('id'), parent.get('full_name'), parent.get('owner', {}).get('id'),
-             parent.get('owner', {}).get('login'), parent.get('owner', {}).get('type')) !=
+            permissions.get('push') is not True or
+            not auth.positive(parent.get('id')) or not auth.positive(parent_owner.get('id')) or
+            (parent.get('id'), parent.get('full_name'), parent_owner.get('id'),
+             parent_owner.get('login'), parent_owner.get('type')) !=
             (source['id'], repository, source['owner']['id'], source['owner']['login'], source['owner']['type'])):
         raise core.ProtocolError('external_route', 'Requires an immediate personal-owned writable fork of the explicit issue source')
     return source, target, {k: actor[k] for k in ('id', 'login', 'type')}
@@ -350,12 +352,11 @@ def verify(task, evidence=None, repo_dir=None, client=None, *, context=None, pay
     result['source_invitation'] = dict(basis=task['source_review']['invitation_basis'],
                                        state=task['source_review']['jar_state'], digest=task['source_review']['jar_sha256'])
     result['repository_approval'] = facts.get('repository_approval', result['repository_approval'])
-    result['policy_reviews'].update(inventories=facts['inventories'],
-                                   assessment=context.get('policy_assessment') if isinstance(context, dict) else None,
-                                   observations=context.get('policy_observations') if isinstance(context, dict) else None)
+    result['policy_reviews']['inventories'] = facts['inventories']
     publication = dict(status='unknown', verified=False, creation_clear=False, own_pr=None, detail=None, errors=['External history requires valid context'])
     valid_context = not external_authorization.context_errors(context)
     if valid_context:
+        result['policy_reviews'].update(assessment=context['policy_assessment'], observations=context['policy_observations'])
         publication = pr_identity.check_external_publication(publication_binding(task, context), context.get('publication_claim'),
                                                               evidence.get('git_head') if isinstance(evidence, dict) else None, client)
     technical_errors = []
@@ -379,7 +380,10 @@ def verify(task, evidence=None, repo_dir=None, client=None, *, context=None, pay
                 pub_errors.append('Open scan and exact publication detail disagree')
         except core.ProtocolError as exc:
             pub_errors.append(str(exc))
-        if payload is None or any(detail.get(k) != payload.get(k) for k in ('title', 'body', 'draft', 'maintainer_can_modify')):
+        payload_errors = external_authorization.payload_errors(payload)
+        if payload_errors:
+            pub_errors.extend('Publication payload ' + error for error in payload_errors)
+        elif any(detail.get(k) != payload[k] for k in ('title', 'body', 'draft', 'maintainer_can_modify')):
             pub_errors.append('Published exact title/body/draft/maintainer-edit payload differs')
         remote = facts['remote_head']
         if not remote or not isinstance(evidence, dict) or (remote['sha'], remote['tree']) != (evidence.get('git_head'), evidence.get('git_tree')):
@@ -396,6 +400,9 @@ def verify(task, evidence=None, repo_dir=None, client=None, *, context=None, pay
                 pub_errors.append('External final detail reread changed')
         except (core.ProtocolError, KeyError) as exc:
             pub_errors.append(str(exc))
+    # Ledger/artifact reads can block too; action time is sampled only after every blocking read.
+    final_ledger_errors = (ledger_errors(context, evidence, repo_dir) if valid_context else
+                           ['Valid external context is required'])
     now = dt.datetime.now(dt.timezone.utc)
     authority = external_authorization.check(task, context, facts, evidence=evidence, payload=payload, now=now)
     result['policy_reviews']['errors'] = authority['assessment_errors']
@@ -425,10 +432,7 @@ def verify(task, evidence=None, repo_dir=None, client=None, *, context=None, pay
         final.append('Valid independent review is required')
     if not authority['implementation_historical']:
         final.append('Historically valid implementation authorization is required')
-    if valid_context:
-        final += ledger_errors(context, evidence, repo_dir)
-    else:
-        final.append('Valid external context is required')
+    final += final_ledger_errors
     draft = final + pub_errors + authority['publication_errors']
     published = final + pub_errors
     if not authority['publication_current']:
