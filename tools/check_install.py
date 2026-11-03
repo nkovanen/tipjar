@@ -106,9 +106,9 @@ def installed_check(source):
     assert dist.metadata.get_payload().strip() == (source / "README.md").read_text("utf-8").strip()
     urls = dict(value.split(", ", 1) for value in dist.metadata.get_all("Project-URL"))
     assert urls == {
-        "Homepage": "https://github.com/nkovanen/agent-contrib",
-        "Repository": "https://github.com/nkovanen/agent-contrib",
-        "Issues": "https://github.com/nkovanen/agent-contrib/issues",
+        "Homepage": "https://github.com/nkovanen/tipjar",
+        "Repository": "https://github.com/nkovanen/tipjar",
+        "Issues": "https://github.com/nkovanen/tipjar/issues",
     }
     for name in ("LICENSE", "NOTICE"):
         matches = [file for file in dist.files if str(file).endswith("/licenses/" + name)]
@@ -407,6 +407,7 @@ def main():
                     "docs/examples/release-pypi.yml", "docs/output-reference.md",
                     "tests/fixtures/dependencies/requirements.txt",
                     ".github/workflows/ci.yml"}
+        expected.update(str(file.relative_to(source)) for file in (source / "docs").rglob("*.md"))
         expected.update(str(file.relative_to(source)) for file in (source / "tests").rglob("*")
                         if file.is_file() and file.suffix in (".py", ".json") and "__pycache__" not in file.parts)
         expected.update("web/" + name for name in ("index.html", "style.css", "app.js", "model.js", "jar.svg", "README.md"))

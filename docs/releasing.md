@@ -97,7 +97,7 @@ page names the right tag and commit, then install from the tag in a clean
 virtual environment:
 
 ```sh
-python -m pip install "git+https://github.com/nkovanen/agent-contrib@vX.Y.Z"
+python -m pip install "git+https://github.com/nkovanen/tipjar@vX.Y.Z"
 agent-contrib --version   # prints X.Y.Z
 ```
 
@@ -131,7 +131,7 @@ test keeps an adopted copy identical to the example).
 
 1. **PyPI:** add a trusted publisher for project `agent-contrib`, or a
    *pending* publisher while the project does not exist yet. Set owner
-   `nkovanen`, repository `agent-contrib`, workflow `release-pypi.yml` and
+   `nkovanen`, repository `tipjar`, workflow `release-pypi.yml` and
    environment `pypi`.
 2. **GitHub:** create the environment `pypi`. Require a maintainer as
    reviewer, prevent self-review where available, and allow deployments only
@@ -154,7 +154,7 @@ Approve the `pypi` environment deployment only after the build job has passed.
 python -m venv /tmp/ac-verify && /tmp/ac-verify/bin/python -m pip install agent-contrib==X.Y.Z
 /tmp/ac-verify/bin/agent-contrib --version          # prints X.Y.Z
 python -m pip download --no-deps agent-contrib==X.Y.Z -d /tmp/ac-dist
-gh attestation verify /tmp/ac-dist/* --repo nkovanen/agent-contrib
+gh attestation verify /tmp/ac-dist/* --repo nkovanen/tipjar
 ```
 
 The PyPI file pages also show the trusted-publisher provenance for each file.

@@ -3,7 +3,7 @@
 ## Reporting
 
 Please report suspected vulnerabilities privately through
-[GitHub security advisories](https://github.com/nkovanen/agent-contrib/security/advisories/new).
+[GitHub security advisories](https://github.com/nkovanen/tipjar/security/advisories/new).
 Include the affected version, a minimal reproduction and the expected trust
 boundary. Do not include credentials or private repository contents. Response
 times are not guaranteed for this experimental project. The published release

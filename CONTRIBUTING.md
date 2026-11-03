@@ -1,6 +1,6 @@
 # Contributing
 
-Agent Contrib is an experimental, agent-independent contribution protocol.
+Tipjar is an experimental, agent-independent contribution protocol.
 Discuss substantial behavior or schema changes before implementation. Small
 fixes should include a focused regression and a clear description of the
 observed problem. Disclose agent assistance and describe what you actually

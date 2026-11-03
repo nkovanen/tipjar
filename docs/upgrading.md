@@ -14,7 +14,7 @@ Message-only changes never change a decision.
 ## Before you start
 
 1. Install the candidate in its own environment (see the
-   [README](../README.md#install) and
+   [README](../README.md#install-from-source) and
    [installation](installation.md#testing-the-unreleased-v030-candidate)), and
    check that `agent-contrib --version` prints `0.3.0` in the environment your
    agent uses.
@@ -29,9 +29,10 @@ A candidate containing the Tipjar identity change installs both `tipjar` and
 `agent-contrib` for the same CLI. After installing that reviewed commit, check
 `tipjar --version` alongside `agent-contrib --version`; both print `0.3.0`.
 The published v0.2.0 has no alias. Existing scripts can keep `agent-contrib` or
-`python -m agent_contribute`; the distribution, repository URLs, output
+`python -m agent_contribute`; the distribution, output
 identifiers and canonical `agent-contribute` Skill keep their names. No file or
-schema migration is needed for the alias. See [installation](installation.md#tipjar-command-compatibility).
+schema migration is needed for the alias. Current repository and installation
+URLs now point to `nkovanen/tipjar`; historical release links remain Agent Contrib. See [installation](installation.md#tipjar-command-compatibility).
 
 ## Versions and schemas
 
