@@ -15,7 +15,7 @@ def fixture(t=None, f=None):
     assessment={'inventories':[], 'entries':[]}
     for bound in f['inventories']:
         inv=bound['inventory'];rid=bound['repository_id'];digest=inv['inventory_sha256']
-        assessment['inventories'].append(dict(repository_id=rid,inventory_format=3,inventory_sha256=digest))
+        assessment['inventories'].append(dict(repository_id=rid,inventory_format=4,inventory_sha256=digest))
         seen=set()
         for item in inv['sources_scanned']+inv['unassessed']:
             identity=item['identity_sha256']

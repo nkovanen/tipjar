@@ -42,6 +42,16 @@ frame.addEventListener('load',async () => {
     check($('jar-detail').open,'detail dialog opens');
     let copied=''; Object.defineProperty(win.navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}});
     doc.querySelector('.command button').click(); await settle();
+    check($('badge-preview').textContent==='' && $('copy-badge').disabled,'page load creates no invitation without a repository');
+    $('badge-repository').value='Acme/Project';$('badge-repository').dispatchEvent(new win.Event('input',{bubbles:true}));
+    const exact=win.TipjarModel.makeBadge('acme/project');
+    check($('badge-preview').textContent===exact,'onboarding shows exact scoped source prefix');
+    check(copied==='tipjar jar sample/dropped','editing onboarding does not copy automatically');
+    $('badge-form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));await settle();
+    check(copied===exact,'explicit copy writes exact README snippet');
+    $('badge-repository').value='<img src=x onerror=alert(1)>'; $('badge-repository').dispatchEvent(new win.Event('input',{bubbles:true}));
+    check($('copy-badge').disabled && !$('badge-preview').querySelector('img'),'hostile repository input stays data');
+    doc.querySelector('.command button').click(); await settle();
     check(copied==='tipjar jar sample/dropped','copy sends exact command to clipboard boundary');
     const closed = new Promise(resolve => $('jar-detail').addEventListener('close',()=>resolve(true),{once:true}));
     $('jar-detail').close();

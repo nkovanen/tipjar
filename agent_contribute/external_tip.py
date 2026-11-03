@@ -61,8 +61,8 @@ def known_restriction(hint):
 
 def inventory_errors(inventory):
     errors = []
-    if inventory.get('inventory_format') != 3:
-        errors.append('Policy inventory format must be 3')
+    if inventory.get('inventory_format') != 4:
+        errors.append('Policy inventory format must be 4')
     if inventory.get('limits_hide_sources') is not False or inventory.get('omitted_sources'):
         errors.append('Policy inventory hides or omits applicable sources')
     if inventory.get('owner_lookup', {}).get('status') not in ('read', 'not_found_or_inaccessible', 'not_applicable'):
@@ -74,7 +74,23 @@ def inventory_errors(inventory):
     for item in inventory.get('unassessed', []):
         if any(word in item['reason'] for word in ('read failed', 'exceeds', 'malformed', 'not read')):
             errors.append('Unread or unresolved policy source: ' + item['what'])
+    errors += tipjar.preparation_errors(inventory.get('tipjar'))
     return errors
+
+
+def inventory_binding_errors(snapshot, inventory, repository_id):
+    jar = inventory.get('tipjar')
+    errors = inventory_errors(inventory)
+    if (not tipjar.same_declaration(snapshot.get('tipjar'), jar) or
+            not isinstance(jar, dict) or jar.get('repository_id') != repository_id or
+            jar.get('commit') != snapshot['commit'] or jar.get('default_branch') != snapshot['default_branch'] or
+            jar.get('repository', '').casefold() != snapshot['repository'].casefold()):
+        errors.append('Independent policy invitation identity or source pin differs from snapshot')
+    return errors
+
+
+def jar_binding(jar):
+    return {'jar_' + key: jar[key] for key in ('source_kind','path','blob_sha','manifest_present')}
 
 
 def prepare(reference, fork, head_ref, client=None):
@@ -88,11 +104,11 @@ def prepare(reference, fork, head_ref, client=None):
     issue = auth.issue_identity(repository, number, client)
     inspected = core.inspect_from_snapshot(snapshot, issue)
     inv = policy.for_inspected(inspected, client)
-    errors = inspected['errors'] + inspected['exclusions'] + tipjar.preparation_errors(snapshot['tipjar']) + inventory_errors(inv)
+    errors = inspected['errors'] + inspected['exclusions'] + tipjar.preparation_errors(snapshot['tipjar']) + inventory_binding_errors(snapshot, inv, source['id'])
     fork_snapshot = core.repository_snapshot(fork, client, target)
     fork_inv = policy.report(fork, fork_snapshot['commit'], fork_snapshot['instructions'], client,
                              default_branch=target['default_branch'], tipjar_report=fork_snapshot['tipjar'])
-    errors += fork_snapshot['errors'] + inventory_errors(fork_inv)
+    errors += fork_snapshot['errors'] + inventory_binding_errors(fork_snapshot, fork_inv, target['id'])
     if errors:
         raise core.ProtocolError('external_preparation', '; '.join(errors))
     task = core.prepare(inspected)
@@ -100,9 +116,12 @@ def prepare(reference, fork, head_ref, client=None):
     task['source'].update(repository_id=source['id'], owner_id=source['owner']['id'], issue_id=issue['id'],
                           policy_sha256=auth.policy_hash(inspected['provenance']))
     jar = snapshot['tipjar']
-    task['source_review'] = dict(inventory_format=3, inventory_sha256=inv['inventory_sha256'],
+    if not tipjar.same_declaration(jar, inv['tipjar']) or inv['tipjar'].get('commit') != snapshot['commit']:
+        raise core.ProtocolError('external_preparation', 'Independent source invitation differs')
+    task['source_review'] = dict(inventory_format=4, inventory_sha256=inv['inventory_sha256'],
                                   invitation_basis='welcome' if jar['state'] == 'welcome' else 'explicit-undeclared',
-                                  jar_state=jar['state'], jar_sha256=jar['sha256'])
+                                  jar_state=jar['state'], jar_sha256=jar['sha256'],
+                                  **jar_binding(jar))
     task['execution'] = dict(mode='external-tip', target_repository=fork, target_repository_id=target['id'],
                             head_repository=fork, head_repository_id=target['id'], head_owner_id=actor['id'],
                             credential_actor_id=actor['id'], head_ref=head_ref, base_ref=source['default_branch'],
@@ -137,7 +156,9 @@ def route_errors(task):
             e['base_ref'] != s['default_branch'] or e['head_ref'] == e['base_ref']):
         errors.append('External route refs or identities are invalid')
     if (r['invitation_basis'], r['jar_state']) not in (('welcome', 'welcome'), ('explicit-undeclared', 'undeclared')) or (
-            (r['jar_state'] == 'undeclared') != (r['jar_sha256'] is None)):
+            r['jar_source_kind'] == 'absent' and (r['jar_state'] != 'undeclared' or r['jar_sha256'] is not None or r['jar_path'] is not None or r['jar_blob_sha'] is not None or r['jar_manifest_present']) or
+            r['jar_source_kind'] == 'manifest' and (r['jar_state'] != 'welcome' or r['jar_path'] != '.tipjar.json' or not r['jar_manifest_present'] or r['jar_sha256'] is None or r['jar_blob_sha'] is None) or
+            r['jar_source_kind'] == 'readme' and (r['jar_path'] != 'README.md' or r['jar_manifest_present'] or r['jar_sha256'] is None or r['jar_blob_sha'] is None)):
         errors.append('External source invitation binding is invalid')
     return errors
 
@@ -222,11 +243,11 @@ def live_facts(task, directory, client):
                 errors.append('Pinned label policy changed')
             errors += tipjar.preparation_errors(baseline['tipjar'])
             jar = baseline['tipjar']
-            if (jar['state'], jar['sha256']) != (task['source_review']['jar_state'], task['source_review']['jar_sha256']):
+            if (jar['state'], jar['sha256']) != (task['source_review']['jar_state'], task['source_review']['jar_sha256']) or any(task['source_review'][k] != v for k,v in jar_binding(jar).items()) or jar.get('repository_id') != s['repository_id']:
                 errors.append('Pinned jar declaration changed')
             inv = policy.report(s['repository'], baseline['commit'], baseline['instructions'], client,
                                 default_branch=source['default_branch'], tipjar_report=jar)
-            errors += inventory_errors(inv)
+            errors += inventory_binding_errors(baseline, inv, source['id'])
             if inv['inventory_sha256'] != task['source_review']['inventory_sha256']:
                 errors.append('Pinned source policy inventory changed')
         source_inv = inv
@@ -234,7 +255,7 @@ def live_facts(task, directory, client):
         errors += fork_snapshot['errors']
         fork_inv = policy.report(e['head_repository'], fork_snapshot['commit'], fork_snapshot['instructions'], client,
                                  default_branch=fork['default_branch'], tipjar_report=fork_snapshot['tipjar'])
-        errors += inventory_errors(fork_inv)
+        errors += inventory_binding_errors(fork_snapshot, fork_inv, fork['id'])
         facts['inventories'] = [dict(repository_id=s['repository_id'], repository=s['repository'], inventory=source_inv),
                                 dict(repository_id=e['head_repository_id'], repository=e['head_repository'], inventory=fork_inv)]
         facts['duplicates'] = [dict(x, repository=s['repository']) for x in inspected['duplicates']]

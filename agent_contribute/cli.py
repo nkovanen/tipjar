@@ -49,7 +49,7 @@ def read_host_context_stdin():
 
 GLOBAL_OPTIONS = ('--format', '--report-budget', '--min-remaining', '--cache')
 # Commands that never read GitHub; GitHub-only global options are refused on them alike.
-OFFLINE_COMMANDS = ('instructions', 'schema', 'skill', 'lint', 'scope-check', 'evidence', 'init', 'jar-check', 'dependencies', 'impact', 'session', 'card')
+OFFLINE_COMMANDS = ('instructions', 'schema', 'skill', 'lint', 'scope-check', 'evidence', 'init', 'jar-check', 'badge', 'dependencies', 'impact', 'session', 'card')
 AI_POLICY_NOTICE = ('agent-contrib: --ai-policy is deprecated and ignored; '
                     'inspect always adds repository_policy')
 
@@ -128,7 +128,7 @@ def prevalidate(args):
             raise core.ProtocolError('invalid_head', 'Expected head must be a full 40-character commit SHA')
     elif args.command == 'find':
         find.validate_owner(args.owner)
-    elif args.command == 'jar':
+    elif args.command in ('jar','badge'):
         try:
             core.parse_repository(args.repository)
         except core.ProtocolError as exc:
@@ -159,7 +159,7 @@ def prevalidate(args):
         if isinstance(task, dict) and task.get('schema_version') == '0.3' and args.command == 'pr-body' and args.closes:
             raise core.ProtocolError('usage', 'External PR bodies support Refs only; --closes is unsupported')
         if args.command in ('drift', 'pr-body') and core.validate_contract(task):
-            raise core.ProtocolError('invalid_contract', 'Contract does not match its bundled schema')
+            raise core.ProtocolError('invalid_contract', '; '.join(core.validate_contract(task)))
         if args.command == 'drift' and isinstance(task, dict) and task.get('schema_version') == '0.3' and args.policy_sha256 is not None:
             if args.policy_sha256 != task['source_review']['inventory_sha256']:
                 raise core.ProtocolError('usage', 'Task 0.3 policy baseline must match source_review.inventory_sha256')
@@ -250,6 +250,8 @@ def main(argv=None):
     sub.add_argument('--output', required=True, help='New SVG file; never overwritten')
     sub = commands.add_parser('impact', help='Offline impact from editable recorded PR observations')
     sub.add_argument('files', nargs='+', help='1-100 receipt files, at most 64 KiB each')
+    sub = commands.add_parser('badge', help='Print an offline repository-scoped README welcome snippet')
+    sub.add_argument('repository', help='GitHub owner/repo welcoming tips')
     sub = commands.add_parser('jar', help='Inspect the pinned root Tipjar invitation; inspection only, grants no authority',
                               description='Pinned root invitation inspection only; grants no approval or authority.')
     sub.add_argument('repository', help='GitHub owner/repo to inspect directly, without parent tracker resolution')
@@ -445,6 +447,9 @@ def main(argv=None):
         elif args.command == 'find':
             result = find.find_jars(owner=args.owner)
             code = 0 if result['complete'] else 1
+        elif args.command == 'badge':
+            result = onboarding.badge(args.repository)
+            code = 0
         elif args.command == 'jar':
             result = tipjar.read_jar(args.repository)
             code = 0 if result['complete'] else 1

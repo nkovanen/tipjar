@@ -116,7 +116,7 @@ class ExternalHandoffTests(unittest.TestCase):
         self.route.client.contents['.tipjar.json'] = b'{"schema_version":"0.1","status":"welcome"}'
         status, result = self.call(['drift', self.task], 'drift')
         self.assertIs(result['tipjar']['changed'], True)
-        self.assertEqual(result['tipjar']['reviewed'], {'state': 'undeclared', 'sha256': None})
+        self.assertEqual(result['tipjar']['reviewed'], {key:self.route.task['source_review']['jar_'+key] for key in ('state','sha256','source_kind','path','blob_sha','manifest_present')})
         self.assertTrue(result['drifted'])
 
     def test_unsigned_publication_view_cannot_authorize_even_inside_a_context(self):

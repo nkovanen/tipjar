@@ -105,3 +105,9 @@ limits, and copy/download boundaries. Clipboard and download OS boundaries are
 replaced to inspect exact values; native keyboard actions and the OS clipboard /
 save dialog still require manual testing. A background browser may defer the
 native close event; the page reports this as a LIMIT rather than a passed check.
+
+README onboarding validates owner/repo locally and generates the exact official
+prefix. `?repo=` only pre-fills the editor. No save, clipboard write or GitHub
+call occurs on page load. Optional JSON preferences take precedence. Imports
+accept explicit find-jars-report/1 (manifest only) and /2 (versioned invitation
+provenance); both remain untrusted observations.

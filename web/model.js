@@ -25,7 +25,7 @@
     requireValue(typeof text === 'string' && bytes(text) <= MAX_BYTES, 'Choose a JSON file of at most 1 MiB.');
     let value;
     try { value = JSON.parse(text); } catch { throw new Error('This file is not valid JSON.'); }
-    requireValue(object(value) && value.format === 'find-jars-report/1', 'Expected format find-jars-report/1.');
+    requireValue(object(value) && ['find-jars-report/1','find-jars-report/2'].includes(value.format), 'Expected format find-jars-report/1 or /2.');
     requireValue(Array.isArray(value.observations) && value.observations.length <= 200 && typeof value.complete === 'boolean', 'Expected at most 200 observations and a complete flag.');
     const errors = value.errors === undefined ? [] : value.errors;
     requireValue(Array.isArray(errors) && errors.length <= 200 && errors.every(x => typeof x === 'string' && [...x].length <= 500), 'Invalid bounded search diagnostics.');
@@ -57,17 +57,32 @@
         requireValue(row[key] == null || typeof row[key] === 'string' && pattern.test(row[key]), prefix + 'invalid ' + key + '.');
       }
       const manifest = row.manifest == null ? null : validateManifest(row.manifest);
-      if (row.complete && ['welcome','closed'].includes(row.state)) requireValue(manifest && manifest.status === row.state, prefix + 'declaration does not match manifest.');
+      const modern = value.format === 'find-jars-report/2';
+      if (modern && observation.jar != null) {
+        requireValue(Number.isSafeInteger(row.repository_id) && row.repository_id > 0 && row.repository_id === observation.repository_id, prefix + 'invalid numeric source identity.');
+        requireValue(['manifest','readme','absent','unknown'].includes(row.source_kind), prefix + 'invalid source kind.');
+        requireValue(typeof row.manifest_present === 'boolean' || row.manifest_present === null, prefix + 'invalid manifest presence.');
+        if (row.complete) {
+          requireValue(typeof row.tree_sha === 'string' && /^[a-f0-9]{40}$/.test(row.tree_sha) && typeof row.commit === 'string' && typeof row.default_branch === 'string' && row.default_branch.trim(), prefix + 'missing pinned identity.');
+          requireValue(row.source_kind !== 'unknown' && row.state !== 'unknown', prefix + 'unresolved source.');
+          if (row.source_kind === 'readme') {
+            requireValue(row.path === 'README.md' && row.manifest_present === false && manifest === null && typeof row.sha256 === 'string' && /^[a-f0-9]{40}$/.test(row.blob_sha), prefix + 'invalid README provenance.');
+            requireValue(row.state === 'undeclared' && row.badge === null || row.state === 'welcome' && object(row.badge) && Object.keys(row.badge).length === 2 && row.badge.protocol === 'readme-welcome/1' && row.badge.repository === row.repository.toLowerCase(), prefix + 'invalid README invitation.');
+          } else if (row.source_kind === 'absent') requireValue(row.path === null && row.manifest_present === false && row.sha256 === null && row.blob_sha === null && manifest === null && row.badge === null && row.state === 'undeclared', prefix + 'invalid absent source.');
+          else requireValue(row.path === '.tipjar.json' && row.manifest_present === true && row.badge === null && typeof row.sha256 === 'string' && /^[a-f0-9]{40}$/.test(row.blob_sha) && manifest && manifest.status === row.state, prefix + 'invalid manifest provenance.');
+        }
+      }
+      if (row.complete && ['welcome','closed'].includes(row.state) && (!modern || row.source_kind === 'manifest')) requireValue(manifest && manifest.status === row.state, prefix + 'declaration does not match manifest.');
       if (row.complete && row.state === 'undeclared') requireValue(!manifest, prefix + 'undeclared report contains a manifest.');
       const effectiveState = row.complete ? row.state : 'unknown';
       requireValue(observation.disposition === 'excluded' || observation.disposition === effectiveState, prefix + 'disposition and jar state disagree.');
-      return {repository:row.repository, state:observation.disposition, complete:row.complete, manifest, commit:row.commit || null, sha256:row.sha256 || null};
+      return {repository:row.repository, state:observation.disposition, complete:row.complete, manifest, source_kind:modern ? row.source_kind : 'manifest', path:modern ? row.path : '.tipjar.json', commit:row.commit || null, sha256:row.sha256 || null};
     });
     return {reports:reports.filter(row => row !== null),complete:value.complete,skippedUnidentifiable,errors:errors.slice()};
   }
   function sourceURL(row) {
     return repoPattern.test(row.repository) && typeof row.commit === 'string' && /^[a-f0-9]{40}$/.test(row.commit)
-      ? `https://github.com/${row.repository}/blob/${row.commit}/.tipjar.json` : null;
+      ? `https://github.com/${row.repository}/blob/${row.commit}/${row.path === 'README.md' ? 'README.md' : '.tipjar.json'}` : null;
   }
   function filterReports(rows, query, state) {
     query = query.trim().toLowerCase();
@@ -80,7 +95,11 @@
     requireValue(bytes(JSON.stringify(result,null,2)+'\n') <= 16384, 'Downloaded manifest exceeds 16 KiB. Shorten the lists.');
     return result;
   }
-  const api = {MAX_BYTES,parseSnapshot,sourceURL,filterReports,makeManifest};
+  function makeBadge(repository) {
+    requireValue(typeof repository === 'string' && repoPattern.test(repository), 'Enter a GitHub owner/repo.');
+    return '<!-- tipjar:welcome:v1 -->\n[![Agent-work tips welcome](https://nkovanen.github.io/tipjar/brand/agent-work-welcome.svg)](https://nkovanen.github.io/tipjar/?repo=' + encodeURIComponent(repository.toLowerCase()) + ')\n\n';
+  }
+  const api = {makeBadge,MAX_BYTES,parseSnapshot,sourceURL,filterReports,makeManifest};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TipjarModel = api;
 })(globalThis);

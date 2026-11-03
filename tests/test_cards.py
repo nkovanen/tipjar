@@ -34,7 +34,7 @@ class CardTests(unittest.TestCase):
         return invoke('card', str(path or self.save()), '--output', str(self.root / name))
 
     def test_card_response_contract_starts_at_output2(self):
-        self.assertEqual(outputs.output_schema('card')['$id'], 'urn:agent-contrib:output:3:card')
+        self.assertEqual(outputs.output_schema('card')['$id'], 'urn:agent-contrib:output:4:card')
         resources = importlib.resources.files('agent_contribute')
         frozen = json.loads(resources.joinpath('schemas/output/2/card.schema.json').read_text('utf-8'))
         self.assertEqual(frozen['$id'], 'urn:agent-contrib:output:2:card')

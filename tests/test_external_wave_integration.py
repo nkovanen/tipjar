@@ -17,15 +17,15 @@ class ExternalWaveRegistryTests(unittest.TestCase):
     def test_active_three_covers_every_frozen_two_command(self):
         root = importlib.resources.files('agent_contribute').joinpath('schemas/output')
         frozen_names = {p.name.removesuffix('.schema.json') for p in root.joinpath('2').iterdir()}
-        self.assertEqual(outputs.VERSION, '3')
+        self.assertEqual(outputs.VERSION, '4')
         self.assertEqual(len(frozen_names), 25)
-        self.assertEqual(len(outputs.SCHEMAS), 25)
+        self.assertEqual(len(outputs.SCHEMAS), 26)
         self.assertTrue({'dependencies', 'find', 'impact', 'init', 'jar-check', 'receipt', 'session'} <= frozen_names)
-        self.assertEqual(set(outputs.SCHEMAS), frozen_names)
+        self.assertEqual(set(outputs.SCHEMAS), frozen_names | {"badge"})
         self.assertEqual({p.name.removesuffix('.schema.json') for p in root.joinpath('3').iterdir()}, frozen_names)
         for name in frozen_names:
             with self.subTest(name=name):
-                self.assertEqual(outputs.output_schema(name)['$id'], f'urn:agent-contrib:output:3:{name}')
+                self.assertEqual(outputs.output_schema(name)['$id'], f'urn:agent-contrib:output:4:{name}')
 
     def test_cloned_wave_shapes_change_only_the_schema_id(self):
         root = importlib.resources.files('agent_contribute').joinpath('schemas/output/2')
@@ -33,7 +33,7 @@ class ExternalWaveRegistryTests(unittest.TestCase):
             with self.subTest(name=name):
                 expected = json.loads(root.joinpath(name + '.schema.json').read_text('utf-8'))
                 expected['$id'] = f'urn:agent-contrib:output:3:{name}'
-                self.assertEqual(outputs.output_schema(name), expected)
+                self.assertEqual(outputs.output_schema(name, version='3'), expected)
 
     def test_external_unions_retain_reviewed_variants(self):
         verify = outputs.output_schema('verify')

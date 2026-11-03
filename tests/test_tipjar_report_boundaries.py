@@ -10,7 +10,7 @@ from tests.test_tipjar_policy import JarGitHub
 
 def forged_absence(inspected):
     report = copy.deepcopy(inspected['tipjar'])
-    report.update(state='undeclared', complete=True, manifest=None, errors=[], sha256=None, blob_sha=None)
+    report.update(source_kind='absent',path=None,manifest_present=False,badge=None,state='undeclared', complete=True, manifest=None, errors=[], sha256=None, blob_sha=None)
     return report
 
 
@@ -38,7 +38,7 @@ class ReportBoundaryTests(unittest.TestCase):
             with self.subTest(change=change):
                 self.assertTrue(tipjar.preparation_errors(report))
                 self.assertFalse(tipjar.same_declaration(report, welcome['tipjar']))
-        report = dict(absent['tipjar'], sha256='a' * 64)
+        report = dict(absent['tipjar'], sha256=None)
         self.assertTrue(tipjar.preparation_errors(report))
 
     def test_pending_draft_validates_identity_without_claiming_source_authentication(self):

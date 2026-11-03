@@ -332,7 +332,7 @@ def target_pr_scan(source, target, issue, client):
             'complete': not errors, 'pages': listing['pages'], 'errors': errors}, duplicates
 
 
-def repository_snapshot(repository, client, meta=None, commit=None):
+def repository_snapshot(repository, client, meta=None, commit=None, *, invitation_protocol='tipjar-invitation/2'):
     """commit pins an earlier reviewed snapshot (drift reports); by default the branch tip is read."""
     repository = parse_repository(repository)
     meta = meta if meta is not None else repository_metadata(repository, client)
@@ -398,7 +398,7 @@ def repository_snapshot(repository, client, meta=None, commit=None):
         snapshot['pr_index'] = []
         snapshot['errors'].append(str(exc))
     from .tipjar import inspect_jar
-    snapshot['tipjar'] = inspect_jar(canonical, client, commit=commit, metadata=meta)
+    snapshot['tipjar'] = inspect_jar(canonical, client, commit=commit, metadata=meta, invitation_protocol=invitation_protocol)
     if not snapshot['tipjar']['complete']:
         snapshot['errors'].extend('Tipjar: ' + error for error in snapshot['tipjar']['errors'])
     snapshot['instructions_sha256'] = canonical_hash([{k: item[k] for k in ('path', 'sha256')} for item in snapshot['instructions']])
@@ -553,7 +553,7 @@ def inspect_from_snapshot(snapshot, issue):
                            'policy_state': snapshot['policy_state'], 'policy': snapshot['policy']}}
 
 
-def inspect_issue(reference, client=None, *, pr_ids=None):
+def inspect_issue(reference, client=None, *, pr_ids=None, invitation_protocol='tipjar-invitation/2'):
     """pr_ids, when a dict, receives {number: numeric ID or None} for every open source PR the scan read; a number
     the scan repeated maps to None, so conflicting identities never resolve by order (FR1-05)."""
     repository, number = parse_issue(reference)
@@ -564,7 +564,7 @@ def inspect_issue(reference, client=None, *, pr_ids=None):
         return context
     try:
         source = context['issue_source_repository']
-        snapshot = repository_snapshot(source, client, meta)
+        snapshot = repository_snapshot(source, client, meta, invitation_protocol=invitation_protocol)
         if pr_ids is not None:
             seen = set()
             for entry in snapshot['pr_index']:
@@ -611,10 +611,10 @@ def limit_discovery(result, limit, references=None):
     result['issues'] = shown
 
 
-def discover(repository, client=None, *, signals=False, responsiveness=False, check_top=None, repo_dir=None, limit=None, welcomed_only=False):
+def discover(repository, client=None, *, signals=False, responsiveness=False, check_top=None, repo_dir=None, limit=None, welcomed_only=False, invitation_protocol='tipjar-invitation/2'):
     limit = validate_discovery_limit(limit)
     client = client or GitHub()
-    result, snapshot = discover_with_snapshot(repository, client, signals=signals, assignees=bool(check_top))
+    result, snapshot = discover_with_snapshot(repository, client, signals=signals, assignees=bool(check_top), invitation_protocol=invitation_protocol)
     if repo_dir is not None:
         local_work(result, snapshot, repo_dir, signals)
     # Checked after the local re-sort, so locally referenced issues are not spent from the top N.
@@ -677,7 +677,7 @@ def issue_order(item, signals):
             -item['signals']['score'] if signals else 0, item['number'])
 
 
-def discover_with_snapshot(repository, client=None, *, signals=False, assignees=False):
+def discover_with_snapshot(repository, client=None, *, signals=False, assignees=False, invitation_protocol='tipjar-invitation/2'):
     """The snapshot is internal context for read-only reports such as audit; it is never output."""
     repository = parse_repository(repository)
     client = client or GitHub()
@@ -685,7 +685,7 @@ def discover_with_snapshot(repository, client=None, *, signals=False, assignees=
     if context.get('complete') is False:
         return {**context, 'issues': []}, None
     try:
-        snapshot = repository_snapshot(context['issue_source_repository'], client, meta)
+        snapshot = repository_snapshot(context['issue_source_repository'], client, meta, invitation_protocol=invitation_protocol)
     except ProtocolError as exc:
         return {**context, 'complete': False, 'errors': [str(exc)], 'issues': []}, None
     source = snapshot['repository']
@@ -856,7 +856,10 @@ def host_context_schema(context):
 
 def validate_contract(contract):
     version = contract.get('schema_version') if isinstance(contract, dict) else None
-    return schema_errors(contract, bundled_schema('task', version if version in SUPPORTED_SCHEMA_VERSIONS else '0.1'))
+    errors = schema_errors(contract, bundled_schema('task', version if version in SUPPORTED_SCHEMA_VERSIONS else '0.1'))
+    if version == '0.3' and errors:
+        errors.append('Unpublished task 0.3 changed: reprepare and obtain fresh host review/authorization')
+    return errors
 
 
 def unique_ids(items):
@@ -1587,7 +1590,7 @@ def verify(task, evidence=None, repo_dir=None, client=None, *, host_context=None
                                          'proposed_target_repository': 'contract.execution.target_repository',
                                          'execution_authority': 'separate reviewed assertion; never inferred'})
     try:
-        current = inspect_issue(source['repository'] + '#' + str(source['issue']), client)
+        current = inspect_issue(source['repository'] + '#' + str(source['issue']), client, invitation_protocol='tipjar-invitation/1')
         if 'source' not in current:
             raise ProtocolError('refresh_incomplete', '; '.join(current['errors']))
         if target and target.casefold() != source['repository'].casefold():

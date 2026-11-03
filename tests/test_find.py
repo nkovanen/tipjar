@@ -30,7 +30,7 @@ class Fake:
 
     def request_once(self, endpoint):
         self.calls.append(endpoint)
-        value = self.search if endpoint.startswith('search/code?') else self.data[endpoint]
+        value = (page([]) if 'filename%3AREADME.md' in endpoint else self.search) if endpoint.startswith('search/code?') else self.data[endpoint]
         if not endpoint.startswith('search/code?') and isinstance(value, list):
             value = value.pop(0)
         if isinstance(value, Exception):
@@ -49,8 +49,8 @@ class SearchTests(unittest.TestCase):
     def test_fixed_query_and_owner_scope(self):
         c = Fake(search=page([]))
         r = self.find(c, owner='Acme')
-        self.assertEqual(c.calls, ['search/code?q=filename%3A.tipjar.json+path%3A%2F+user%3AAcme&per_page=10&page=1'])
-        self.assertEqual(r['search']['query'], 'filename:.tipjar.json path:/ user:Acme')
+        self.assertEqual(c.calls, ['search/code?q=filename%3A.tipjar.json+path%3A%2F+user%3AAcme&per_page=5&page=1', 'search/code?q=%22tipjar%3Awelcome%3Av1%22+filename%3AREADME.md+path%3A%2F+user%3AAcme&per_page=5&page=1'])
+        self.assertEqual(r['searches'][0]['query'], 'filename:.tipjar.json path:/ user:Acme')
         self.assertTrue(r['complete'])
         self.assertFalse(r['coverage']['exhaustive'])
 
@@ -73,9 +73,9 @@ class SearchTests(unittest.TestCase):
             r = self.find(c)
             self.assertFalse(r['complete'])
             self.assertEqual(r['observations'], [])
-            self.assertIsNone(r['search']['total_count'])
-            self.assertIsNone(r['search']['truncated'])
-            self.assertEqual(len(c.calls), 1)
+            self.assertIsNone(r['searches'][0]['total_count'])
+            self.assertIsNone(r['searches'][0]['truncated'])
+            self.assertEqual(len(c.calls), 2)
 
     def test_short_page_and_server_incomplete_keep_verified_findings(self):
         for changes in ({'total_count': 5}, {'incomplete_results': True}):
@@ -96,7 +96,7 @@ class SearchTests(unittest.TestCase):
             self.assertFalse(r['complete'])
             self.assertEqual(r['observations'][0]['disposition'], 'unknown')
             self.assertIsNone(r['observations'][0]['repository'])
-            self.assertEqual(len(c.calls), 1)
+            self.assertEqual(len(c.calls), 2)
 
     def test_root_case_and_private_and_owner_filter_are_exclusions(self):
         for change in ({'path': 'dir/.tipjar.json'}, {'name': '.TIPJAR.json'}):
@@ -105,9 +105,9 @@ class SearchTests(unittest.TestCase):
         h = hit(); h['repository']['private'] = True
         c = Fake(search=page([h])); r = self.find(c)
         self.assertIsNone(r['observations'][0]['repository'])
-        self.assertNotIn('acme/project', json.dumps(r)); self.assertEqual(len(c.calls), 1)
+        self.assertNotIn('acme/project', json.dumps(r)); self.assertEqual(len(c.calls), 2)
         c = Fake(); r = self.find(c, owner='other')
-        self.assertEqual(r['observations'][0]['disposition'], 'excluded'); self.assertEqual(len(c.calls), 1)
+        self.assertEqual(r['observations'][0]['disposition'], 'excluded'); self.assertEqual(len(c.calls), 2)
 
     def test_duplicate_conflicts_invalidate_entire_page_before_reads(self):
         for field, value in [('sha', 'd'*40), ('id', 3), ('full_name', 'acme/renamed'), ('owner_id', 8)]:
@@ -119,9 +119,9 @@ class SearchTests(unittest.TestCase):
             r = self.find(c)
             self.assertFalse(r['complete'])
             self.assertTrue(all(o['disposition'] == 'unknown' for o in r['observations']))
-            self.assertEqual(len(c.calls), 1)
+            self.assertEqual(len(c.calls), 2)
         c = Fake(search=page([hit(), hit()])); r = self.find(c)
-        self.assertEqual(len(r['observations']), 1); self.assertEqual(len(c.calls), 6)
+        self.assertEqual(len(r['observations']), 1); self.assertEqual(len(c.calls), 7)
 
 class VerificationTests(unittest.TestCase):
     find = SearchTests.find
@@ -131,7 +131,7 @@ class VerificationTests(unittest.TestCase):
                                        (b'', [], 'undeclared')]:
             c = Fake(data=responses(raw, entries)); r = self.find(c)
             self.assertEqual(r['observations'][0]['disposition'], expected)
-            self.assertTrue(r['complete']); self.assertEqual(len(c.calls), 4 if entries == [] else 5)
+            self.assertTrue(r['complete']); self.assertEqual(len(c.calls), 5 if entries == [] else 6)
         r = self.find()
         self.assertEqual(r['observations'][0]['jar']['commit'], COMMIT)
         self.assertNotEqual(r['observations'][0]['jar']['blob_sha'], 'c'*40)
@@ -158,7 +158,7 @@ class VerificationTests(unittest.TestCase):
             c = Fake(); c.data['repos/acme/project'][field] = value
             r = self.find(c)
             self.assertEqual(r['observations'][0]['disposition'], 'unknown', (field, value, r))
-            self.assertEqual(len(c.calls), 2)
+            self.assertEqual(len(c.calls), 3)
         c = Fake(); del c.data['repos/acme/project']['visibility']
         self.assertFalse(self.find(c)['complete'])
 
@@ -213,10 +213,17 @@ class TransportTests(unittest.TestCase):
             data.update({endpoint.replace('acme/project', name): value for endpoint, value in fixture.items()})
         return page(items), data
 
-    def test_ten_welcomes_are_51_gh_invocations(self):
+    @staticmethod
+    def search_page(search, endpoint):
+        items = copy.deepcopy(search['items'][5:] if 'filename%3AREADME.md' in endpoint else search['items'][:5])
+        if 'filename%3AREADME.md' in endpoint:
+            for item in items: item.update(name='README.md', path='README.md')
+        return page(items)
+
+    def test_ten_welcomes_are_52_gh_invocations(self):
         search, data = self.batch()
-        r, calls = self.run_transport(lambda e, _: search if e.startswith('search/code?') else data[e])
-        self.assertEqual(len(calls), 51); self.assertEqual(r['requests'], {'search': 1, 'core': 50})
+        r, calls = self.run_transport(lambda e, _: TransportTests.search_page(search, e) if e.startswith('search/code?') else data[e])
+        self.assertEqual(len(calls), 52); self.assertEqual(r['requests'], {'search': 2, 'core': 50})
         self.assertTrue(r['complete']); self.assertEqual(len(r['observations']), 10)
         self.assertTrue(all(o['disposition'] == 'welcome' for o in r['observations']))
         self.assertTrue(all('/issues' not in e and '/pulls' not in e and 'parent' not in e for e in calls))
@@ -225,8 +232,8 @@ class TransportTests(unittest.TestCase):
         search, data = self.batch()
         for position in range(1, 7):
             r, calls = self.run_transport(lambda e, n: core.ProtocolError('api_error', 'secret') if n == position else
-                                         search if e.startswith('search/code?') else data[e])
-            self.assertFalse(r['complete']); self.assertLessEqual(len(calls), 51)
+                                         TransportTests.search_page(search, e) if e.startswith('search/code?') else data[e])
+            self.assertFalse(r['complete']); self.assertLessEqual(len(calls), 52)
             self.assertEqual(sum(r['requests'].values()), len(calls))
             self.assertNotIn('SECRET', json.dumps(r))
 
@@ -241,18 +248,18 @@ class TransportTests(unittest.TestCase):
                 for endpoint, value in data.items(): store.observe(endpoint, value)
                 # A seeded blob must not mask a failing live contents read.
                 r, calls = self.run_transport(lambda e, _: core.ProtocolError('api_error', 'no contents') if '/contents/' in e else
-                                             search if e.startswith('search/code?') else data[e])
+                                             TransportTests.search_page(search, e) if e.startswith('search/code?') else data[e])
                 self.assertFalse(r['complete']); self.assertEqual(sum('/contents/' in e for e in calls), 10)
-                self.assertEqual(r['requests'], {'search': 1, 'core': 40})
+                self.assertEqual(r['requests'], {'search': 2, 'core': 40})
                 self.assertIs(cache.active(), store)
                 # Neither valid nor forged disk bytes may satisfy this command.
                 for path in pathlib.Path(directory).glob('blob-*'):
                     path.write_bytes(b'forged welcome')
                 client = core.GitHub()
                 with patch.object(store, 'lookup', side_effect=AssertionError('cache consulted')):
-                    r, calls = self.run_transport(lambda e, _: search if e.startswith('search/code?') else data[e],
+                    r, calls = self.run_transport(lambda e, _: TransportTests.search_page(search, e) if e.startswith('search/code?') else data[e],
                                                  client=client)
-                self.assertTrue(r['complete']); self.assertEqual(len(calls), 51)
+                self.assertTrue(r['complete']); self.assertEqual(len(calls), 52)
                 self.assertTrue(client.use_cache)
             finally: cache.configure(False)
 
@@ -266,26 +273,26 @@ class BoundaryReviewTests(unittest.TestCase):
             r = self.find(c)
             self.assertFalse(r['complete'])
             self.assertFalse(any(o['disposition'] == 'welcome' for o in r['observations']))
-            self.assertEqual(len(c.calls), 1)
+            self.assertEqual(len(c.calls), 2)
 
     def test_owner_login_is_ascii_identity_not_unicode_casefold_alias(self):
         h = hit('s/project'); h['repository']['owner']['login'] = '\u017f'
         c = Fake(search=page([h]))
         r = self.find(c)
         self.assertEqual(r['observations'][0]['disposition'], 'unknown')
-        self.assertIsNone(r['observations'][0]['repository']); self.assertEqual(len(c.calls), 1)
+        self.assertIsNone(r['observations'][0]['repository']); self.assertEqual(len(c.calls), 2)
 
     def test_failed_search_provenance_is_null_not_a_fabricated_empty_page(self):
         r = self.find(Fake(search={}))
         for field in ('total_count', 'incomplete_results', 'returned_count', 'truncated', 'short_page'):
-            self.assertIsNone(r['search'][field])
+            self.assertIsNone(r['searches'][0][field])
 
     def test_unusable_branch_refs_never_reach_reader(self):
         for branch in ('a b', 'a..b', 'a.lock', '.hidden', 'a/', 'a//b', '@', 'a@{b', 'a?b', 'a\\b'):
             c = Fake(); c.data['repos/acme/project']['default_branch'] = branch
             r = self.find(c)
             self.assertEqual(r['observations'][0]['disposition'], 'unknown')
-            self.assertEqual(len(c.calls), 2)
+            self.assertEqual(len(c.calls), 3)
 
     def test_returned_urls_and_parent_never_become_endpoints(self):
         h = hit(); h.update(url='https://evil.invalid/run', html_url='https://evil.invalid/',

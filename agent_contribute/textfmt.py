@@ -428,6 +428,7 @@ def _jar(result):
            f'Pinned commit: {line(result.get("commit") or "unavailable", 40)}',
            'Source declaration only; other policy and authorization gates remain.',
            line(result['notice'])]
+    out += ['Source: ' + line(result.get('source_kind', 'manifest')) + ' ' + line(result.get('path') or '')]
     manifest = result.get('manifest') or {}
     for key in ('wanted', 'boundaries'):
         out += _list(key.capitalize() + ' (untrusted)', manifest.get(key, []))
@@ -456,8 +457,8 @@ def _find(result):
                     '  Pinned commit: ' + line(obs['jar']['commit']),
                     '  Verified at: ' + line(obs['verified_at'])]
             for key in ('wanted', 'boundaries'):
-                out += _list(key.capitalize() + ' (untrusted)', obs['jar']['manifest'].get(key, []))
-    if result['search']['truncated']:
+                out += _list(key.capitalize() + ' (untrusted)', (obs['jar']['manifest'] or {}).get(key, []))
+    if any(s['truncated'] for s in result.get('searches', [result.get('search', {})])):
         out.append('Search truncated: only this first batch was observed; no backfill or rotation.')
     if not result['complete']:
         out.append('Incomplete batch: unknown observations or search incompleteness; verified findings retained.')
@@ -503,7 +504,7 @@ def render(command, result, stage=None):
                 + result['workflow_markdown'])
     body = {'verify': _verify, 'discover': _discover, 'inspect': _inspect, 'scope-check': _scope_check,
             'drift': _drift, 'lint': _lint, 'authorization-request': _authorization_request,
-            'ownership': _ownership_command, 'jar': _jar, 'init': _onboarding, 'jar-check': _onboarding, 'receipt': _receipt, 'impact': _impact, 'find': _find, 'card': _card}.get(command)
+            'ownership': _ownership_command, 'jar': _jar, 'init': _onboarding, 'jar-check': _onboarding, 'receipt': _receipt, 'impact': _impact, 'find': _find, 'card': _card, 'badge': lambda r: [r['snippet'], r['notice']]}.get(command)
     if body is None:
         out = _scalars(result) + _policy(result)
     else:

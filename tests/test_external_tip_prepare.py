@@ -1,7 +1,7 @@
 import base64
 import copy
 import unittest
-from agent_contribute import core
+from agent_contribute import core, cache
 from tests.test_authorization import CandidateGitHub
 
 
@@ -30,11 +30,15 @@ class ExternalGitHub(CandidateGitHub):
         if endpoint.startswith('repos/human/photos/'):
             endpoint=endpoint.replace('repos/human/photos/','repos/acme/photos/',1)
         value=super().request(endpoint)
+        if '/git/trees/' in endpoint:
+            for entry in value.get('tree',[]):
+                if entry['path'] == 'README.md': entry['sha']=cache.blob_sha(b'Ordinary project guidance.')
         if original_endpoint != endpoint:
             self.calls[-1]=original_endpoint
         if '/contents/' in endpoint and '.agent-contrib.json' not in endpoint:
             data=b'Ordinary project guidance.'
             value.update(content=base64.b64encode(data).decode(),size=len(data))
+            if value.get('path') == 'README.md': value['sha'] = cache.blob_sha(data)
         if endpoint=='repos/acme/photos/issues/12':value['assignees']=[]
         return value
 

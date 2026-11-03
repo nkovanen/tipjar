@@ -29,18 +29,18 @@ class FindCliTests(unittest.TestCase):
                 code, out = invoke('find')
             self.assertEqual(code, expected)
             result = json.loads(out)
-            self.assertEqual(result['format'], 'find-jars-report/1')
+            self.assertEqual(result['format'], 'find-jars-report/2')
             schema = outputs.output_schema('find')
             self.assertEqual(core.schema_errors(result, schema), [])
             result['approval'] = True
             self.assertTrue(core.schema_errors(result, schema))
-        with patch.object(core, 'GitHub', return_value=Fake(page([hit()]*10))):
+        with patch.object(core, 'GitHub', return_value=Fake(page([hit()]*5))):
             code, out = invoke('find')
         self.assertEqual(code, 0)
         self.assertEqual(len(json.loads(out)['observations']), 1)
-        with patch.object(core, 'GitHub', return_value=Fake(dict(page(), total_count=20, items=[hit()]*10))):
+        with patch.object(core, 'GitHub', return_value=Fake(dict(page(), total_count=20, items=[hit()]*5))):
             code, out = invoke('find')
-        self.assertEqual(code, 0); self.assertTrue(json.loads(out)['search']['truncated'])
+        self.assertEqual(code, 0); self.assertTrue(json.loads(out)['searches'][0]['truncated'])
 
     def test_all_dispositions_validate_with_unchanged_jar_shape(self):
         from tests.test_tipjar import responses
@@ -87,16 +87,16 @@ class BudgetCompositionTests(unittest.TestCase):
                 if retry and rate_calls in (1, 2, 4, 5):
                     kw['stderr'].write(b'HTTP 503'); return type('Result', (), {'returncode': 1})()
                 value = {'resources': {'core': {'limit': 5000, 'remaining': 4000, 'used': 1000, 'reset': 50}}}
-            else: value = search if endpoint.startswith('search/code?') else data[endpoint]
+            else: value = fixtures.TransportTests.search_page(search, endpoint) if endpoint.startswith('search/code?') else data[endpoint]
             kw['stdout'].write(json.dumps(value).encode()); return type('Result', (), {'returncode': 0})()
         with patch('subprocess.run', side_effect=run), patch('time.sleep'):
             code, out = invoke('--cache', '--report-budget', '--min-remaining', '1', 'find')
         return code, json.loads(out), calls
 
     def test_maximum_work_with_snapshots_is_53_or_57_invocations(self):
-        for retry, expected in [(False, 53), (True, 57)]:
+        for retry, expected in [(False, 54), (True, 58)]:
             code, result, calls = self.run_cli_transport(retry)
             self.assertEqual(code, 0); self.assertEqual(len(calls), expected)
-            self.assertEqual(result['requests'], {'search': 1, 'core': 50})
+            self.assertEqual(result['requests'], {'search': 2, 'core': 50})
             self.assertIn('Core REST', result['api_budget']['note'])
             self.assertEqual(core.schema_errors(result, outputs.output_schema('find')), [])

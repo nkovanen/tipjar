@@ -38,7 +38,7 @@ IDENTIFIER_CHARS = 500
 MAX_REPORT_BYTES = 256 * 1024
 # Version of the inventory_sha256 input (N11). 1 is the unversioned hash of earlier 0.3.0 candidates; bump this
 # whenever the hashed material changes, so a recorded hash from another format is recognizable as such.
-INVENTORY_FORMAT = 3
+INVENTORY_FORMAT = 4
 WINDOW = 12
 SCANNED_FORMATS = {'', '.md', '.markdown', '.rst', '.txt'}
 # Other document formats a policy may use; listed as unsupported. Code, data and image files are not candidates.
@@ -268,14 +268,14 @@ def _paragraphs(text):
     return blocks
 
 
-def _links(text):
+def _links(text, invitation_target=None):
     starts = [0] + [m.end() for m in re.finditer('\n', text)]
     seen, links = set(), []
     for pattern, text_group in ((MD_LINK, 1), (REF_LINK, 1), (RST_LINK, 1), (BARE_URL, None)):
         for match in pattern.finditer(text):
             url = match.group(0).rstrip('.,;:!?') if text_group is None else match.group(2)
             label = '' if text_group is None else ' '.join(match.group(text_group).split())
-            if url in seen or not POLICY_LINK.search(url[:IDENTIFIER_CHARS] + ' ' + label[:EXCERPT_CHARS]):
+            if url in seen or url != invitation_target and not POLICY_LINK.search(url[:IDENTIFIER_CHARS] + ' ' + label[:EXCERPT_CHARS]):
                 continue
             seen.add(url)
             links.append({'url': url, 'link_text': label[:EXCERPT_CHARS] or None,
@@ -283,8 +283,12 @@ def _links(text):
     return links
 
 
-def scan(text, path):
+def scan(text, path, *, invitation_repository=None):
     """Hints, policy-like links and the count of non-Latin paragraphs for one source text."""
+    from .readme_invitation import decorative_span
+    span = decorative_span(text, invitation_repository) if invitation_repository is not None and path == 'README.md' else None
+    # Remove only image URL source characters for link collection, preserving positions.
+    link_text = text if span is None else text[:span[0]] + ' ' * (span[1]-span[0]) + text[span[1]:]
     text = _clean(text)
     hints, non_latin = [], 0
     for line, heading, block in _paragraphs(text):
@@ -309,11 +313,12 @@ def scan(text, path):
                               'terms': sorted({tokens[i][1] for i in found['ai'] + found['agent']}),
                               'ai_context': bool(found['ai'] or found['agent']),
                               'eligibility': kind == 'possible_pr_restriction' and _eligibility(found)})
-    return {'hints': hints, 'links': _links(text), 'non_latin_paragraphs': non_latin}
+    return {'hints': hints, 'links': _links(_clean(link_text) if span is not None else text, invitation_target=link_text.splitlines()[1].rsplit('](',1)[1][:-1] if span is not None else None), 'non_latin_paragraphs': non_latin}
 
 
 class _Report:
-    def __init__(self, client):
+    def __init__(self, client, inventory_format=3):
+        self.inventory_format = inventory_format
         self.client, self.requests, self.skipped = client, 0, 0
         self.sources, self.texts, self.unassessed, self.limits = [], [], [], {}
         self.seen, self.keys = set(), []  # every identity noted; identities of retained entries (aligned)
@@ -382,7 +387,7 @@ class _Report:
             self.omit(repository, path, kind, 'scan byte limit', blob, file=blob is not None)
             return
         self.scanned_bytes += size
-        result = scan(text, path)
+        result = scan(text, path, invitation_repository=repository if self.inventory_format == 4 else None)
         notes = ([f'paragraphs with non-Latin script not assessed: {result["non_latin_paragraphs"]}']
                  if result['non_latin_paragraphs'] else [])
         self.sources.append({'origin': origin, 'repository': repository, **_display(path),
@@ -614,14 +619,17 @@ def _relative_what(url, base_path):
                               posixpath.join(posixpath.dirname(base_path), target)), True
 
 
-def report(repository, commit, instructions, client, *, default_branch=None, hashes=None, tipjar_report=None):
+def report(repository, commit, instructions, client, *, default_branch=None, hashes=None, tipjar_report=None, inventory_format=None):
     """Read-only policy report for the issue source repository at its observed commit; never raises on reads.
     A dict passed as hashes receives historical format 1/2 and current inventory digests.
     tipjar_report is retained for API compatibility; pinned declarations are always reread through client."""
-    from .tipjar import inspect_jar
+    from .tipjar import inspect_jar, CURRENT, LEGACY
+    inventory_format = INVENTORY_FORMAT if inventory_format is None else inventory_format
+    if type(inventory_format) is not int or inventory_format not in (1, 2, 3, 4):
+        raise core.ProtocolError("unsupported_schema", "Unsupported policy inventory format")
     # Caller dictionaries cannot authenticate pinned source policy. Keep the argument for API compatibility.
-    tipjar_report = inspect_jar(repository, client, commit=commit)
-    state = _Report(client)
+    tipjar_report = inspect_jar(repository, client, commit=commit, invitation_protocol=CURRENT if inventory_format == 4 else LEGACY)
+    state = _Report(client, inventory_format)
     if default_branch is None:
         try:
             default_branch = core.require(core.require(state.get(f'repos/{repository}'), dict, 'metadata')
@@ -630,6 +638,9 @@ def report(repository, commit, instructions, client, *, default_branch=None, has
             default_branch = None
     loaded = set()
     for item in instructions:
+        # Core instruction text is display-sanitized. Only original pinned bytes may qualify a source span.
+        if inventory_format == 4 and item['path'] == 'README.md':
+            continue
         loaded.add(item['path'])
         if len(item['path']) >= IDENTIFIER_CHARS:  # core stores instruction paths shortened to 500 characters
             state.note(item['path'], 'instruction path may be shortened by core; identity unresolved')
@@ -686,13 +697,18 @@ def report(repository, commit, instructions, client, *, default_branch=None, has
               'owner_lookup': state.owner_lookup,
               'reads': {'requests': state.requests, 'limit': MAX_REQUESTS}, 'tipjar': tipjar_report}
     historical_hashes = None
+    if inventory_format == 4 and hashes is not None:
+        # The source-span exception changes scan material; historical digests need the legacy scan itself.
+        historical_hashes = {}
+        report(repository, commit, instructions, client, default_branch=default_branch,
+               hashes=historical_hashes, inventory_format=3)
     while True:
         result['hinted_lines'], result['project_vocabulary'] = _group(result['hints'], terms, vocabulary)
         result['limits_reached'] = [{'limit': name, 'not_reported': count, 'hides_sources': name in HIDING_LIMITS}
                                     for name, count in sorted(state.limits.items())]
         result['limits_hide_sources'] = bool(result['omitted_sources']) or any(
             item['hides_sources'] for item in result['limits_reached'])
-        result['inventory_format'] = INVENTORY_FORMAT
+        result['inventory_format'] = inventory_format
         material = {
             # Original identities, never display text, which may be shortened or sanitized (RP-23).
             'sources': sorted([s['origin'], s['identity_sha256'], s['sha256']] for s in result['sources_scanned']),
@@ -710,11 +726,15 @@ def report(repository, commit, instructions, client, *, default_branch=None, has
                 historical_hashes = {fmt: _inventory_hash(legacy, fmt) for fmt in (1, 2)}
         material['tipjar'] = {key: tipjar_report.get(key) for key in
                               ('repository', 'default_branch', 'state', 'complete', 'sha256', 'path')}
-        result['inventory_sha256'] = _inventory_hash(material if INVENTORY_FORMAT >= 3 else legacy, INVENTORY_FORMAT)
+        if inventory_format == 4:
+            material['tipjar'] = {key: tipjar_report.get(key) for key in
+                ('repository_id','repository','default_branch','source_kind','path','manifest_present','state','complete','blob_sha','sha256','manifest','badge')}
+            material['tipjar']['repository'] = repository.lower()
+        result['inventory_sha256'] = _inventory_hash(material if inventory_format >= 3 else legacy, inventory_format)
         if hashes is not None:
             hashes.clear()
             hashes.update(historical_hashes or {fmt: _inventory_hash(legacy, fmt) for fmt in (1, 2)})
-            hashes[INVENTORY_FORMAT] = result['inventory_sha256']
+            hashes[inventory_format] = result['inventory_sha256']
         if len(json.dumps(result, ensure_ascii=True).encode()) <= MAX_REPORT_BYTES:
             return result
         # Shrink until the serialized report fits, recording every reduction (RP-18).
@@ -744,8 +764,8 @@ def _inventory_hash(material, fmt):
     return core.canonical_hash(material if fmt == 1 else dict(material, inventory_format=fmt))
 
 
-def for_inspected(inspected, client):
+def for_inspected(inspected, client, *, inventory_format=None):
     """The report for an inspect result's issue source at its observed commit."""
     source = inspected['source']
     return report(source['repository'], source['commit'], inspected['instructions'], client,
-                  default_branch=source['default_branch'], tipjar_report=inspected.get('tipjar'))
+                  default_branch=source['default_branch'], tipjar_report=inspected.get('tipjar'), inventory_format=inventory_format)

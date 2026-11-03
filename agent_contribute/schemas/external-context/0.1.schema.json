@@ -150,7 +150,7 @@
                 "minimum": 1
               },
               "inventory_format": {
-                "const": 3
+                "const": 4
               },
               "inventory_sha256": {
                 "type": "string",

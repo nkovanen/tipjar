@@ -1574,3 +1574,18 @@ curated fallback list. Until indexed jars exist, explicitly name projects for
 existing assessment commands; absence grants nothing. Direct `tipjar jar
 owner/repo` works without indexing. A selected outside contribution continues
 through the reviewed task 0.3 [external-tip route](external-tips.md).
+
+## badge
+
+`agent-contrib badge owner/repo` prints output-4 repository, exact README snippet
+and placement/precedence guidance. `agent-contrib --format text badge owner/repo`
+prints the snippet for pasting at byte zero of README.md with its blank line.
+Offline; no file write or GitHub request. See [README invitations](readme-invitations.md).
+
+The current `find` output is find-jars-report/2: exactly two sequential page-1
+searches, each at most five hits, followed by one shared pass over at most ten
+repositories. The `searches` records retain independent failures and counts.
+At most 52 gh invocations, or 58 with budget instrumentation; no retry/backfill.
+Output 4 includes actual README invitation provenance; historical output 1–3 is
+unchanged. Task 0.3 now requires inventory format 4 and fresh repreparation of old
+unpublished drafts. Published task 0.1/0.2 behavior is unchanged.

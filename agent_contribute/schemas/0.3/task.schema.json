@@ -504,11 +504,15 @@
         "inventory_sha256",
         "invitation_basis",
         "jar_state",
-        "jar_sha256"
+        "jar_sha256",
+        "jar_source_kind",
+        "jar_path",
+        "jar_blob_sha",
+        "jar_manifest_present"
       ],
       "properties": {
         "inventory_format": {
-          "const": 3
+          "const": 4
         },
         "inventory_sha256": {
           "type": "string",
@@ -538,6 +542,30 @@
               "type": "null"
             }
           ]
+        },
+        "jar_source_kind": {
+          "enum": [
+            "manifest",
+            "readme",
+            "absent"
+          ]
+        },
+        "jar_path": {
+          "enum": [
+            ".tipjar.json",
+            "README.md",
+            null
+          ]
+        },
+        "jar_blob_sha": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "jar_manifest_present": {
+          "type": "boolean"
         }
       }
     }

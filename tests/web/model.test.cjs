@@ -68,3 +68,18 @@ for (const change of [{disposition:'welcome'},{jar:report},{repository_id:42},{j
 assert.throws(()=>m.parseSnapshot(JSON.stringify({...canonical('find-complete'),coverage:{exhaustive:true}})));
 assert.throws(()=>m.parseSnapshot(JSON.stringify({...canonical('find-complete'),errors:[42]})));
 console.log('Tipjar model regressions passed');
+
+// Repository-scoped canonical README generation is offline and exact.
+assert.equal(m.makeBadge('Acme/Project'), '<!-- tipjar:welcome:v1 -->\n[![Agent-work tips welcome](https://nkovanen.github.io/tipjar/brand/agent-work-welcome.svg)](https://nkovanen.github.io/tipjar/?repo=acme%2Fproject)\n\n');
+assert.throws(() => m.makeBadge('x/<script>'));
+
+const readme={...report,repository_id:1,tree_sha:'c'.repeat(40),blob_sha:'d'.repeat(40),default_branch:'main',source_kind:'readme',path:'README.md',manifest_present:false,manifest:null,badge:{protocol:'readme-welcome/1',repository:'sample/tools'}};
+const modern=r=>({format:'find-jars-report/2',complete:true,observations:[{...wrap(r),repository_id:1}]});
+const imported=m.parseSnapshot(JSON.stringify(modern(readme))).reports[0];
+assert.equal(imported.source_kind,'readme');
+assert.equal(imported.manifest,null);
+assert.equal(m.sourceURL(imported),'https://github.com/sample/tools/blob/'+readme.commit+'/README.md');
+assert.throws(()=>m.parseSnapshot(JSON.stringify(modern({...readme,badge:{protocol:'readme-welcome/1',repository:'parent/tools'}}))));
+assert.throws(()=>m.parseSnapshot(JSON.stringify(modern({...readme,source_kind:'manifest'}))));
+assert.equal(m.parseSnapshot(JSON.stringify(modern({...readme,state:'undeclared',badge:null}))).reports[0].state,'undeclared');
+assert.throws(()=>m.parseSnapshot(JSON.stringify({...modern(readme),format:'find-jars-report/3'})));

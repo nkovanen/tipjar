@@ -48,7 +48,7 @@ class JarCommandTests(unittest.TestCase):
             self.assertEqual(code, 1 if state == 'unknown' else 0)
             self.assertEqual(result['state'], state)
             self.assertEqual(set(result), {'repository', 'default_branch', 'commit', 'path', 'blob_sha', 'sha256',
-                                           'fetched_at', 'state', 'complete', 'manifest', 'errors', 'notice'})
+                                           'fetched_at', 'state', 'complete', 'manifest', 'errors', 'notice', 'repository_id','tree_sha','manifest_present','source_kind','badge'})
             self.assertEqual(result['complete'], state != 'unknown')
             self.assertEqual(core.schema_errors(result, outputs.output_schema('jar')), [])
             if state == 'unknown':
@@ -78,8 +78,8 @@ class JarCommandTests(unittest.TestCase):
         code, schema = invoke('schema', 'jar')
         self.assertEqual(code, 0)
         self.assertEqual(schema, outputs.output_schema('jar'))
-        self.assertEqual(outputs.VERSION, '3')
-        self.assertEqual(schema['$id'], 'urn:agent-contrib:output:3:jar')
+        self.assertEqual(outputs.VERSION, '4')
+        self.assertEqual(schema['$id'], 'urn:agent-contrib:output:4:jar')
         for raw in (RAW, RAW.replace(b'welcome', b'closed'), b'not JSON'):
             self.assertEqual(core.schema_errors(tipjar.read_jar('acme/project', Fake(responses(raw))), schema), [])
 

@@ -22,7 +22,7 @@ RAW = b'{"schema_version":"0.1","status":"welcome"}'
 def responses(raw=RAW, entries=None):
     blob = cache.blob_sha(raw)
     return {
-        'repos/acme/project': {'full_name': 'acme/project', 'default_branch': 'main',
+        'repos/acme/project': {'id': 42, 'full_name': 'acme/project', 'default_branch': 'main',
                               'fork': True, 'has_issues': False, 'parent': {'full_name': 'other/parent'},
                               'private': False, 'visibility': 'public'},
         'repos/acme/project/commits/main': {'sha': COMMIT, 'commit': {'tree': {'sha': TREE}}},
@@ -189,7 +189,7 @@ class PinnedReadTests(unittest.TestCase):
         data = responses()
         data[key]['content'] = base64.b64encode(b'wrong bytes').decode()
         result = self.assert_unknown(data)
-        self.assertEqual(result['sha256'], hashlib.sha256(b'wrong bytes').hexdigest())
+        self.assertIsNone(result['sha256'])
         data[key] = core.ProtocolError('api_error', 'HTTP 404')
         self.assert_unknown(data)
         result = self.assert_unknown(responses(b'{"schema_version":"999","status":"welcome"}'))

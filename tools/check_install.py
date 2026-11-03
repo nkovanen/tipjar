@@ -79,6 +79,32 @@ RESOURCE_PATHS = (
     "schemas/output/2/session.schema.json",
     "schemas/output/2/skill.schema.json",
     "schemas/output/2/verify.schema.json",
+    "schemas/output/4/badge.schema.json",
+    "schemas/output/4/audit.schema.json",
+    "schemas/output/4/authorization-request.schema.json",
+    "schemas/output/4/card.schema.json",
+    "schemas/output/4/dependencies.schema.json",
+    "schemas/output/4/discover.schema.json",
+    "schemas/output/4/drift.schema.json",
+    "schemas/output/4/error.schema.json",
+    "schemas/output/4/evidence-init.schema.json",
+    "schemas/output/4/feedback.schema.json",
+    "schemas/output/4/find.schema.json",
+    "schemas/output/4/init.schema.json",
+    "schemas/output/4/inspect.schema.json",
+    "schemas/output/4/instructions.schema.json",
+    "schemas/output/4/jar.schema.json",
+    "schemas/output/4/jar-check.schema.json",
+    "schemas/output/4/impact.schema.json",
+    "schemas/output/4/receipt.schema.json",
+    "schemas/output/4/lint.schema.json",
+    "schemas/output/4/ownership.schema.json",
+    "schemas/output/4/pr-body.schema.json",
+    "schemas/output/4/prepare.schema.json",
+    "schemas/output/4/scope-check.schema.json",
+    "schemas/output/4/session.schema.json",
+    "schemas/output/4/skill.schema.json",
+    "schemas/output/4/verify.schema.json",
     "schemas/output/3/card.schema.json",
     "schemas/output/3/dependencies.schema.json",
     "schemas/output/3/find.schema.json",
@@ -189,12 +215,16 @@ def installed_check(source):
     assert instructions["supported_schema_versions"] == ["0.1", "0.2", "0.3"]
     assert instructions["supported_host_context_versions"] == ["0.1", "0.2"]
     assert instructions["automatic_updates"] is False
-    assert instructions["output_schema_version"] == "3"
-    assert json.loads(cli("schema", "verify"))["$id"] == "urn:agent-contrib:output:3:verify"
+    assert instructions["output_schema_version"] == "4"
+    assert json.loads(cli("schema", "verify"))["$id"] == "urn:agent-contrib:output:4:verify"
     for command in outputs.SCHEMAS:
         installed_schema = json.loads(cli("schema", command))
         assert installed_schema == outputs.output_schema(command)
-        assert installed_schema["$id"] == f"urn:agent-contrib:output:3:{command}"
+        assert installed_schema["$id"] == f"urn:agent-contrib:output:4:{command}"
+    badge = json.loads(cli('badge', 'Acme/Project'))
+    assert badge['repository'] == 'acme/project' and badge['snippet'].startswith('<!-- tipjar:welcome:v1 -->\n')
+    assert not core.schema_errors(badge, outputs.output_schema('badge'))
+    assert badge['snippet'] in cli('--format', 'text', 'badge', 'Acme/Project')
     assert instructions["workflow_markdown"] == resources.joinpath("instructions.md").read_text("utf-8")
     session_schema = json.loads(cli("schema", "session"))
     discovery_path = Path.cwd() / "discovery.json"
@@ -214,7 +244,7 @@ def installed_check(source):
     assert not core.schema_errors({"schema_version": "0.1", "status": "welcome"}, manifest_schema)
     assert core.schema_errors({"schema_version": "999", "status": "welcome"}, manifest_schema)
     jar_schema = json.loads(cli("schema", "jar"))
-    assert jar_schema["$id"] == "urn:agent-contrib:output:3:jar"
+    assert jar_schema["$id"] == "urn:agent-contrib:output:4:jar"
     assert "inspection only" in " ".join(cli("jar", "--help").split())
     failed_jar = json.loads(cli("jar", "acme/project", expected=1))
     assert failed_jar["state"] == "unknown" and failed_jar["complete"] is False
@@ -241,11 +271,11 @@ def installed_check(source):
     assert json.loads(invalid)['error']['code'] == 'invalid_tipjar'
     assert 'PRIVATE' not in invalid
     find_schema = json.loads(cli("schema", "find"))
-    assert find_schema["properties"]["format"]["const"] == "find-jars-report/1"
+    assert find_schema["properties"]["format"]["const"] == "find-jars-report/2"
     assert "--owner" in cli("find", "--help")
     failed_find = json.loads(cli("find", expected=1))
     assert failed_find["complete"] is False and failed_find["observations"] == []
-    assert failed_find["search"]["total_count"] is None
+    assert failed_find["searches"][0]["total_count"] is None
     assert not core.schema_errors(failed_find, find_schema)
 
     # The additive alias must use the same workflow and fail-closed gates.
@@ -300,8 +330,8 @@ def installed_check(source):
     assert impact["unique_prs"] == 1 and impact["counts"] == {"open": 1, "closed": 0, "merged": 0}
     assert impact["repositories_represented"] == 1 and "repositories_helped" not in impact
     assert impact["trust"] == "self-reported recorded observations"
-    assert json.loads(cli("schema", "receipt"))["$id"] == "urn:agent-contrib:output:3:receipt"
-    assert json.loads(cli("schema", "impact"))["$id"] == "urn:agent-contrib:output:3:impact"
+    assert json.loads(cli("schema", "receipt"))["$id"] == "urn:agent-contrib:output:4:receipt"
+    assert json.loads(cli("schema", "impact"))["$id"] == "urn:agent-contrib:output:4:impact"
 
     card = Path.cwd() / "synthetic-card.svg"
     saved = json.loads(run([tipjar, "card", recorded, "--output", card,
@@ -309,7 +339,7 @@ def installed_check(source):
     assert saved["sha256"] == hashlib.sha256(card.read_bytes()).hexdigest()
     assert "Personal caption" in card.read_text(encoding="utf-8")
     run([tipjar, "card", recorded, "--output", card], cwd=Path.cwd(), env=env, expected=1)
-    assert json.loads(cli("schema", "card"))["$id"] == "urn:agent-contrib:output:3:card"
+    assert json.loads(cli("schema", "card"))["$id"] == "urn:agent-contrib:output:4:card"
 
     # Exercise real installed entry points, including small buffered JSON errors.
     for name, entrypoint in (

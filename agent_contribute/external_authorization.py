@@ -24,7 +24,7 @@ def assessment_errors(task, context, facts, now):
     bound = facts.get('inventories', [])
     if len(bound) != 2:
         return ['Both complete policy inventories are required']
-    expected_inventories = [dict(repository_id=b['repository_id'], inventory_format=3,
+    expected_inventories = [dict(repository_id=b['repository_id'], inventory_format=4,
                                   inventory_sha256=b['inventory']['inventory_sha256']) for b in bound]
     if sorted(assessment['inventories'], key=lambda x: x['repository_id']) != sorted(expected_inventories, key=lambda x: x['repository_id']):
         errors.append('Assessment must bind exactly both live inventories')

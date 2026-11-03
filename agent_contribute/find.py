@@ -10,7 +10,7 @@ QUERY = 'filename:.tipjar.json path:/'
 NOTICE = ('Only verified welcome observations are selectable. An invitation is not issue approval or '
           'execution/publication authority; read all contribution policies. Snapshots are not atomic.')
 LIMITATIONS = [
-    'One page of at most ten indexed hits; not a global census or fair rotation.',
+    'Two page-1 searches of at most five hits each; not a global census or fair rotation.',
     'Legacy code search omits repositories (especially forks); indexing may lag.',
     'Search has a separate quota; core budget snapshots do not measure it.',
     'gh may follow internal redirects; counters measure invocations, not raw HTTP requests.',
@@ -51,30 +51,34 @@ def _observation(disposition='unknown', reason='invalid_hit', candidate=None):
 
 
 def _search_candidates(client, owner):
-    query = QUERY + (' user:' + owner if owner is not None else '')
-    search = dict(query=query, page=1, per_page=10, total_count=None, incomplete_results=None,
-                  returned_count=None, truncated=None, short_page=None)
-    report = dict(format='find-jars-report/1', fetched_at=_now(), owner=owner, search=search,
+    report = dict(format='find-jars-report/2', fetched_at=_now(), owner=owner, searches=[],
                   coverage={'exhaustive': False, 'limitations': list(LIMITATIONS)}, observations=[],
                   complete=False, errors=[], requests={'search': 0, 'core': 0}, notice=NOTICE)
-    try:
-        data = core.require(client.request_once('search/code?' + urlencode(
-            {'q': query, 'per_page': 10, 'page': 1})), dict, 'search response')
-        total, incomplete, items = data.get('total_count'), data.get('incomplete_results'), data.get('items')
-        if (type(total) is not int or total < 0 or type(incomplete) is not bool or
-                not isinstance(items, list) or len(items) > 10 or total < len(items)):
-            raise core.ProtocolError('api_shape', 'Invalid search envelope')
-    except core.ProtocolError:
-        report['errors'] = ['search_failed']
-        return [], report
-    search.update(total_count=total, incomplete_results=incomplete, returned_count=len(items),
-                  truncated=total > len(items), short_page=len(items) < min(total, 10))
-    if incomplete:
-        report['errors'].append('search_incomplete')
-    if search['short_page']:
-        report['errors'].append('short_page')
+    combined = []
+    for query, expected_path in ((QUERY, tipjar.PATH), ('"tipjar:welcome:v1" filename:README.md path:/', 'README.md')):
+        query += ' user:' + owner if owner is not None else ''
+        search = dict(query=query, page=1, per_page=5, total_count=None, incomplete_results=None,
+                      returned_count=None, truncated=None, short_page=None, errors=[])
+        report['searches'].append(search)
+        try:
+            data = core.require(client.request_once('search/code?' + urlencode(
+                {'q': query, 'per_page': 5, 'page': 1})), dict, 'search response')
+            total, incomplete, items = data.get('total_count'), data.get('incomplete_results'), data.get('items')
+            if (type(total) is not int or total < 0 or type(incomplete) is not bool or
+                    not isinstance(items, list) or len(items) > 5 or total < len(items)):
+                raise core.ProtocolError('api_shape', 'Invalid search envelope')
+        except core.ProtocolError:
+            search['errors'].append('search_failed')
+            report['errors'].append('search_failed')
+            continue
+        search.update(total_count=total, incomplete_results=incomplete, returned_count=len(items),
+                      truncated=total > len(items), short_page=len(items) < min(total, 5))
+        if incomplete: search['errors'].append('search_incomplete')
+        if search['short_page']: search['errors'].append('short_page')
+        report['errors'].extend(search['errors'])
+        combined.extend((hit, expected_path) for hit in items)
     records = []
-    for hit in items:
+    for hit, expected_path in combined:
         meta = hit.get('repository') if isinstance(hit, dict) else None
         meta = meta if isinstance(meta, dict) else {}
         partial_id = meta.get('id') if _positive(meta.get('id')) else None
@@ -95,7 +99,7 @@ def _search_candidates(client, owner):
             if meta['private']:
                 record['observation'] = _observation('excluded', 'private')
                 continue
-            if hit.get('name') != tipjar.PATH or hit.get('path') != tipjar.PATH:
+            if hit.get('name') != expected_path or hit.get('path') != expected_path:
                 record['observation'] = _observation('excluded', 'nonroot_path', hit)
                 continue
             if not isinstance(hit.get('sha'), str) or not core.SHA.fullmatch(hit['sha']):
@@ -116,7 +120,8 @@ def _search_candidates(client, owner):
                          left['partial_name'] is not None and left['partial_name'] == right['partial_name'])
             owner_conflict = a is not None and b is not None and (a[2] == b[2]) != (a[3] == b[3])
             if owner_conflict or same_repo and (a is None or b is None or a != b or
-                    any(left['hit'].get(key) != right['hit'].get(key) for key in ('sha', 'name', 'path')) or
+                    (left['observation']['reason'] != 'pending_verification' or right['observation']['reason'] != 'pending_verification' or
+                     left['hit'].get('path') == right['hit'].get('path') and left['hit'].get('sha') != right['hit'].get('sha')) or
                     left['hit']['repository'].get('private') != right['hit']['repository'].get('private')):
                 left['conflict'] = right['conflict'] = True
     candidates, seen = [], set()

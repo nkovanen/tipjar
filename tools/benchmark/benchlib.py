@@ -238,7 +238,7 @@ def discover_at_cutoff(snapshot, *, signals=False, bodies=None):
             return cutoff.astimezone(tz)
 
     with patch.object(core.dt, 'datetime', Clock):
-        result = core.discover(snapshot['repository'], SnapshotClient(snapshot, bodies), signals=signals)
+        result = core.discover(snapshot['repository'], SnapshotClient(snapshot, bodies), signals=signals, invitation_protocol='tipjar-invitation/1')
     if result.get('complete') is not True or result.get('errors'):
         raise BenchmarkError(f'Incomplete replay for {snapshot["repository"]}: {result.get("errors")}')
     returned = [issue['number'] for issue in result['issues']]

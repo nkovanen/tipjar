@@ -1,3 +1,6 @@
+<!-- tipjar:welcome:v1 -->
+[![Agent-work tips welcome](https://nkovanen.github.io/tipjar/brand/agent-work-welcome.svg)](https://nkovanen.github.io/tipjar/?repo=nkovanen%2Ftipjar)
+
 # Tipjar
 
 Gift useful agent work to open-source projects, with human authorization at each step.
@@ -9,7 +12,7 @@ project's rules and open pull requests, and turns the chosen issue into a review
 task contract. Your agent implements and publishes only after a human authorizes
 each step; the CLI itself never writes to GitHub.
 
-`tipjar find` verifies one batch of at most ten indexed public jar candidates.
+`tipjar find` verifies one batch from two searches of at most five indexed public candidates each.
 It is not an exhaustive directory. No adoption is established and there is no
 curated fallback list. Direct `tipjar jar owner/repo` reads without indexing.
 The candidate can inspect a repository's root invitation with
@@ -111,6 +114,13 @@ display truncation never means a complete scan. With several repositories,
 
 ## Find invitations
 
+A maintainer can welcome tips with the official clickable badge at byte zero of
+root README.md. Generate the exact repository-scoped snippet offline with
+`tipjar badge owner/repo`; paste the complete output snippet including its blank
+third line. `.tipjar.json` takes precedence, including a closed manifest. A copied
+fork badge is unresolved until the fork owner intentionally corrects or removes
+it. See [README invitations](docs/readme-invitations.md).
+
 ```sh
 tipjar find
 tipjar find --owner acme
@@ -171,6 +181,7 @@ an audit trail, not cryptographic consent ([host authorization](docs/host-author
 
 | Command | Purpose |
 | --- | --- |
+| `badge` | Print the official repository-scoped README invitation snippet offline |
 | `init`, `jar-check` | Create an explicit-state local invitation template; validate a local manifest offline |
 | `dependencies` | Offline GitHub give-back candidates from local dependency declarations ([workflow](docs/dependencies.md)) |
 | `session` | [Plan an offline gift-work shortlist](docs/planning-sessions.md) with explicit stopping caps |
@@ -243,4 +254,4 @@ fork to a human-selected public upstream issue, with separate implementation and
 exact-result publication assertions. Welcome and undeclared sources both require
 complete source/fork policy accounting; no invitation or approval is invented.
 See [the complete external-tip workflow](docs/external-tips.md) for commands, records, pause points and limits. Evidence
-remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.
+remains schema 0.2; new reports use output/4. Existing 0.1/0.2 authority is unchanged.

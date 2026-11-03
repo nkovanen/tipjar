@@ -7,14 +7,17 @@ import json
 
 from . import core
 
-VERSION = '3'
-SCHEMAS = ('audit', 'authorization-request', 'card', 'dependencies', 'discover', 'drift', 'error', 'evidence-init', 'feedback', 'find', 'init', 'inspect', 'instructions', 'jar', 'jar-check',
+VERSION = '4'
+SCHEMAS = ('badge', 'audit', 'authorization-request', 'card', 'dependencies', 'discover', 'drift', 'error', 'evidence-init', 'feedback', 'find', 'init', 'inspect', 'instructions', 'jar', 'jar-check',
            'impact', 'receipt', 'lint', 'ownership', 'pr-body', 'prepare', 'scope-check', 'session', 'skill', 'verify')
 DIRECTORY = f'schemas/output/{VERSION}'
 
 
-def output_schema(name):
-    if name not in SCHEMAS:
+def output_schema(name, version=None):
+    if name not in SCHEMAS or version is not None and version not in ('1','2','3','4'):
         raise core.ProtocolError('unsupported_schema', 'Unsupported output schema')
-    path = f'{DIRECTORY}/{name}.schema.json'
-    return json.loads(importlib.resources.files('agent_contribute').joinpath(path).read_text('utf-8'))
+    path = f'schemas/output/{version or VERSION}/{name}.schema.json'
+    resource = importlib.resources.files('agent_contribute').joinpath(path)
+    if not resource.is_file():
+        raise core.ProtocolError('unsupported_schema', 'Unsupported output schema in this version')
+    return json.loads(resource.read_text('utf-8'))

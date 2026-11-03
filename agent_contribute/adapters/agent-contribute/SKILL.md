@@ -25,3 +25,5 @@ If a contribution command the workflow requires, or a required task/evidence
 schema, is unavailable, report that blocker.
 Do not invent a substitute workflow. Installation and updates are explicit user
 choices; this adapter does not update the CLI or run a model.
+
+Use `tipjar badge owner/repo` for offline README onboarding; all policy and authority gates still apply.
