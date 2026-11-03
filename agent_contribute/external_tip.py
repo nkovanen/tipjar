@@ -8,6 +8,19 @@ from urllib.parse import quote
 from . import authorization as auth, core, policy, tipjar
 
 
+class _DetailBudget:
+    """Count attempted detail GETs, including failures, across ownership and numeric reconciliation."""
+    def __init__(self, client, limit):
+        self.client, self.limit, self.attempts = client, limit, 0
+
+    def request(self, endpoint):
+        if re.fullmatch(r'repos/[^/]+/[^/]+/pulls/[1-9][0-9]*', endpoint):
+            if self.attempts >= self.limit:
+                raise core.ProtocolError('external_detail_limit', 'Shared cross-reference detail request cap reached')
+            self.attempts += 1
+        return self.client.request(endpoint)
+
+
 def identities(repository, fork, client):
     actor = core.require(client.request('user'), dict, 'credential actor')
     if (not auth.positive(actor.get('id')) or actor.get('type') != 'User' or
@@ -241,7 +254,8 @@ def live_facts(task, directory, client):
                 facts['open_ids'][key] = pr['id']
                 facts['open_prs'][key] = pr
         from . import ownership
-        signals = ownership.ownership_signals(s['repository'], s['issue'], client)
+        detail_client = _DetailBudget(client, ownership.MAX_PR_DETAILS)
+        signals = ownership.ownership_signals(s['repository'], s['issue'], detail_client)
         facts['ownership'] = signals
         errors += signals['errors']
         if signals['claims']:
@@ -250,12 +264,12 @@ def live_facts(task, directory, client):
             errors.append('Possible merged upstream fix')
         # Both ordinary detail reads and numeric-identity reads share the existing cap.
         open_refs = [x for x in signals['cross_referenced_prs'] if x['state'] == 'open']
-        if signals['reads']['pull_details'] + len(open_refs) > ownership.MAX_PR_DETAILS:
+        if detail_client.attempts + len(open_refs) > ownership.MAX_PR_DETAILS:
             errors.append('Cross-reference numeric identity detail limit exceeded')
         else:
             from .pr_identity import _pr_facts
             for item in open_refs:
-                detail = _pr_facts(client.request(f"repos/{item['repository']}/pulls/{item['number']}"), detail=True)
+                detail = _pr_facts(detail_client.request(f"repos/{item['repository']}/pulls/{item['number']}"), detail=True)
                 if (detail['number'], detail['url'], detail['base_repository'], detail['base_repository_id'], detail['state']) != (
                         item['number'], item['url'], item['repository'], item['repository_id'], item['state']):
                     errors.append('Cross-reference detail identity disagrees')
