@@ -1,0 +1,32 @@
+name: Suggest a welcoming jar
+description: Suggest a public repository with an existing Tipjar invitation for curator review.
+title: '[Jar suggestion] '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Anyone may suggest a public repository. You do not need to own or maintain it.
+        This public issue requests review only. It does not list a project, opt anyone into scoring, verify ownership, or authorize work or publication.
+        GitHub publishes your account and issue text. Do not post secrets, private repository details or personal information. Public issues and history may persist.
+  - type: input
+    id: repository
+    attributes:
+      label: Public repository (owner/repo)
+      description: Enter the canonical public GitHub name, not a URL or numeric ID. One repository per suggestion.
+      placeholder: owner/repo
+    validations:
+      required: true
+  - type: input
+    id: invitation_location
+    attributes:
+      label: Public invitation location
+      description: Optional public pinned root README.md or .tipjar.json link, for human context only. Curators independently verify the current invitation.
+    validations:
+      required: false
+  - type: checkboxes
+    id: acknowledgement
+    attributes:
+      label: Public suggestion acknowledgement
+      options:
+        - label: I understand this is a public suggestion for curator review, not a claim of project ownership or permission to contribute.
+          required: true

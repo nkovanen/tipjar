@@ -80,3 +80,20 @@ process.stdout.write(JSON.stringify({ranks:m.rankBoard(b, 'all', now),
                     self.assertEqual(
                         [tuple(row[k] for k in fields) for row in projection['ranks'][kind]],
                         [tuple(row[k] for k in fields) for row in expected[kind]])
+
+
+class WelcomeSuggestionFormTests(unittest.TestCase):
+    def test_public_suggestion_collects_no_ownership_or_contact_claim(self):
+        path = ROOT / '.github/ISSUE_TEMPLATE/suggest-jar.yml'
+        self.assertTrue(path.is_file(), 'suggestion link needs its own issue form')
+        form = path.read_text()
+        self.assertIn('Anyone may suggest a public repository. You do not need to own or maintain it.', form)
+        self.assertIn('It does not list a project, opt anyone into scoring, verify ownership, or authorize work or publication.', form)
+        self.assertIn('GitHub publishes your account and issue text.', form)
+        self.assertIn('Public issues and history may persist.', form)
+        self.assertIn('label: Public repository (owner/repo)', form)
+        self.assertIn('label: Public invitation location', form)
+        self.assertEqual(form.count('- type: input'), 2)
+        self.assertEqual(form.count('required: true'), 2, 'repository and acknowledgement only')
+        self.assertIn('not a claim of project ownership or permission to contribute.', form)
+        self.assertNotRegex(form, r'(?m)^(labels|assignees):')
