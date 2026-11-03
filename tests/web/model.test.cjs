@@ -83,3 +83,12 @@ assert.throws(()=>m.parseSnapshot(JSON.stringify(modern({...readme,badge:{protoc
 assert.throws(()=>m.parseSnapshot(JSON.stringify(modern({...readme,source_kind:'manifest'}))));
 assert.equal(m.parseSnapshot(JSON.stringify(modern({...readme,state:'undeclared',badge:null}))).reports[0].state,'undeclared');
 assert.throws(()=>m.parseSnapshot(JSON.stringify({...modern(readme),format:'find-jars-report/3'})));
+// A name-only badge is a bounded lookup/onboarding hint, never a pinned identity.
+assert.deepEqual(m.parseRepositoryHandoff('?repo=Acme%2FProject&ignored=x&period=all'),{repository:'acme/project',period:'all',invalid:false});
+assert.deepEqual(m.parseRepositoryHandoff(''),{repository:null,period:'month',invalid:false});
+for(const query of ['?repo=a/b&repo=a/b','?repo=a/b&%72epo=c/d','?repo=a/b&repository_id=1','?repo=a/b&author_id=1','?repository_id=1','?repo=','?repo=a%252Fb','?repo=https://github.com/a/b','?repo=a/../b','?repo=%3Cimg%3E/x','?repo=a/b%0a','?repo=a/b&period=other','?repo=a/b&period=month&period=all','?repo=%ZZ','?'+Array.from({length:17},(_,i)=>'x'+i+'=1').join('&'),'?repo='+ 'a'.repeat(2049)])
+ assert.deepEqual(m.parseRepositoryHandoff(query),{repository:null,period:'month',invalid:true},query);
+assert.equal(m.repositoryHandoffURL('https://example.com/tipjar/?unknown=1#fragment',m.parseRepositoryHandoff('?repo=Acme%2FProject')),'https://example.com/tipjar/leaderboard.html?repo=acme%2Fproject&period=month');
+for(const entry of [{repository:null,period:'month',invalid:false},{repository:'a/b',period:'bad',invalid:false},{repository:'a/b',period:'month',invalid:true},{repository:'A/B',period:'month',invalid:false},{repository:'a/b',period:'month',invalid:false,extra:1}])
+ assert.throws(()=>m.repositoryHandoffURL('https://example.com/tipjar/',entry));
+console.log('PASS bounded repository handoff hints and canonical lookup URLs');

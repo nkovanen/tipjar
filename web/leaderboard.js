@@ -67,6 +67,12 @@ function hideCurrent(title, text) {
   byId('newcomers').textContent = '';
   byId('directory-summary').textContent = 'Current welcome actions are unavailable.';
   byId('share-status').hidden = true;
+  const route = boardModel.parseBoardRoute(location.search);
+  if (!route.invalid && route.target?.kind === 'repository-name') {
+    const ownedFocus = byId('repository-handoff').contains(document.activeElement);
+    renderRepositoryHandoff(route.target.name, { status: 'unavailable' });
+    if (ownedFocus) byId('handoff-title').focus();
+  } else clearRepositoryHandoff();
   closeDetail();
 }
 function ensureFresh() {
@@ -140,11 +146,17 @@ function changePeriod(next, dialogControl) {
   history.replaceState(
     null,
     '',
-    boardModel.boardViewURL(location.href, {
-      period: next,
-      target: route.invalid ? null : route.target,
-      invalid: false,
-    }),
+    !route.invalid && route.target?.kind === 'repository-name'
+      ? TipjarModel.repositoryHandoffURL(location.href, {
+          repository: route.target.name,
+          period: next,
+          invalid: false,
+        })
+      : boardModel.boardViewURL(location.href, {
+          period: next,
+          target: route.invalid ? null : route.target,
+          invalid: false,
+        }),
   );
   syncBoardRoute({ focus: dialogControl ? 'period' : 'global-period' });
 }
@@ -156,6 +168,78 @@ function clearTarget() {
   );
   syncBoardRoute({ focus: 'return' });
 }
+function clearRepositoryHandoff() {
+  byId('repository-handoff').replaceChildren();
+  byId('repository-handoff').hidden = true;
+}
+function renderRepositoryHandoff(name, result) {
+  const panel = byId('repository-handoff'),
+    heading = node(
+      'h2',
+      result.status === 'matched'
+        ? 'Current public snapshot match'
+        : result.status === 'not-listed'
+          ? 'Not listed in this snapshot'
+          : result.status === 'loading'
+            ? 'Checking the public snapshot…'
+            : 'Project lookup is unavailable',
+    );
+  heading.id = 'handoff-title';
+  heading.tabIndex = -1;
+  panel.replaceChildren(heading);
+  panel.hidden = false;
+  if (result.status === 'matched') {
+    const row = board.repositories.find((r) => r.repository_id === result.target.id);
+    panel.append(
+      node('p', result.target.label),
+      node('p', `Observed ${date(row.verified_at)} · expires ${date(board.expires_at)}`, 'micro'),
+      node(
+        'p',
+        'This matches the name in your link. Badge origin and earlier ownership are not verified.',
+      ),
+      routeLink(
+        'Open current project view ↗',
+        { kind: 'repository', id: result.target.id },
+        'button handoff-profile',
+      ),
+    );
+  } else if (result.status === 'loading') {
+    panel.append(
+      node(
+        'p',
+        'Project lookup needs a fresh public snapshot. A name in a badge link is only a lookup hint.',
+      ),
+    );
+  } else {
+    panel.append(
+      node(
+        'p',
+        result.status === 'not-listed'
+          ? 'Coverage is limited; this does not mean the project has no invitation.'
+          : 'A current verified identity cannot be resolved. This is not a claim that the project has no invitation.',
+      ),
+    );
+    const directory = new URL('directory.html', location.href);
+    directory.searchParams.set('repo', name);
+    directory.hash = 'maintainers';
+    const actions = node('div', undefined, 'handoff-actions');
+    actions.append(
+      link('Prepare an invitation locally', directory.href),
+      link(
+        'Suggest a jar for review',
+        'https://github.com/nkovanen/tipjar/issues/new?template=suggest-jar.yml',
+      ),
+    );
+    panel.append(
+      actions,
+      node(
+        'p',
+        'Suggestions need curator review; submitting does not guarantee listing or grant contribution authority.',
+        'micro',
+      ),
+    );
+  }
+}
 function syncBoardRoute({ focus = 'heading' } = {}) {
   const route = boardModel.parseBoardRoute(location.search),
     changed = period !== route.period;
@@ -165,8 +249,15 @@ function syncBoardRoute({ focus = 'heading' } = {}) {
     globalRendered = true;
   }
   if (!ensureFresh()) return;
-  const target = boardModel.resolveBoardTarget(board, route.target),
-    unavailable = route.invalid || (route.target && !target);
+  const nameHandoff = !route.invalid && route.target?.kind === 'repository-name';
+  const target = nameHandoff ? null : boardModel.resolveBoardTarget(board, route.target),
+    unavailable = !nameHandoff && (route.invalid || (route.target && !target));
+  if (nameHandoff)
+    renderRepositoryHandoff(
+      route.target.name,
+      boardModel.resolveRepositoryName(board, route.target.name),
+    );
+  else clearRepositoryHandoff();
   byId('share-status').hidden = !unavailable;
   byId('share-status').textContent = unavailable
     ? 'This shared view is unavailable in the current snapshot.'
@@ -181,6 +272,7 @@ function syncBoardRoute({ focus = 'heading' } = {}) {
     byId('board-detail').querySelector(`[data-period="${period}"]`).focus();
   else if (focus === 'global-period')
     byId('board-period').querySelector(`[data-period="${period}"]`).focus();
+  else if (nameHandoff && focus === 'heading') byId('handoff-title').focus();
   else if (target && focus === 'heading') byId('board-detail-title').focus();
   else if (focus === 'return' || (!target && focus === 'heading')) restoreBoardFocus();
 }
@@ -580,7 +672,8 @@ byId('board-detail').addEventListener('cancel', (event) => {
   clearTarget();
 });
 byId('board-detail').addEventListener('close', () => {
-  if (!byId('board-detail').open) restoreBoardFocus();
+  if (!byId('board-detail').open && !byId('repository-handoff').contains(document.activeElement))
+    restoreBoardFocus();
 });
 byId('board-search').addEventListener('input', renderDirectory);
 for (const control of byId('board-period').querySelectorAll('[data-period]'))
@@ -626,6 +719,8 @@ async function load() {
       'The board is taking a breather.',
       'A current snapshot is unavailable. No scores or verified welcomes are shown. You can still put out a jar or submit a merged tip for review.',
     );
+    if (boardModel.parseBoardRoute(location.search).target?.kind === 'repository-name')
+      byId('handoff-title').focus();
   } finally {
     clearTimeout(timeout);
   }
@@ -636,4 +731,7 @@ setInterval(() => {
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) ensureFresh();
 });
+const initialRoute = boardModel.parseBoardRoute(location.search);
+if (!initialRoute.invalid && initialRoute.target?.kind === 'repository-name')
+  renderRepositoryHandoff(initialRoute.target.name, { status: 'loading' });
 load();
