@@ -22,6 +22,38 @@ def commands():
 
 
 class DocsConsistencyTests(unittest.TestCase):
+    def test_ordinary_contribution_precedes_optional_cli_and_keeps_permission_stops(self):
+        text = (ROOT / 'docs/tipping.md').read_text('utf-8')
+        self.assertIn('## Give a tip with your existing agent\n', text)
+        ordinary = text.split('## Give a tip with your existing agent\n', 1)[1].split('## Optional: Tipjar CLI and task 0.3', 1)[0]
+        flat = ' '.join(ordinary.split())
+        for phrase in ('CLI and Skill are optional', 'contribution and AI rules',
+                       'authorize work', 'authorize publication separately',
+                       'not task 0.3 machine verification', 'actually merged',
+                       'curator review', 'Already adopted a task, Skill, or protocol?',
+                       'constraints and gates remain binding', 'Do not relabel',
+                       'paused, refused, blocked or pending-authorization'):
+            with self.subTest(requirement=phrase):
+                self.assertIn(phrase, flat)
+        self.assertIn('template=submit-tip.yml', ordinary)
+        getting = (ROOT / 'docs/getting-started.md').read_text('utf-8')
+        self.assertLess(getting.index('tipping.md#give-a-tip-with-your-existing-agent'),
+                        getting.index('## Optional: installed CLI walkthrough'))
+        self.assertNotIn('tipjar verify', ordinary)
+
+    def test_current_walkthrough_output_version_matches_cli_without_rewriting_history(self):
+        from agent_contribute import outputs
+        text = (ROOT / 'docs/tipping.md').read_text('utf-8')
+        self.assertIn('output schemas **' + outputs.VERSION + '**', text)
+        self.assertNotIn('separate incoming features', text)
+        for name in ('upgrading', 'host-authorization', 'architecture', 'getting-started'):
+            current = (ROOT / ('docs/' + name + '.md')).read_text('utf-8')
+            with self.subTest(doc=name):
+                self.assertEqual(re.findall(r'new reports use output/(\d+)', current), [outputs.VERSION])
+        path = text.split('## Path two: explicitly choose a repository with no declared invitation', 1)[1].split('## From one selected issue', 1)[0]
+        for phrase in ('plain README', 'absent', 'unknown', 'task schemas 0.1/0.2', 'manifest-only'):
+            self.assertIn(phrase, path)
+
     def test_readme_and_command_reference_name_every_command(self):
         readme = (ROOT / 'README.md').read_text('utf-8')
         reference = (ROOT / 'docs' / 'cli.md').read_text('utf-8')

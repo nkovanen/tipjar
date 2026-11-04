@@ -30,4 +30,13 @@ for(const query of ['?repo='+encodeURIComponent('<img src=x onerror=alert(1)>'),
   assert.ok(!invalid.textContent.includes(query));
   assert.doesNotMatch(invalid.textContent,/<img|evil\.invalid|a\/b/);
 }
+// The ordinary guide is primary; installing the optional tools is a separate choice.
+const landing=fs.readFileSync(require.resolve('../../web/index.html'),'utf8');
+const step=landing.split('<h3>Read the room.</h3>')[1].split('</article>')[0];
+const guide='https://github.com/nkovanen/tipjar/blob/main/docs/tipping.md#give-a-tip-with-your-existing-agent';
+assert.deepEqual([...step.matchAll(/href="([^"]+)"/g)].map(m=>m[1]),
+  [guide,'https://github.com/nkovanen/tipjar#install-from-source']);
+assert.match(step,/Optional: CLI &amp; Skill/);
+assert.ok(fs.readFileSync(require.resolve('../../docs/tipping.md'),'utf8')
+  .includes('## Give a tip with your existing agent\n'));
 console.log('Landing repo handoff regressions passed');

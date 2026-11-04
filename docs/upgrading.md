@@ -127,7 +127,7 @@ fork to a human-selected public upstream issue, with separate implementation and
 exact-result publication assertions. Welcome and undeclared sources both require
 complete source/fork policy accounting; no invitation or approval is invented.
 See [the complete external-tip workflow](external-tips.md) for commands, records, pause points and limits. Evidence
-remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.
+remains schema 0.2; new reports use output/4. Existing 0.1/0.2 authority is unchanged.
 
 Unpublished task 0.3 drafts using inventory format 3 must be explicitly reprepared
 for format 4 and receive fresh host review/authorization. No old mandate is

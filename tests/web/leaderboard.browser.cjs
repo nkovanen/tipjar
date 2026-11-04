@@ -96,6 +96,19 @@ const fixture = (name) =>
     assert.equal(navigated, true);
     assert.equal(await p.title(), 'Local navigation check');
   }
+  const ordinaryURL = 'https://github.com/nkovanen/tipjar/blob/main/docs/tipping.md#give-a-tip-with-your-existing-agent';
+  async function openOrdinaryGuide(p) {
+    const guide = p.getByRole('link', { name: 'How to give a tip', exact: true });
+    assert.equal(await guide.count(), 1);
+    assert.equal(await guide.getAttribute('href'), ordinaryURL);
+    await p.route(ordinaryURL.split('#')[0], (route) => route.fulfill({
+      contentType: 'text/html', body: '<title>Local guide navigation check</title>',
+    }));
+    await guide.focus();
+    await p.keyboard.press('Enter');
+    await p.waitForURL(ordinaryURL);
+    assert.equal(await p.title(), 'Local guide navigation check');
+  }
   try {
     for (const width of [1440, 390]) {
       const p = await page(width),
@@ -243,6 +256,56 @@ const fixture = (name) =>
           }
         }
     assert.deepEqual(unavailableHistoryFailures, []);
+    for (const width of [1440, 390]) {
+      const p = await page(width), requests = [];
+      p.on('request', (r) => requests.push(r.url()));
+      await p.goto(origin + '/tipjar/index.html');
+      const step = p.locator('.steps article').filter({ has: p.getByRole('heading', { name: 'Read the room.', exact: true }) });
+      assert.deepEqual(await step.locator('a').evaluateAll((links) => links.map((a) => a.href)),
+        [ordinaryURL, 'https://github.com/nkovanen/tipjar#install-from-source']);
+      await step.getByRole('link', { name: 'How to give a tip', exact: true }).focus();
+      await p.keyboard.press('Tab');
+      assert.equal(await step.getByRole('link', { name: 'Optional: CLI & Skill', exact: true })
+        .evaluate((a) => a === document.activeElement), true);
+      assert.equal(requests.some((url) => url.endsWith('/board.json')), false);
+      assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await p.screenshot({ path: path.join(output, `ordinary-landing-${width}.png`), fullPage: true });
+      await openOrdinaryGuide(p);
+      await p.close(); checks++;
+      for (const state of ['manifest-welcome', 'readme-welcome']) {
+        const w = await page(width, fixture('v2/' + state)), reads = [];
+        w.on('request', (r) => reads.push(r.url()));
+        await w.addInitScript(() => Object.defineProperty(navigator, 'clipboard', {
+          configurable: true, value: { writeText: async (text) => { window.ordinaryCopied = text; } },
+        }));
+        await w.goto(origin + '/tipjar/leaderboard.html?repository_id=101&period=all');
+        await w.locator('#board-detail[open]').waitFor();
+        assert.match(await w.locator('#board-detail-content').innerText(), /Tipjar's CLI is optional/);
+        assert.match(await w.locator('#board-detail-content').innerText(), /Optional CLI helper/);
+        await w.getByRole('button', { name: 'Copy', exact: true }).click();
+        assert.equal(await w.evaluate(() => window.ordinaryCopied), 'tipjar discover fictional-demo/welcoming-jar --signals');
+        await w.getByRole('button', { name: 'Copy view link', exact: true }).click();
+        assert.equal(await w.evaluate(() => window.ordinaryCopied), origin + '/tipjar/leaderboard.html?repository_id=101&period=all');
+        assert.equal(reads.filter((url) => url.endsWith('/board.json')).length, 1);
+        await w.screenshot({ path: path.join(output, `ordinary-${state}-${width}.png`), fullPage: true });
+        await openOrdinaryGuide(w);
+        await w.close(); checks++;
+      }
+      for (const state of ['manifest-closed', 'readme-undeclared', 'absent', 'unknown', 'missing', 'expired']) {
+        const data = fixture('v2/' + (state === 'missing' ? 'readme-welcome' : state));
+        if (state === 'missing') data.directory.observations = [];
+        const n = await page(width, data);
+        await n.goto(origin + '/tipjar/leaderboard.html?repository_id=101&period=all');
+        if (state === 'expired') {
+          await n.waitForFunction(() => document.getElementById('board-status').innerText.includes('overdue'));
+          assert.equal(await n.locator('#board-detail[open]').count(), 0);
+        } else await n.locator('#board-detail[open]').waitFor();
+        assert.equal(await n.getByRole('link', { name: 'How to give a tip', exact: true }).count(), 0);
+        assert.equal(await n.locator('#board-detail-content .command').count(), 0);
+        assert.deepEqual(n.errors, []);
+        await n.close(); checks++;
+      }
+    }
     for (const width of [1440, 390]) {
       const p = await page(width, fixture('v2/readme-welcome')),
         requests = [];
@@ -1022,7 +1085,8 @@ const fixture = (name) =>
                 : observation.source?.kind === 'manifest'
                   ? '.tipjar.json'
                   : null;
-          const fileLinks = p.locator('#board-detail-content a[href*="/blob/"]');
+          const fileLinks = p.locator('#board-detail-content')
+            .getByRole('link', { name: /^Pinned (README|invitation) source ↗$/ });
           assert.equal(await fileLinks.count(), expectedFile ? 1 : 0);
           if (expectedFile)
             assert.equal(
