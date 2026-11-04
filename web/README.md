@@ -73,6 +73,26 @@ Welcome grants neither issue approval nor local execution/publication authority.
 
 ## Maintainer draft
 
+Open `directory.html#maintainers` to prepare an invitation locally. The primary
+path generates the exact repository-scoped README snippet: paste it at byte zero
+of root README.md, including the blank third line. The initially collapsed
+“Optional: detailed preferences or closed status” editor provides `.tipjar.json`.
+Its generic wanted/boundary presets are editable examples, not a maintainer
+request or approval: replace them with project-specific work and rules, and
+review every line. A closed manifest expresses refusal. JSON takes precedence
+over README, including invalid, unreadable or unsupported JSON; removing JSON
+requires deliberately retaining or removing the README invitation too.
+
+Review the chosen file against project policies, add it through your usual
+review process, and deliberately publish it on the default branch yourself.
+Copy/download changes no repository, verifies no ownership, and enrolls nobody.
+If your browser renames the download, retain the exact root filename `.tipjar.json`.
+Use the [current maintainer guide](../docs/maintainers.md#check-the-published-invitation-with-a-fresh-read)
+to check the published invitation; indexing can lag or omit projects. The optional
+[existing suggestion form](https://github.com/nkovanen/tipjar/issues/new?template=suggest-jar.yml)
+is a separate human submission for curator review, never registration.
+A welcome supplies no issue approval or execution/publication authority.
+
 Edit the status, wanted work and boundaries. The preview/download uses the exact
 0.1 manifest schema (at most 16 distinct lines per list, 500 characters per line,
 16 KiB JSON). Exact line content is preserved; empty lines are skipped, but
