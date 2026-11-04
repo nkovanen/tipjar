@@ -550,3 +550,92 @@ test("share_lookup_uses_current_snapshot_only", () => {
     );
   }
 });
+test("name hints dispatch separately and never become canonical profile URLs", () => {
+  const route = m.parseBoardRoute(
+    "?repo=Fictional-Demo%2FWelcoming-Jar&period=all",
+  );
+  assert.deepEqual(route, {
+    period: "all",
+    target: { kind: "repository-name", name: "fictional-demo/welcoming-jar" },
+    invalid: false,
+  });
+  assert.throws(() =>
+    m.boardViewURL("https://example.com/tipjar/leaderboard.html", route),
+  );
+  for (const query of [
+    "?repo=a/b&repo=a/b",
+    "?repo=a/b&repository_id=101",
+    "?repo=a/b&author_id=301",
+    "?repo=a/b&%72epo=a/b",
+    "?repo=a%252Fb",
+    "?repo=a/b&period=bad",
+  ])
+    assert.deepEqual(m.parseBoardRoute(query), {
+      period: "month",
+      target: null,
+      invalid: true,
+    });
+  assert.deepEqual(m.parseBoardRoute("?repository_id=101&period=all"), {
+    period: "all",
+    target: { kind: "repository", id: 101 },
+    invalid: false,
+  });
+});
+test("name lookup is unique current metadata, without aliases or badge-origin continuity", () => {
+  for (const b of [parse(fixture()), parse(board2Fixture("readme-welcome"))]) {
+    const before = JSON.stringify(b);
+    assert.deepEqual(
+      m.resolveRepositoryName(b, "FICTIONAL-DEMO/WELCOMING-JAR", now),
+      {
+        status: "matched",
+        target: {
+          kind: "repository",
+          id: 101,
+          label: "fictional-demo/welcoming-jar",
+        },
+      },
+    );
+    assert.deepEqual(m.resolveRepositoryName(b, "missing/project", now), {
+      status: "not-listed",
+    });
+    assert.deepEqual(
+      m.resolveRepositoryName(
+        b,
+        "fictional-demo/welcoming-jar",
+        new Date(b.expires_at),
+      ),
+      { status: "unavailable" },
+    );
+    assert.deepEqual(
+      m.resolveRepositoryName(b, "https://github.com/a/b", now),
+      { status: "unavailable" },
+    );
+    assert.equal(JSON.stringify(b), before);
+    const changed = structuredClone(b);
+    changed.repositories[0].repository = "fictional-demo/new-name";
+    assert.deepEqual(
+      m.resolveRepositoryName(changed, "fictional-demo/welcoming-jar", now),
+      { status: "not-listed" },
+    );
+    changed.repositories[0].repository = "fictional-demo/welcoming-jar";
+    changed.repositories[0].repository_id = 999;
+    assert.equal(
+      m.resolveRepositoryName(changed, "fictional-demo/welcoming-jar", now)
+        .target.id,
+      999,
+    );
+    changed.repositories.push({
+      ...changed.repositories[0],
+      repository_id: 1000,
+    });
+    assert.deepEqual(
+      m.resolveRepositoryName(changed, "fictional-demo/welcoming-jar", now),
+      { status: "unavailable" },
+    );
+    changed.repositories = [];
+    assert.deepEqual(
+      m.resolveRepositoryName(changed, "fictional-demo/welcoming-jar", now),
+      { status: "not-listed" },
+    );
+  }
+});

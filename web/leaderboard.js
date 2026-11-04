@@ -67,7 +67,17 @@ function hideCurrent(title, text) {
   byId('newcomers').textContent = '';
   byId('directory-summary').textContent = 'Current welcome actions are unavailable.';
   byId('share-status').hidden = true;
+  reconcileUnavailableRoute(boardModel.parseBoardRoute(location.search));
+}
+function reconcileUnavailableRoute(route, focus = false) {
+  const named = !route.invalid && route.target?.kind === 'repository-name',
+    ownedFocus = byId('repository-handoff').contains(document.activeElement);
+  byId('share-status').hidden = true;
+  if (named) renderRepositoryHandoff(route.target.name, { status: 'unavailable' });
+  else clearRepositoryHandoff();
   closeDetail();
+  if (named && (focus || ownedFocus)) byId('handoff-title').focus();
+  else if (focus) restoreBoardFocus();
 }
 function ensureFresh() {
   if (!board || !boardModel.fresh(board)) {
@@ -140,11 +150,17 @@ function changePeriod(next, dialogControl) {
   history.replaceState(
     null,
     '',
-    boardModel.boardViewURL(location.href, {
-      period: next,
-      target: route.invalid ? null : route.target,
-      invalid: false,
-    }),
+    !route.invalid && route.target?.kind === 'repository-name'
+      ? TipjarModel.repositoryHandoffURL(location.href, {
+          repository: route.target.name,
+          period: next,
+          invalid: false,
+        })
+      : boardModel.boardViewURL(location.href, {
+          period: next,
+          target: route.invalid ? null : route.target,
+          invalid: false,
+        }),
   );
   syncBoardRoute({ focus: dialogControl ? 'period' : 'global-period' });
 }
@@ -156,17 +172,103 @@ function clearTarget() {
   );
   syncBoardRoute({ focus: 'return' });
 }
+function clearRepositoryHandoff() {
+  byId('repository-handoff').replaceChildren();
+  byId('repository-handoff').hidden = true;
+}
+function renderRepositoryHandoff(name, result) {
+  const panel = byId('repository-handoff'),
+    heading = node(
+      'h2',
+      result.status === 'matched'
+        ? 'Current public snapshot match'
+        : result.status === 'not-listed'
+          ? 'Not listed in this snapshot'
+          : result.status === 'loading'
+            ? 'Checking the public snapshot…'
+            : 'Project lookup is unavailable',
+    );
+  heading.id = 'handoff-title';
+  heading.tabIndex = -1;
+  panel.replaceChildren(heading);
+  panel.hidden = false;
+  if (result.status === 'matched') {
+    const row = board.repositories.find((r) => r.repository_id === result.target.id);
+    panel.append(
+      node('p', result.target.label),
+      node('p', `Observed ${date(row.verified_at)} · expires ${date(board.expires_at)}`, 'micro'),
+      node(
+        'p',
+        'This matches the name in your link. Badge origin and earlier ownership are not verified.',
+      ),
+      routeLink(
+        'Open current project view ↗',
+        { kind: 'repository', id: result.target.id },
+        'button handoff-profile',
+      ),
+    );
+  } else if (result.status === 'loading') {
+    panel.append(
+      node(
+        'p',
+        'Project lookup needs a fresh public snapshot. A name in a badge link is only a lookup hint.',
+      ),
+    );
+  } else {
+    panel.append(
+      node(
+        'p',
+        result.status === 'not-listed'
+          ? 'Coverage is limited; this does not mean the project has no invitation.'
+          : 'A current verified identity cannot be resolved. This is not a claim that the project has no invitation.',
+      ),
+    );
+    const directory = new URL('directory.html', location.href);
+    directory.searchParams.set('repo', name);
+    directory.hash = 'maintainers';
+    const actions = node('div', undefined, 'handoff-actions');
+    actions.append(
+      link('Prepare an invitation locally', directory.href),
+      link(
+        'Suggest a jar for review',
+        'https://github.com/nkovanen/tipjar/issues/new?template=suggest-jar.yml',
+      ),
+    );
+    panel.append(
+      actions,
+      node(
+        'p',
+        'Suggestions need curator review; submitting does not guarantee listing or grant contribution authority.',
+        'micro',
+      ),
+    );
+  }
+}
 function syncBoardRoute({ focus = 'heading' } = {}) {
   const route = boardModel.parseBoardRoute(location.search),
     changed = period !== route.period;
   period = route.period;
+  if (!ensureFresh()) {
+    reconcileUnavailableRoute(route, focus === 'heading' || focus === 'return');
+    for (const control of byId('board-period').querySelectorAll('[data-period]'))
+      control.setAttribute('aria-pressed', String(control.dataset.period === period));
+    if (focus === 'global-period')
+      byId('board-period').querySelector(`[data-period="${period}"]`).focus();
+    return;
+  }
   if (!globalRendered || changed) {
     render();
     globalRendered = true;
   }
-  if (!ensureFresh()) return;
-  const target = boardModel.resolveBoardTarget(board, route.target),
-    unavailable = route.invalid || (route.target && !target);
+  const nameHandoff = !route.invalid && route.target?.kind === 'repository-name';
+  const target = nameHandoff ? null : boardModel.resolveBoardTarget(board, route.target),
+    unavailable = !nameHandoff && (route.invalid || (route.target && !target));
+  if (nameHandoff)
+    renderRepositoryHandoff(
+      route.target.name,
+      boardModel.resolveRepositoryName(board, route.target.name),
+    );
+  else clearRepositoryHandoff();
   byId('share-status').hidden = !unavailable;
   byId('share-status').textContent = unavailable
     ? 'This shared view is unavailable in the current snapshot.'
@@ -181,6 +283,7 @@ function syncBoardRoute({ focus = 'heading' } = {}) {
     byId('board-detail').querySelector(`[data-period="${period}"]`).focus();
   else if (focus === 'global-period')
     byId('board-period').querySelector(`[data-period="${period}"]`).focus();
+  else if (nameHandoff && focus === 'heading') byId('handoff-title').focus();
   else if (target && focus === 'heading') byId('board-detail-title').focus();
   else if (focus === 'return' || (!target && focus === 'heading')) restoreBoardFocus();
 }
@@ -384,6 +487,11 @@ function repoDetail(repositoryId) {
           ),
         );
       if (observation.disposition === 'welcome') {
+        body.append(
+          node('p', "You can use your own agent and the project's usual contribution process. Tipjar's CLI is optional."),
+          link('How to give a tip', 'https://github.com/nkovanen/tipjar/blob/main/docs/tipping.md#give-a-tip-with-your-existing-agent'),
+          node('h3', 'Optional CLI helper'),
+        );
         command(body, `tipjar discover ${repo.repository} --signals`);
         body.append(
           node(
@@ -580,14 +688,13 @@ byId('board-detail').addEventListener('cancel', (event) => {
   clearTarget();
 });
 byId('board-detail').addEventListener('close', () => {
-  if (!byId('board-detail').open) restoreBoardFocus();
+  if (!byId('board-detail').open && !byId('repository-handoff').contains(document.activeElement))
+    restoreBoardFocus();
 });
 byId('board-search').addEventListener('input', renderDirectory);
 for (const control of byId('board-period').querySelectorAll('[data-period]'))
   control.addEventListener('click', () => changePeriod(control.dataset.period, false));
-window.addEventListener('popstate', () => {
-  if (board) syncBoardRoute({ focus: 'heading' });
-});
+window.addEventListener('popstate', () => syncBoardRoute({ focus: 'heading' }));
 async function load() {
   const abort = new AbortController(),
     timeout = setTimeout(() => abort.abort(), 15000);
@@ -626,6 +733,8 @@ async function load() {
       'The board is taking a breather.',
       'A current snapshot is unavailable. No scores or verified welcomes are shown. You can still put out a jar or submit a merged tip for review.',
     );
+    if (boardModel.parseBoardRoute(location.search).target?.kind === 'repository-name')
+      byId('handoff-title').focus();
   } finally {
     clearTimeout(timeout);
   }
@@ -636,4 +745,7 @@ setInterval(() => {
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) ensureFresh();
 });
+const initialRoute = boardModel.parseBoardRoute(location.search);
+if (!initialRoute.invalid && initialRoute.target?.kind === 'repository-name')
+  renderRepositoryHandoff(initialRoute.target.name, { status: 'loading' });
 load();

@@ -73,6 +73,26 @@ Welcome grants neither issue approval nor local execution/publication authority.
 
 ## Maintainer draft
 
+Open `directory.html#maintainers` to prepare an invitation locally. The primary
+path generates the exact repository-scoped README snippet: paste it at byte zero
+of root README.md, including the blank third line. The initially collapsed
+“Optional: detailed preferences or closed status” editor provides `.tipjar.json`.
+Its generic wanted/boundary presets are editable examples, not a maintainer
+request or approval: replace them with project-specific work and rules, and
+review every line. A closed manifest expresses refusal. JSON takes precedence
+over README, including invalid, unreadable or unsupported JSON; removing JSON
+requires deliberately retaining or removing the README invitation too.
+
+Review the chosen file against project policies, add it through your usual
+review process, and deliberately publish it on the default branch yourself.
+Copy/download changes no repository, verifies no ownership, and enrolls nobody.
+If your browser renames the download, retain the exact root filename `.tipjar.json`.
+Use the [current maintainer guide](../docs/maintainers.md#check-the-published-invitation-with-a-fresh-read)
+to check the published invitation; indexing can lag or omit projects. The optional
+[existing suggestion form](https://github.com/nkovanen/tipjar/issues/new?template=suggest-jar.yml)
+is a separate human submission for curator review, never registration.
+A welcome supplies no issue approval or execution/publication authority.
+
 Edit the status, wanted work and boundaries. The preview/download uses the exact
 0.1 manifest schema (at most 16 distinct lines per list, 500 characters per line,
 16 KiB JSON). Exact line content is preserved; empty lines are skipped, but
@@ -144,9 +164,44 @@ Expiry closes and clears entity details, scores, copy and current welcome action
 
 Invalid, duplicate or conflicting selectors are inert and never become HTML,
 commands, identities or requests. Imported local files cannot supply these views.
-The root badge's existing `?repo=owner/name` onboarding and no-fetch CSP remain
-unchanged; automatic badge-name-to-board matching is deferred. Use the root's
-Community board / Find a jar links to browse public observations.
+The root badge's existing `?repo=owner/name` destination, onboarding and no-fetch
+CSP remain unchanged. Its explicit board lookup handoff is described below.
+
+## From a README badge to the public board
+
+A valid badge name on the root page offers **Look for this project on the public
+board** alongside the existing local invitation editor. The root fetches no data.
+The link opens `leaderboard.html?repo=owner%2Frepo&period=month`, a lookup hint
+rather than a canonical profile URL. The board uses its one existing snapshot
+request and requires an exact, unique current repository-name match. It does not
+redirect automatically: choose **Open current project view** to enter the numeric
+view. Copy view link remains numeric, and existing invitation checks still apply.
+
+A match establishes only the current snapshot's namespace observation. A renamed
+repository's former name is not followed; a reused name might now identify a
+different numeric repository. Badge origin and earlier ownership are not verified.
+A badge/query match never grants contribution approval or execution/publication
+authority. Current accepting projects, closed jars and welcome-only projects can
+all have a profile without being equivalent invitations.
+
+A fresh name with no included row shows limited-coverage information and local
+onboarding plus the fixed **Suggest a jar for review** form. Missing, malformed,
+expired or ambiguous data instead makes lookup unavailable. It supplies no stale
+identity or numeric profile link. Suggestions require curator review and never
+guarantee listing. No name/body/identity from the URL is added to the external
+suggestion form URL.
+
+Name and numeric selectors cannot be mixed or duplicated. Names, periods, encoded
+URLs and both query bounds are checked before creating personalized links. Invalid
+links use generic copy, never a raw query echo. A name-handoff period change
+replaces the current hint entry; Back/Forward recomputes names from the same fresh
+snapshot without another request. Changing to a numeric view clears the lookup
+panel; close uses the existing global-heading focus fallback when that opener is
+removed. Expiry clears matched labels and profile links, including on tab resume.
+
+Without JavaScript, static board, local onboarding and suggestion links remain,
+with an explanation that project lookup needs JavaScript and a fresh snapshot.
+No browser GitHub API request, new collector/data format or badge protocol is used.
 
 ## Browser checks
 

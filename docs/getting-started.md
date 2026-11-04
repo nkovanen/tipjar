@@ -1,5 +1,12 @@
 # Getting started: one contribution, end to end
 
+Start with [Give a tip with your existing agent](tipping.md#give-a-tip-with-your-existing-agent)
+for the ordinary human-led journey. The CLI and Skill are optional; project rules
+and your authorization for work and publication still apply. An already adopted
+task or protocol keeps its constraints and gates; this is no route around them.
+
+## Optional: installed CLI walkthrough
+
 For an outside-contributor gift, follow [external tips (task 0.3)](external-tips.md):
 `prepare --schema-version 0.3 --fork OWNER/REPO --head-ref NEW_BRANCH`, then explicit
 `implementation`, `draft` and `published` verify stages. The historical routes
@@ -265,4 +272,4 @@ fork to a human-selected public upstream issue, with separate implementation and
 exact-result publication assertions. Welcome and undeclared sources both require
 complete source/fork policy accounting; no invitation or approval is invented.
 See [the complete external-tip workflow](external-tips.md) for commands, records, pause points and limits. Evidence
-remains schema 0.2; new reports use output/3. Existing 0.1/0.2 authority is unchanged.
+remains schema 0.2; new reports use output/4. Existing 0.1/0.2 authority is unchanged.

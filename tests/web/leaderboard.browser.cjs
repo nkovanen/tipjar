@@ -13,7 +13,10 @@ const fixture = (name) =>
   fs.mkdirSync(output, { recursive: true });
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
-    const file = path.resolve(root, '.' + url.pathname.replace(/^\/tipjar/, '/web'));
+    const file = path.resolve(
+      root,
+      '.' + url.pathname.replace(/^\/tipjar/, '/web').replace(/\/$/, '/index.html'),
+    );
     if (!file.startsWith(root + path.sep)) {
       res.writeHead(403).end();
       return;
@@ -67,7 +70,10 @@ const fixture = (name) =>
     assert.equal(await link.isVisible(), true);
     assert.equal(await link.getAttribute('href'), destination);
     assert.equal(await link.getAttribute('target'), null);
-    assert.match(await link.locator('..').innerText(), /Coverage is partial; listing is not guaranteed/);
+    assert.match(
+      await link.locator('..').innerText(),
+      /Coverage is partial; listing is not guaranteed/,
+    );
     // Reach the actual anchor in document order; do not programmatically focus it.
     for (let tabs = 0; tabs < 60; tabs++) {
       if (await link.evaluate((e) => document.activeElement === e)) break;
@@ -80,31 +86,534 @@ const fixture = (name) =>
     let navigated = false;
     await p.route(destination, (route) => {
       navigated = true;
-      return route.fulfill({ contentType: 'text/html', body: '<title>Local navigation check</title>' });
+      return route.fulfill({
+        contentType: 'text/html',
+        body: '<title>Local navigation check</title>',
+      });
     });
     await p.keyboard.press('Enter');
     await p.waitForURL(destination);
     assert.equal(navigated, true);
     assert.equal(await p.title(), 'Local navigation check');
   }
+  const ordinaryURL = 'https://github.com/nkovanen/tipjar/blob/main/docs/tipping.md#give-a-tip-with-your-existing-agent';
+  async function openOrdinaryGuide(p) {
+    const guide = p.getByRole('link', { name: 'How to give a tip', exact: true });
+    assert.equal(await guide.count(), 1);
+    assert.equal(await guide.getAttribute('href'), ordinaryURL);
+    await p.route(ordinaryURL.split('#')[0], (route) => route.fulfill({
+      contentType: 'text/html', body: '<title>Local guide navigation check</title>',
+    }));
+    await guide.focus();
+    await p.keyboard.press('Enter');
+    await p.waitForURL(ordinaryURL);
+    assert.equal(await p.title(), 'Local guide navigation check');
+  }
   try {
+    for (const width of [1440, 390]) {
+      const p = await page(width),
+        requests = [];
+      p.on('request', (r) => requests.push(r.url()));
+      let releaseSnapshot, markStarted;
+      const started = new Promise((resolve) => {
+        markStarted = resolve;
+      });
+      await p.route('**/tipjar/board.json', async (route) => {
+        await new Promise((resolve) => {
+          releaseSnapshot = resolve;
+          markStarted();
+        });
+        await route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify(fixture('valid')),
+        });
+      });
+      await p.addInitScript(() => {
+        history.replaceState(null, '', '?repo=fictional-demo%2Fwelcoming-jar');
+        history.pushState(null, '', '?repository_id=101');
+      });
+      await p.goto(origin + '/tipjar/leaderboard.html', { waitUntil: 'domcontentloaded' });
+      await started;
+      await p.goBack();
+      await p.waitForFunction(() =>
+        document.getElementById('repository-handoff').innerText.includes('lookup is unavailable'),
+      );
+      assert.equal(await p.locator('#repository-handoff .handoff-profile').count(), 0);
+      await p.goForward();
+      await p.waitForFunction(() => document.getElementById('repository-handoff').hidden);
+      releaseSnapshot();
+      await p.locator('#people-content tbody tr').waitFor();
+      await p.locator('#board-detail[open]').waitFor();
+      assert.equal(await p.locator('#people-content tbody tr').count(), 1);
+      assert.equal(
+        await p.locator('#board-detail-title').innerText(),
+        'fictional-demo/welcoming-jar',
+      );
+      assert.equal(requests.filter((u) => u.endsWith('/board.json')).length, 1);
+      assert.deepEqual(p.errors, []);
+      await p.close();
+      checks++;
+    }
+    const unavailableHistoryFailures = [];
+    for (const width of [1440, 390])
+      for (const state of ['expired', 'failed'])
+        for (const starting of ['name', 'numeric']) {
+          const p = await page(width, state === 'failed' ? null : fixture('v2/readme-welcome')),
+            requests = [];
+          p.on('request', (r) => requests.push(r.url()));
+          const nameURL = '?repo=fictional-demo%2Fwelcoming-jar&period=month',
+            numericURL = '?repository_id=101&period=month';
+          const label = `${state}/${starting}/${width}`;
+          try {
+            if (state === 'failed') {
+              await p.addInitScript(
+                ({ previous, current }) => {
+                  history.replaceState(null, '', previous);
+                  history.pushState(null, '', current);
+                },
+                {
+                  previous: starting === 'name' ? numericURL : nameURL,
+                  current: starting === 'name' ? nameURL : numericURL,
+                },
+              );
+              await p.goto(origin + '/tipjar/leaderboard.html');
+              await p.waitForFunction(() =>
+                document.getElementById('board-status').innerText.includes('breather'),
+              );
+            } else {
+              await p.goto(origin + '/tipjar/leaderboard.html' + nameURL);
+              await p.locator('#repository-handoff .handoff-profile').click();
+              if (starting === 'name') {
+                await p.goBack();
+                await p.locator('#repository-handoff .handoff-profile').waitFor();
+              }
+              await p.clock.setSystemTime(new Date('2026-11-05T12:00:00Z'));
+              await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+              await p.waitForFunction(() =>
+                document.getElementById('board-status').innerText.includes('Refresh overdue'),
+              );
+            }
+            await p.evaluate(() => {
+              window.unavailableWrites = [];
+              for (const method of ['pushState', 'replaceState']) {
+                const original = history[method].bind(history);
+                history[method] = (...args) => {
+                  window.unavailableWrites.push(method);
+                  return original(...args);
+                };
+              }
+              for (const method of ['resolveRepositoryName', 'resolveBoardTarget', 'rankBoard'])
+                TipjarBoard[method] = () => {
+                  throw new Error('Unavailable route must not resolve identity or scores');
+                };
+            });
+            const first = state === 'expired' && starting === 'name' ? 'goForward' : 'goBack';
+            for (const navigate of [first, first === 'goBack' ? 'goForward' : 'goBack']) {
+              await p[navigate]();
+              const named = new URL(p.url()).searchParams.has('repo');
+              await p.waitForFunction(
+                (shouldShow) => {
+                  const panel = document.getElementById('repository-handoff');
+                  return shouldShow
+                    ? !panel.hidden && panel.innerText.includes('lookup is unavailable')
+                    : panel.hidden && panel.childElementCount === 0;
+                },
+                named,
+                { timeout: 1500 },
+              );
+              assert.equal(await p.locator('#repository-handoff .handoff-profile').count(), 0);
+              assert.equal(await p.locator('#board-detail').evaluate((e) => e.open), false);
+              assert.equal(await p.locator('#copy-board-view').isVisible(), false);
+              if (named) {
+                assert.doesNotMatch(
+                  await p.locator('#repository-handoff').innerText(),
+                  /fictional-demo|Not listed/,
+                );
+                assert.equal(
+                  await p
+                    .getByRole('link', { name: 'Prepare an invitation locally', exact: true })
+                    .getAttribute('href'),
+                  origin + '/tipjar/directory.html?repo=fictional-demo%2Fwelcoming-jar#maintainers',
+                );
+              }
+              assert.deepEqual(await p.evaluate(() => window.unavailableWrites), []);
+              assert.equal(requests.filter((u) => u.endsWith('/board.json')).length, 1);
+              assert.equal(
+                requests.some((u) => u.includes('api.github.com')),
+                false,
+              );
+              assert.deepEqual(p.errors, []);
+              await p.screenshot({
+                path: path.join(output, `history-${state}-${starting}-${navigate}-${width}.png`),
+                fullPage: true,
+              });
+              checks++;
+            }
+          } catch (error) {
+            unavailableHistoryFailures.push(label + ': ' + error.message);
+          } finally {
+            await p.close();
+          }
+        }
+    assert.deepEqual(unavailableHistoryFailures, []);
+    for (const width of [1440, 390]) {
+      const p = await page(width), requests = [];
+      p.on('request', (r) => requests.push(r.url()));
+      await p.goto(origin + '/tipjar/index.html');
+      const step = p.locator('.steps article').filter({ has: p.getByRole('heading', { name: 'Read the room.', exact: true }) });
+      assert.deepEqual(await step.locator('a').evaluateAll((links) => links.map((a) => a.href)),
+        [ordinaryURL, 'https://github.com/nkovanen/tipjar#install-from-source']);
+      await step.getByRole('link', { name: 'How to give a tip', exact: true }).focus();
+      await p.keyboard.press('Tab');
+      assert.equal(await step.getByRole('link', { name: 'Optional: CLI & Skill', exact: true })
+        .evaluate((a) => a === document.activeElement), true);
+      assert.equal(requests.some((url) => url.endsWith('/board.json')), false);
+      assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await p.screenshot({ path: path.join(output, `ordinary-landing-${width}.png`), fullPage: true });
+      await openOrdinaryGuide(p);
+      await p.close(); checks++;
+      for (const state of ['manifest-welcome', 'readme-welcome']) {
+        const w = await page(width, fixture('v2/' + state)), reads = [];
+        w.on('request', (r) => reads.push(r.url()));
+        await w.addInitScript(() => Object.defineProperty(navigator, 'clipboard', {
+          configurable: true, value: { writeText: async (text) => { window.ordinaryCopied = text; } },
+        }));
+        await w.goto(origin + '/tipjar/leaderboard.html?repository_id=101&period=all');
+        await w.locator('#board-detail[open]').waitFor();
+        assert.match(await w.locator('#board-detail-content').innerText(), /Tipjar's CLI is optional/);
+        assert.match(await w.locator('#board-detail-content').innerText(), /Optional CLI helper/);
+        await w.getByRole('button', { name: 'Copy', exact: true }).click();
+        assert.equal(await w.evaluate(() => window.ordinaryCopied), 'tipjar discover fictional-demo/welcoming-jar --signals');
+        await w.getByRole('button', { name: 'Copy view link', exact: true }).click();
+        assert.equal(await w.evaluate(() => window.ordinaryCopied), origin + '/tipjar/leaderboard.html?repository_id=101&period=all');
+        assert.equal(reads.filter((url) => url.endsWith('/board.json')).length, 1);
+        await w.screenshot({ path: path.join(output, `ordinary-${state}-${width}.png`), fullPage: true });
+        await openOrdinaryGuide(w);
+        await w.close(); checks++;
+      }
+      for (const state of ['manifest-closed', 'readme-undeclared', 'absent', 'unknown', 'missing', 'expired']) {
+        const data = fixture('v2/' + (state === 'missing' ? 'readme-welcome' : state));
+        if (state === 'missing') data.directory.observations = [];
+        const n = await page(width, data);
+        await n.goto(origin + '/tipjar/leaderboard.html?repository_id=101&period=all');
+        if (state === 'expired') {
+          await n.waitForFunction(() => document.getElementById('board-status').innerText.includes('overdue'));
+          assert.equal(await n.locator('#board-detail[open]').count(), 0);
+        } else await n.locator('#board-detail[open]').waitFor();
+        assert.equal(await n.getByRole('link', { name: 'How to give a tip', exact: true }).count(), 0);
+        assert.equal(await n.locator('#board-detail-content .command').count(), 0);
+        assert.deepEqual(n.errors, []);
+        await n.close(); checks++;
+      }
+    }
+    for (const width of [1440, 390]) {
+      const p = await page(width, fixture('v2/readme-welcome')),
+        requests = [];
+      p.on('request', (r) => requests.push(r.url()));
+      await p.addInitScript(() => {
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: {
+            writeText: async (text) => {
+              window.handoffCopied = text;
+            },
+          },
+        });
+        window.handoffWrites = [];
+        for (const method of ['pushState', 'replaceState']) {
+          const original = history[method].bind(history);
+          history[method] = (...args) => {
+            window.handoffWrites.push(method);
+            return original(...args);
+          };
+        }
+      });
+      await p.goto(origin + '/tipjar/?repo=fictional-demo%2Fwelcoming-jar');
+      const handoff = p.getByRole('link', {
+        name: 'Look for this project on the public board ↗',
+        exact: true,
+      });
+      assert.equal(
+        await handoff.getAttribute('href'),
+        origin + '/tipjar/leaderboard.html?repo=fictional-demo%2Fwelcoming-jar&period=month',
+      );
+      assert.equal(requests.filter((u) => u.endsWith('/board.json')).length, 0);
+      assert.match(
+        await p.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content'),
+        /connect-src 'none'/,
+      );
+      assert.equal(await p.locator('#repository-invitation a').count(), 2);
+      await p.screenshot({ path: path.join(output, `handoff-root-${width}.png`), fullPage: true });
+      await handoff.click();
+      await p.locator('#repository-handoff .handoff-profile').waitFor({ timeout: 1500 });
+      assert.equal(await p.locator('#board-detail').evaluate((e) => e.open), false);
+      assert.match(
+        await p.locator('#repository-handoff').innerText(),
+        /Current public snapshot match/,
+      );
+      assert.match(
+        await p.locator('#repository-handoff').innerText(),
+        /Badge origin and earlier ownership are not verified/,
+      );
+      assert.equal(
+        await p.locator('#handoff-title').evaluate((e) => document.activeElement === e),
+        true,
+      );
+      assert.equal(await p.locator('#repository-handoff .command').count(), 0);
+      assert.equal(
+        await p.locator('#repository-handoff .handoff-profile').getAttribute('href'),
+        origin + '/tipjar/leaderboard.html?repository_id=101&period=month',
+      );
+      await p.screenshot({ path: path.join(output, `handoff-match-${width}.png`), fullPage: true });
+      await p.locator('#board-period [data-period="all"]').click();
+      assert.equal(new URL(p.url()).search, '?repo=fictional-demo%2Fwelcoming-jar&period=all');
+      await p.locator('#repository-handoff .handoff-profile').click();
+      await p.locator('#board-detail[open]').waitFor();
+      assert.equal(new URL(p.url()).search, '?repository_id=101&period=all');
+      await p.getByRole('button', { name: 'Copy view link', exact: true }).click();
+      assert.equal(
+        await p.evaluate(() => window.handoffCopied),
+        origin + '/tipjar/leaderboard.html?repository_id=101&period=all',
+      );
+      assert.equal(await p.locator('#repository-handoff').isVisible(), false);
+      await p.screenshot({
+        path: path.join(output, `handoff-numeric-${width}.png`),
+        fullPage: true,
+      });
+      await p.evaluate(() => {
+        window.handoffWrites = [];
+      });
+      await p.goBack();
+      await p.locator('#repository-handoff .handoff-profile').waitFor();
+      assert.equal(
+        await p.locator('#handoff-title').evaluate((e) => document.activeElement === e),
+        true,
+      );
+      await p.goForward();
+      await p.locator('#board-detail[open]').waitFor();
+      assert.deepEqual(await p.evaluate(() => window.handoffWrites), []);
+      await p.keyboard.press('Escape');
+      assert.equal(new URL(p.url()).search, '?period=all');
+      assert.equal(
+        await p.locator('#people-title').evaluate((e) => document.activeElement === e),
+        true,
+      );
+      assert.equal(requests.filter((u) => u.endsWith('/board.json')).length, 1);
+      assert.equal(
+        requests.some((u) => u.includes('api.github.com')),
+        false,
+      );
+      assert.deepEqual(p.errors, []);
+      await p.close();
+      checks += 10;
+      for (const name of [
+        'valid',
+        'v2/readme-welcome',
+        'v2/manifest-closed',
+        'v2/unknown',
+        'v2/absent',
+      ]) {
+        const q = await page(width, fixture(name));
+        await q.goto(origin + '/tipjar/leaderboard.html?repo=FICTIONAL-DEMO%2FWELCOMING-JAR');
+        await q.locator('#repository-handoff .handoff-profile').waitFor();
+        assert.equal(await q.locator('#board-detail').evaluate((e) => e.open), false);
+        assert.equal(await q.locator('#repository-handoff .command').count(), 0);
+        assert.deepEqual(q.errors, []);
+        await q.close();
+        checks++;
+      }
+      const only = fixture('v2/readme-welcome');
+      only.tips = [];
+      const w = await page(width, only);
+      await w.goto(origin + '/tipjar/leaderboard.html?repo=fictional-demo%2Fwelcoming-jar');
+      await w.locator('#repository-handoff .handoff-profile').waitFor();
+      await w.locator('#repository-handoff .handoff-profile').click();
+      assert.match(
+        await w.locator('#board-detail-content').innerText(),
+        /No accepted tips in this period/,
+      );
+      await w.close();
+      checks++;
+      for (const data of [fixture('v2/empty'), fixture('v2/partial')]) {
+        const q = await page(width, data);
+        await q.goto(origin + '/tipjar/leaderboard.html?repo=missing%2Fproject');
+        await q.getByRole('link', { name: 'Suggest a jar for review', exact: true }).waitFor();
+        assert.match(
+          await q.locator('#repository-handoff').innerText(),
+          /Not listed in this snapshot/,
+        );
+        assert.match(await q.locator('#repository-handoff').innerText(), /Coverage is limited/);
+        assert.equal(await q.locator('#repository-handoff .handoff-profile').count(), 0);
+        assert.equal(
+          await q
+            .getByRole('link', { name: 'Suggest a jar for review', exact: true })
+            .getAttribute('href'),
+          'https://github.com/nkovanen/tipjar/issues/new?template=suggest-jar.yml',
+        );
+        assert.equal(
+          await q
+            .getByRole('link', { name: 'Prepare an invitation locally', exact: true })
+            .getAttribute('href'),
+          origin + '/tipjar/directory.html?repo=missing%2Fproject#maintainers',
+        );
+        if (!data.tips.length)
+          await q.screenshot({
+            path: path.join(output, `handoff-not-listed-${width}.png`),
+            fullPage: true,
+          });
+        await q.close();
+        checks++;
+      }
+      for (const data of [null, { format: 'future' }, fixture('v2/expired')]) {
+        const q = await page(width, data);
+        await q.goto(origin + '/tipjar/leaderboard.html?repo=fictional-demo%2Fwelcoming-jar');
+        await q.waitForFunction(
+          () =>
+            document.getElementById('board-status').innerText.includes('breather') ||
+            document.getElementById('board-status').innerText.includes('Refresh overdue'),
+        );
+        assert.match(await q.locator('#repository-handoff').innerText(), /lookup is unavailable/);
+        assert.doesNotMatch(
+          await q.locator('#repository-handoff').innerText(),
+          /Not listed|fictional-demo/,
+        );
+        assert.equal(await q.locator('#repository-handoff .handoff-profile').count(), 0);
+        if (data?.format === 'tipjar-board/2')
+          await q.screenshot({
+            path: path.join(output, `handoff-expired-${width}.png`),
+            fullPage: true,
+          });
+        assert.deepEqual(q.errors, []);
+        await q.close();
+        checks++;
+      }
+      const x = await page(width);
+      await x.goto(origin + '/tipjar/leaderboard.html?repo=fictional-demo%2Fwelcoming-jar');
+      await x.locator('#repository-handoff .handoff-profile').waitFor();
+      const url = x.url();
+      await x.clock.setSystemTime(new Date('2026-11-05T12:00:00Z'));
+      await x.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      assert.equal(x.url(), url);
+      assert.equal(await x.locator('#repository-handoff .handoff-profile').count(), 0);
+      assert.doesNotMatch(await x.locator('#repository-handoff').innerText(), /fictional-demo/);
+      assert.equal(await x.locator('#board-detail').evaluate((e) => e.open), false);
+      await x.close();
+      checks++;
+      for (const query of [
+        'repo=a/b&repo=a/b',
+        'repo=a/b&repository_id=101',
+        'repo=a/b&author_id=301',
+        'repo=evil%3Csvg%3E/x',
+        'repo=a%252Fb',
+        'repo=a/b&period=bad',
+      ]) {
+        const q = await page(width);
+        await q.goto(origin + '/tipjar/index.html?' + query);
+        assert.equal(await q.locator('#repository-invitation a').count(), 0);
+        assert.doesNotMatch(await q.locator('#repository-invitation').innerText(), /evil|<svg>/);
+        await q.goto(origin + '/tipjar/leaderboard.html?' + query);
+        await q.locator('#people-content tbody').waitFor();
+        assert.equal(await q.locator('#repository-handoff .handoff-profile').count(), 0);
+        assert.equal(await q.locator('#board-detail').evaluate((e) => e.open), false);
+        await q.close();
+        checks++;
+      }
+      const renamed = fixture('v2/empty');
+      renamed.repositories = [
+        {
+          repository_id: 888,
+          repository: 'fictional-demo/new-name',
+          primary_language: null,
+          verified_at: renamed.generated_at,
+        },
+      ];
+      const q = await page(width, renamed);
+      await q.goto(origin + '/tipjar/leaderboard.html?repo=fictional-demo%2Fwelcoming-jar');
+      await q.getByRole('link', { name: 'Suggest a jar for review', exact: true }).waitFor();
+      assert.equal(await q.locator('#repository-handoff .handoff-profile').count(), 0);
+      await q.close();
+      checks++;
+      const reused = fixture('v2/empty');
+      reused.repositories = [
+        {
+          repository_id: 999,
+          repository: 'fictional-demo/welcoming-jar',
+          primary_language: null,
+          verified_at: reused.generated_at,
+        },
+      ];
+      const r = await page(width, reused);
+      await r.goto(origin + '/tipjar/leaderboard.html?repo=fictional-demo%2Fwelcoming-jar');
+      await r.locator('#repository-handoff .handoff-profile').waitFor();
+      assert.match(
+        await r.locator('#repository-handoff .handoff-profile').getAttribute('href'),
+        /repository_id=999/,
+      );
+      assert.match(
+        await r.locator('#repository-handoff').innerText(),
+        /earlier ownership are not verified/,
+      );
+      await r.close();
+      checks++;
+      for (const entry of [
+        'index.html?repo=fictional-demo%2Fwelcoming-jar',
+        'leaderboard.html?repo=fictional-demo%2Fwelcoming-jar',
+      ]) {
+        const n = await browser.newPage({
+            viewport: { width, height: 1000 },
+            javaScriptEnabled: false,
+          }),
+          reads = [];
+        n.on('request', (r) => reads.push(r.url()));
+        await n.goto(origin + '/tipjar/' + entry);
+        assert.equal(await n.locator('noscript a[href="leaderboard.html"]').isVisible(), true);
+        assert.equal(
+          await n.locator('noscript a[href="directory.html#maintainers"]').isVisible(),
+          true,
+        );
+        assert.equal(
+          await n
+            .locator(
+              'noscript a[href="https://github.com/nkovanen/tipjar/issues/new?template=suggest-jar.yml"]',
+            )
+            .isVisible(),
+          true,
+        );
+        assert.equal(
+          reads.some((u) => u.endsWith('/board.json') || u.includes('api.github.com')),
+          false,
+        );
+        await n.close();
+        checks++;
+      }
+    }
     for (const width of [1440, 390]) {
       for (const javaScriptEnabled of [true, false]) {
         for (const file of ['index', 'leaderboard']) {
           const context = await browser.newContext({
-            viewport: { width, height: 1000 }, javaScriptEnabled, reducedMotion: 'reduce',
+            viewport: { width, height: 1000 },
+            javaScriptEnabled,
+            reducedMotion: 'reduce',
           });
           const p = await context.newPage();
           const requests = [];
           p.on('request', (r) => requests.push(r.url()));
           await p.clock.install({ time: new Date('2026-11-03T13:00:00Z') });
-          await p.route('**/tipjar/board.json', (route) => route.fulfill({
-            contentType: 'application/json', body: JSON.stringify(fixture('v2/empty')),
-          }));
+          await p.route('**/tipjar/board.json', (route) =>
+            route.fulfill({
+              contentType: 'application/json',
+              body: JSON.stringify(fixture('v2/empty')),
+            }),
+          );
           await p.goto(origin + '/tipjar/' + file + '.html');
-          await suggestionLink(p, `suggest-${file}-${width}-${javaScriptEnabled ? 'js' : 'nojs'}.png`);
-          assert.equal(requests.filter((u) => u.endsWith('/board.json')).length,
-            file === 'leaderboard' && javaScriptEnabled ? 1 : 0);
+          await suggestionLink(
+            p,
+            `suggest-${file}-${width}-${javaScriptEnabled ? 'js' : 'nojs'}.png`,
+          );
+          assert.equal(
+            requests.filter((u) => u.endsWith('/board.json')).length,
+            file === 'leaderboard' && javaScriptEnabled ? 1 : 0,
+          );
           await context.close();
           checks++;
         }
@@ -112,8 +621,11 @@ const fixture = (name) =>
       for (const state of ['partial', 'expired', 'readme-welcome']) {
         const p = await page(width, fixture('v2/' + state));
         await p.goto(origin + '/tipjar/leaderboard.html');
-        await p.waitForFunction(() => !document.getElementById('board-status').innerText.includes('Filling'));
-        if (state === 'expired') assert.equal(await p.locator('#welcome-content article').count(), 0);
+        await p.waitForFunction(
+          () => !document.getElementById('board-status').innerText.includes('Filling'),
+        );
+        if (state === 'expired')
+          assert.equal(await p.locator('#welcome-content article').count(), 0);
         await suggestionLink(p, `suggest-${state}-${width}.png`);
         await p.close();
         checks++;
@@ -573,7 +1085,8 @@ const fixture = (name) =>
                 : observation.source?.kind === 'manifest'
                   ? '.tipjar.json'
                   : null;
-          const fileLinks = p.locator('#board-detail-content a[href*="/blob/"]');
+          const fileLinks = p.locator('#board-detail-content')
+            .getByRole('link', { name: /^Pinned (README|invitation) source ↗$/ });
           assert.equal(await fileLinks.count(), expectedFile ? 1 : 0);
           if (expectedFile)
             assert.equal(
